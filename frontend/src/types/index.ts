@@ -41,7 +41,7 @@ export interface ProduceListing {
   availableKg: number
   freshness: string
   distanceKm: number
-  emoji: string
+  imageSrc: string
   visual: 'tomato' | 'potato' | 'onion' | 'leafy' | 'grain' | 'fruit' | 'root' | 'green'
   grade: 'Grade A' | 'Grade A+'
 }
@@ -60,7 +60,7 @@ export interface BulkSupply {
   startingPrice: number
   moqKg: number
   farmerCount: number
-  emoji: string
+  imageSrc: string
   visual: ProduceListing['visual']
   locations: string
 }

@@ -1,4 +1,4 @@
-import { Building2, ChevronRight, CircleHelp, Languages, LogOut, MapPin, Phone, Settings, ShieldCheck, Sprout, UserRound } from 'lucide-react'
+import { Building2, ChevronRight, CircleHelp, Languages, LogOut, MapPin, Phone, Settings, ShieldCheck, ShoppingBasket, Sprout, UserRound, type LucideIcon } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { LanguageSwitcher } from '../components/LanguageSwitcher'
 import { SupportCard } from '../components/SupportCard'
@@ -7,7 +7,7 @@ import { useToast } from '../contexts/ToastContext'
 import type { Role } from '../types'
 import { roleHome, roleLabel } from '../utils/routes'
 
-const roleOptions: Array<{ role: Role; emoji: string }> = [{ role: 'farmer', emoji: '🌾' }, { role: 'consumer', emoji: '🧺' }, { role: 'bulk', emoji: '🏢' }]
+const roleOptions: Array<{ role: Role; icon: LucideIcon }> = [{ role: 'farmer', icon: Sprout }, { role: 'consumer', icon: ShoppingBasket }, { role: 'bulk', icon: Building2 }]
 
 export function ProfilePage() {
   const { session, user, logout, switchRole } = useAuth()
@@ -51,7 +51,7 @@ export function ProfilePage() {
           <button className="settings-row logout-row" onClick={signOut}><span className="settings-icon"><LogOut size={20} /></span><div><strong>Log out</strong><small>End this demo session</small></div><ChevronRight size={18} /></button>
         </section>
 
-        <section className="demo-switch-card"><div><span className="eyebrow">Demo controls</span><h2>Switch demo role</h2><p>Move between product experiences without repeating sign in.</p></div><div className="demo-switch-options">{roleOptions.map((option) => <button key={option.role} className={session.role === option.role ? 'active' : ''} onClick={() => switchDemo(option.role)}><span>{option.emoji}</span><strong>{roleLabel(option.role)}</strong>{session.role === option.role && <small>Current</small>}</button>)}</div></section>
+        <section className="demo-switch-card"><div><span className="eyebrow">Demo controls</span><h2>Switch demo role</h2><p>Move between product experiences without repeating sign in.</p></div><div className="demo-switch-options">{roleOptions.map((option) => { const RoleIcon = option.icon; return <button key={option.role} className={session.role === option.role ? 'active' : ''} onClick={() => switchDemo(option.role)}><span><RoleIcon size={22} /></span><strong>{roleLabel(option.role)}</strong>{session.role === option.role && <small>Current</small>}</button> })}</div></section>
       </div>
       {session.role === 'farmer' && <SupportCard />}
     </div>

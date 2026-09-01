@@ -1,4 +1,4 @@
-import { ArrowLeft, BadgeCheck, Clock3, MapPin, Scale, ShieldCheck, Truck } from 'lucide-react'
+import { ArrowLeft, BadgeCheck, Clock3, MapPin, Scale, ShieldCheck, Sprout, Truck } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import { DashboardSkeleton } from '../components/LoadingSkeleton'
 import { PriceTransparency } from '../components/PriceTransparency'
@@ -20,7 +20,7 @@ export function ListingDetailPage() {
     <div className="page listing-detail-page">
       <Link to="/consumer/explore" className="back-link"><ArrowLeft size={17} /> Back to marketplace</Link>
       <div className="listing-detail-grid">
-        <ProduceArtwork emoji={data.emoji} visual={data.visual} size="hero" />
+        <ProduceArtwork imageSrc={data.imageSrc} alt={data.product} visual={data.visual} size="hero" />
         <section className="listing-detail-copy">
           <StatusBadge tone="green">{data.freshness}</StatusBadge>
           <h1>{data.product}</h1>
@@ -32,7 +32,7 @@ export function ListingDetailPage() {
           <p className="listing-assurance"><ShieldCheck size={17} /> No payment is collected in this Phase 1 prototype.</p>
         </section>
       </div>
-      <div className="listing-lower-grid"><PriceTransparency compact /><article className="farm-story"><span className="eyebrow">Meet the grower</span><h2>{farmer.name}</h2><p>{farmer.farmName} has been growing seasonal produce for {farmer.yearsFarming} years. Every KisanLink batch keeps its farm origin visible.</p><div><span>🌱 {farmer.yearsFarming} years farming</span><span>✓ Identity verified</span></div></article></div>
+      <div className="listing-lower-grid"><PriceTransparency compact /><article className="farm-story"><span className="eyebrow">Meet the grower</span><h2>{farmer.name}</h2><p>{farmer.farmName} has been growing seasonal produce for {farmer.yearsFarming} years. Every KisanLink batch keeps its farm origin visible.</p><div><span><Sprout size={13} /> {farmer.yearsFarming} years farming</span><span><BadgeCheck size={13} /> Identity verified</span></div></article></div>
     </div>
   )
 }

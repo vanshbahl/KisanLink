@@ -1,6 +1,6 @@
 # KisanLink Visual Direction Exploration
 
-These are preview-only direction studies. None of these assets are referenced by the frontend.
+Direction A was selected on 1 September 2026. The optimized production assets are now stored in `frontend/public/assets/produce/` and referenced by the frontend. Options B and C remain here only as archived direction studies.
 
 ## Produce imagery
 
@@ -8,9 +8,27 @@ These are preview-only direction studies. None of these assets are referenced by
 - **Option B — Premium realistic 3D:** consistent CGI produce staged on the application's existing pastel visual fields.
 - **Option C — Editorial farm photography:** product-led harvest imagery with visible farm origin and a shared documentary color grade.
 
-Recommendation: **Option B**. It preserves the existing card composition, scales cleanly between mini cards and heroes, and gives the full produce set the strongest consistency.
+Selected direction: **Option A**. Its isolated photography now sits inside the application's existing pastel card compositions without changing the UI hierarchy.
 
 The three preview sheets were generated with the built-in image generation tool and converted to optimized WebP files for this folder.
+
+### Production asset prompt specification
+
+Each produce file was generated separately with the built-in image generation tool using this shared specification:
+
+```text
+Use case: product-mockup
+Asset type: KisanLink marketplace and hero transparent produce asset
+Scene/backdrop: genuinely transparent background with clean alpha edges
+Style/medium: high-end photorealistic isolated farm-produce photography, accurate natural texture, restrained premium catalog quality, never glossy
+Composition/framing: centered three-quarter view, complete silhouette, consistent 70mm product-photo perspective, generous 18 percent transparent padding, soft contact shadow contained beneath the produce
+Lighting/mood: one large softbox from upper left with gentle natural fill, warm neutral color balance
+Color palette: natural produce color with restrained deep green or golden crop accents
+Constraints: actual transparency; no visible backdrop; no text; no logo; no watermark; no packaging, utensils, hands, shelves, soil pile, or unrelated produce
+Avoid: emoji look, cartoon clipart, oversaturation, plastic texture, floating object, cropped edges
+```
+
+Subject directives: four vine tomatoes; four new potatoes; three red onions; one cauliflower head; three green capsicums; four carrots; one Sharbati wheat sheaf; basmati rice panicles with long grains; three Himachali apples; yellow mustard flowers with seeds; one baby spinach bunch; and three cucumbers. Final files use true alpha, 1024px maximum width, and optimized WebP encoding.
 
 ### Option A prompt
 
@@ -67,6 +85,6 @@ Avoid: staged supermarket photography, rustic clutter, oversaturation, dark mood
 - **03 Field Bridge:** farmer and buyer nodes joined above cultivated field rows.
 - **04 Seed Exchange:** a seed silhouette formed by two reciprocal, interlocking halves.
 
-Recommendation: **02 K-Route**. It is the most distinctive at app-icon size, owns the K initial, and communicates agriculture plus directed connection without relying on a generic sprout.
+Final direction: an original **Farmer Link** emblem inspired by the selected farmer-and-harvest references. The simplified farmer profile, linked forearms, seedling, and harvest sun are implemented as native SVGs in `frontend/public/assets/brand/`; the earlier four concepts remain archived exploration.
 
 The logo concepts are original native SVG constructions and are shown as icon-only and wordmark variants on cream and deep green.

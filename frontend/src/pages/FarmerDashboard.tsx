@@ -1,4 +1,4 @@
-import { BarChart3, CalendarClock, IndianRupee, PackageCheck, Plus, Sprout, WalletCards } from 'lucide-react'
+import { BarChart3, CalendarClock, IndianRupee, PackageCheck, Plus, Sprout, Sun, WalletCards } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { FarmerQuickAction } from '../components/FarmerQuickAction'
 import { DashboardSkeleton } from '../components/LoadingSkeleton'
@@ -18,12 +18,12 @@ export function FarmerDashboard() {
     <div className="page farmer-page">
       <section className="farmer-greeting">
         <div><span className="eyebrow">{language === 'hi' ? 'आज आपके खेत पर' : 'Today on your farm'}</span><h1>{t('greeting')}</h1><p>{t('location')}</p></div>
-        <div className="weather-pill"><span>☀️</span><strong>29°C</strong><small>Clear</small></div>
+        <div className="weather-pill"><Sun size={23} /><strong>29°C</strong><small>Clear</small></div>
       </section>
 
       <section className="farmer-hero-card">
         <div className="farmer-hero-copy"><span className="farmer-hero-kicker"><Sprout size={17} /> {language === 'hi' ? 'सीधे खरीदारों तक' : 'Reach buyers directly'}</span><h2>{t('sellProduce')}</h2><p>{language === 'hi' ? 'सही कीमत पाएं। पिकअप में हमारी सहायता लें।' : 'Get a fair price and pickup support, without the middlemen.'}</p><Link to="/farmer/sell" className="btn btn-light btn-large"><Plus size={21} />{t('sellProduce')}</Link></div>
-        <div className="farmer-hero-illustration"><span>🌿</span><span>🍅</span><span>🥕</span></div>
+        <div className="farmer-hero-illustration" aria-hidden="true"><img src="/assets/produce/spinach.webp" alt="" /><img src="/assets/produce/tomato.webp" alt="" /><img src="/assets/produce/carrot.webp" alt="" /></div>
       </section>
 
       <section className="section-block">

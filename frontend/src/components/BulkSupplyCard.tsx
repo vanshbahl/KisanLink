@@ -6,7 +6,7 @@ import { ProduceArtwork } from './ProduceArtwork'
 export function BulkSupplyCard({ supply }: { supply: BulkSupply }) {
   return (
     <article className="bulk-card">
-      <ProduceArtwork emoji={supply.emoji} visual={supply.visual} size="mini" />
+      <ProduceArtwork imageSrc={supply.imageSrc} alt={supply.product} visual={supply.visual} size="mini" />
       <div className="bulk-card-content">
         <div className="bulk-card-title"><h3>{supply.product}</h3><span><BadgeCheck size={14} />Verified supply</span></div>
         <p><MapPin size={15} />{supply.locations}</p>

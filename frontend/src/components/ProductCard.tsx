@@ -10,7 +10,7 @@ export function ProductCard({ listing }: { listing: ProduceListing }) {
   return (
     <article className="product-card">
       <div className="product-visual">
-        <ProduceArtwork emoji={listing.emoji} visual={listing.visual} />
+        <ProduceArtwork imageSrc={listing.imageSrc} alt={listing.product} visual={listing.visual} />
         <StatusBadge tone="green">{listing.freshness}</StatusBadge>
       </div>
       <div className="product-content">
