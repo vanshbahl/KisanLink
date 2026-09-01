@@ -101,23 +101,24 @@ The entire system is optimized to demonstrate a single complete agricultural tra
 ## 💻 Local Development Setup
 
 ### Prerequisites
-- Docker & Docker Compose
 - Node.js 18+ (for frontend development)
-- Python 3.11+ (for backend development)
+- npm
 
-### Quick Start (Single-Command Docker Boot)
+### Frontend Quick Start
 ```bash
 # Clone the repository
 git clone https://github.com/vanshbahl/KisanLink.git
 cd KisanLink
 
-# Launch local PostgreSQL (with PostGIS), FastAPI backend, and React/Vite frontend
-docker-compose up --build
+# Install and run the React/Vite frontend
+cd frontend
+npm install
+npm run dev
 ```
 
 - **Frontend App:** `http://localhost:5173`
-- **FastAPI Backend & Interactive Swagger Docs:** `http://localhost:8000/docs`
-- **Health Check:** `http://localhost:8000/api/v1/healthz`
+
+The backend is planned for a later implementation phase and is not included yet.
 
 ---
 

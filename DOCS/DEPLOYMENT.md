@@ -144,6 +144,7 @@ volumes:
 
 1. **Build Configuration:**
    - Framework Preset: `Vite`.
+   - Root Directory: `frontend`.
    - Build Command: `npm run build`.
    - Output Directory: `dist`.
 2. **SPA Routing Rule:** Single `_redirects` file in `public/`:

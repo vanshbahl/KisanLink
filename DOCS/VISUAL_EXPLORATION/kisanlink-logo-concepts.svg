@@ -1,0 +1,204 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1500" viewBox="0 0 1600 1500" role="img" aria-labelledby="title desc">
+  <title id="title">KisanLink original logo concept board</title>
+  <desc id="desc">Four logo concepts shown as icon-only marks and wordmarks on cream and deep green backgrounds.</desc>
+  <defs>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#123628" flood-opacity=".12"/>
+    </filter>
+    <style>
+      .board-title { font: 800 48px Manrope, Arial, sans-serif; letter-spacing: -2px; fill: #1f2924; }
+      .board-subtitle { font: 500 20px Manrope, Arial, sans-serif; fill: #68736d; }
+      .concept-label { font: 800 19px Manrope, Arial, sans-serif; letter-spacing: 1.7px; fill: #236747; }
+      .concept-note { font: 500 16px Manrope, Arial, sans-serif; fill: #68736d; }
+      .word { font: 800 40px Manrope, Arial, sans-serif; letter-spacing: -2px; }
+      .word-light { fill: #ffffff; }
+      .word-dark { fill: #1f2924; }
+      .word-green { fill: #236747; }
+      .word-mint { fill: #c9e8d3; }
+      .panel-caption { font: 700 13px Manrope, Arial, sans-serif; letter-spacing: 1.4px; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1500" fill="#ffffff"/>
+  <text x="92" y="94" class="board-title">KisanLink identity exploration</text>
+  <text x="92" y="132" class="board-subtitle">Original vector directions • current green / cream system • preview only</text>
+
+  <!-- Concept 01: Furrow Link -->
+  <g transform="translate(92 205)">
+    <text x="0" y="0" class="concept-label">01  FURROW LINK</text>
+    <text x="0" y="29" class="concept-note">Two field rows become one direct trade link.</text>
+    <g transform="translate(0 58)">
+      <rect width="686" height="244" rx="34" fill="#f7f4eb"/>
+      <text x="28" y="34" class="panel-caption" fill="#8a948e">CREAM</text>
+      <rect x="34" y="62" width="120" height="120" rx="35" fill="#236747" filter="url(#shadow)"/>
+      <g transform="translate(51 80)" fill="none" stroke="#ffffff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 45c0-17 13-30 30-30h13c17 0 30 13 30 30S74 75 57 75H47"/>
+        <path d="M73 30h-9C47 30 34 43 34 60s13 30 30 30h10c17 0 30-13 30-30" opacity=".92"/>
+      </g>
+      <path d="M129 86c-15 0-24 8-26 22 15 2 25-5 26-22Z" fill="#ebaf3c"/>
+      <g transform="translate(198 103)">
+        <text class="word word-dark">Kisan</text><text x="108" class="word word-green">Link</text>
+        <text y="36" font-family="Manrope, Arial, sans-serif" font-size="13" font-weight="700" letter-spacing="2" fill="#68736d">DIRECT FARM TRADE</text>
+      </g>
+      <g transform="translate(571 78)">
+        <rect width="86" height="86" rx="25" fill="#ffffff" stroke="#dde3dd"/>
+        <g transform="translate(13 11) scale(.61)" fill="none" stroke="#236747" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 45c0-17 13-30 30-30h13c17 0 30 13 30 30S74 75 57 75H47"/>
+          <path d="M73 30h-9C47 30 34 43 34 60s13 30 30 30h10c17 0 30-13 30-30" opacity=".88"/>
+        </g>
+      </g>
+    </g>
+    <g transform="translate(718 58)">
+      <rect width="698" height="244" rx="34" fill="#174b34"/>
+      <text x="28" y="34" class="panel-caption" fill="#a9c7b4">DARK GREEN</text>
+      <rect x="34" y="62" width="120" height="120" rx="35" fill="#f7f4eb"/>
+      <g transform="translate(51 80)" fill="none" stroke="#236747" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 45c0-17 13-30 30-30h13c17 0 30 13 30 30S74 75 57 75H47"/>
+        <path d="M73 30h-9C47 30 34 43 34 60s13 30 30 30h10c17 0 30-13 30-30" opacity=".92"/>
+      </g>
+      <path d="M129 86c-15 0-24 8-26 22 15 2 25-5 26-22Z" fill="#d79b2d"/>
+      <g transform="translate(198 103)">
+        <text class="word word-light">Kisan</text><text x="108" class="word word-mint">Link</text>
+        <text y="36" font-family="Manrope, Arial, sans-serif" font-size="13" font-weight="700" letter-spacing="2" fill="#a9c7b4">DIRECT FARM TRADE</text>
+      </g>
+      <g transform="translate(584 78)">
+        <rect width="86" height="86" rx="25" fill="#236747" stroke="#4d8469"/>
+        <g transform="translate(13 11) scale(.61)" fill="none" stroke="#ffffff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 45c0-17 13-30 30-30h13c17 0 30 13 30 30S74 75 57 75H47"/>
+          <path d="M73 30h-9C47 30 34 43 34 60s13 30 30 30h10c17 0 30-13 30-30" opacity=".9"/>
+        </g>
+      </g>
+    </g>
+  </g>
+
+  <!-- Concept 02: K Route -->
+  <g transform="translate(92 540)">
+    <text x="0" y="0" class="concept-label">02  K-ROUTE</text>
+    <text x="0" y="29" class="concept-note">A compact K monogram built from growth and a routed connection.</text>
+    <g transform="translate(0 58)">
+      <rect width="686" height="244" rx="34" fill="#f7f4eb"/>
+      <text x="28" y="34" class="panel-caption" fill="#8a948e">CREAM</text>
+      <rect x="34" y="62" width="120" height="120" rx="35" fill="#236747" filter="url(#shadow)"/>
+      <g transform="translate(59 83)" fill="none" stroke="#ffffff" stroke-width="11" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 4v78"/>
+        <path d="M19 47 58 12"/>
+        <path d="M19 47c21 0 22 35 50 35"/>
+        <circle cx="73" cy="82" r="5" fill="#ebaf3c" stroke="none"/>
+      </g>
+      <path d="M114 90c-14-1-24 5-29 18 14 5 26-1 29-18Z" fill="#c9e8d3"/>
+      <g transform="translate(198 103)">
+        <text class="word word-dark" style="letter-spacing:-2.5px">Kisan</text><text x="108" class="word word-green" style="letter-spacing:-2.5px">Link</text>
+        <text y="36" font-family="Manrope, Arial, sans-serif" font-size="13" font-weight="700" letter-spacing="2" fill="#68736d">FARM TO BUYER</text>
+      </g>
+      <g transform="translate(571 78)">
+        <rect width="86" height="86" rx="25" fill="#ffffff" stroke="#dde3dd"/>
+        <g transform="translate(18 12) scale(.62)" fill="none" stroke="#236747" stroke-width="11" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 4v78"/><path d="M19 47 58 12"/><path d="M19 47c21 0 22 35 50 35"/><circle cx="73" cy="82" r="5" fill="#ebaf3c" stroke="none"/>
+        </g>
+      </g>
+    </g>
+    <g transform="translate(718 58)">
+      <rect width="698" height="244" rx="34" fill="#174b34"/>
+      <text x="28" y="34" class="panel-caption" fill="#a9c7b4">DARK GREEN</text>
+      <rect x="34" y="62" width="120" height="120" rx="35" fill="#f7f4eb"/>
+      <g transform="translate(59 83)" fill="none" stroke="#236747" stroke-width="11" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 4v78"/><path d="M19 47 58 12"/><path d="M19 47c21 0 22 35 50 35"/><circle cx="73" cy="82" r="5" fill="#d79b2d" stroke="none"/>
+      </g>
+      <path d="M114 90c-14-1-24 5-29 18 14 5 26-1 29-18Z" fill="#9ecdb0"/>
+      <g transform="translate(198 103)">
+        <text class="word word-light" style="letter-spacing:-2.5px">Kisan</text><text x="108" class="word word-mint" style="letter-spacing:-2.5px">Link</text>
+        <text y="36" font-family="Manrope, Arial, sans-serif" font-size="13" font-weight="700" letter-spacing="2" fill="#a9c7b4">FARM TO BUYER</text>
+      </g>
+      <g transform="translate(584 78)">
+        <rect width="86" height="86" rx="25" fill="#236747" stroke="#4d8469"/>
+        <g transform="translate(18 12) scale(.62)" fill="none" stroke="#ffffff" stroke-width="11" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 4v78"/><path d="M19 47 58 12"/><path d="M19 47c21 0 22 35 50 35"/><circle cx="73" cy="82" r="5" fill="#ebaf3c" stroke="none"/>
+        </g>
+      </g>
+    </g>
+  </g>
+
+  <!-- Concept 03: Field Bridge -->
+  <g transform="translate(92 875)">
+    <text x="0" y="0" class="concept-label">03  FIELD BRIDGE</text>
+    <text x="0" y="29" class="concept-note">Farmer and buyer nodes joined above cultivated field rows.</text>
+    <g transform="translate(0 58)">
+      <rect width="686" height="244" rx="34" fill="#f7f4eb"/>
+      <text x="28" y="34" class="panel-caption" fill="#8a948e">CREAM</text>
+      <rect x="34" y="62" width="120" height="120" rx="35" fill="#236747" filter="url(#shadow)"/>
+      <g transform="translate(52 85)" fill="none" stroke="#ffffff" stroke-width="7" stroke-linecap="round">
+        <path d="M7 54C24 17 64 9 91 41"/>
+        <path d="M9 72c23-17 51-20 84-8" opacity=".94"/>
+        <path d="M18 86c22-11 45-13 69-7" opacity=".78"/>
+        <circle cx="7" cy="54" r="7" fill="#ebaf3c" stroke="none"/>
+        <circle cx="91" cy="41" r="7" fill="#c9e8d3" stroke="none"/>
+      </g>
+      <g transform="translate(198 103)">
+        <text class="word word-dark" style="font-weight:700">Kisan</text><text x="108" class="word word-green">Link</text>
+        <text y="36" font-family="Manrope, Arial, sans-serif" font-size="13" font-weight="700" letter-spacing="2" fill="#68736d">CLOSER BY DESIGN</text>
+      </g>
+      <g transform="translate(571 78)">
+        <rect width="86" height="86" rx="25" fill="#ffffff" stroke="#dde3dd"/>
+        <g transform="translate(11 16) scale(.64)" fill="none" stroke="#236747" stroke-width="7" stroke-linecap="round">
+          <path d="M7 54C24 17 64 9 91 41"/><path d="M9 72c23-17 51-20 84-8"/><path d="M18 86c22-11 45-13 69-7" opacity=".75"/><circle cx="7" cy="54" r="7" fill="#ebaf3c" stroke="none"/><circle cx="91" cy="41" r="7" fill="#236747" stroke="none"/>
+        </g>
+      </g>
+    </g>
+    <g transform="translate(718 58)">
+      <rect width="698" height="244" rx="34" fill="#174b34"/>
+      <text x="28" y="34" class="panel-caption" fill="#a9c7b4">DARK GREEN</text>
+      <rect x="34" y="62" width="120" height="120" rx="35" fill="#f7f4eb"/>
+      <g transform="translate(52 85)" fill="none" stroke="#236747" stroke-width="7" stroke-linecap="round">
+        <path d="M7 54C24 17 64 9 91 41"/><path d="M9 72c23-17 51-20 84-8"/><path d="M18 86c22-11 45-13 69-7" opacity=".75"/><circle cx="7" cy="54" r="7" fill="#d79b2d" stroke="none"/><circle cx="91" cy="41" r="7" fill="#236747" stroke="none"/>
+      </g>
+      <g transform="translate(198 103)">
+        <text class="word word-light" style="font-weight:700">Kisan</text><text x="108" class="word word-mint">Link</text>
+        <text y="36" font-family="Manrope, Arial, sans-serif" font-size="13" font-weight="700" letter-spacing="2" fill="#a9c7b4">CLOSER BY DESIGN</text>
+      </g>
+      <g transform="translate(584 78)">
+        <rect width="86" height="86" rx="25" fill="#236747" stroke="#4d8469"/>
+        <g transform="translate(11 16) scale(.64)" fill="none" stroke="#ffffff" stroke-width="7" stroke-linecap="round">
+          <path d="M7 54C24 17 64 9 91 41"/><path d="M9 72c23-17 51-20 84-8"/><path d="M18 86c22-11 45-13 69-7" opacity=".75"/><circle cx="7" cy="54" r="7" fill="#ebaf3c" stroke="none"/><circle cx="91" cy="41" r="7" fill="#c9e8d3" stroke="none"/>
+        </g>
+      </g>
+    </g>
+  </g>
+
+  <!-- Concept 04: Seed Exchange -->
+  <g transform="translate(92 1210)">
+    <text x="0" y="0" class="concept-label">04  SEED EXCHANGE</text>
+    <text x="0" y="29" class="concept-note">A seed silhouette formed by two reciprocal, interlocking halves.</text>
+    <g transform="translate(0 58)">
+      <rect width="686" height="188" rx="34" fill="#f7f4eb"/>
+      <text x="28" y="32" class="panel-caption" fill="#8a948e">CREAM</text>
+      <rect x="34" y="46" width="112" height="112" rx="33" fill="#236747" filter="url(#shadow)"/>
+      <g transform="translate(58 62)">
+        <path d="M31 4C8 22 2 45 14 64c9 14 25 20 42 16-19-8-26-22-20-39 6-16 19-22 32-25C55 6 43 1 31 4Z" fill="#ffffff"/>
+        <path d="M64 20C45 25 34 39 37 54c3 15 16 26 34 29 18-17 22-38 10-53-4-5-10-9-17-10Z" fill="#c9e8d3"/>
+        <circle cx="48" cy="49" r="7" fill="#ebaf3c"/>
+      </g>
+      <g transform="translate(190 86)">
+        <text class="word word-dark">Kisan</text><text x="108" class="word word-green">Link</text>
+        <text y="36" font-family="Manrope, Arial, sans-serif" font-size="13" font-weight="700" letter-spacing="2" fill="#68736d">GROWN TOGETHER</text>
+      </g>
+      <g transform="translate(579 54)">
+        <rect width="82" height="82" rx="24" fill="#ffffff" stroke="#dde3dd"/>
+        <g transform="translate(17 15) scale(.56)"><path d="M31 4C8 22 2 45 14 64c9 14 25 20 42 16-19-8-26-22-20-39 6-16 19-22 32-25C55 6 43 1 31 4Z" fill="#236747"/><path d="M64 20C45 25 34 39 37 54c3 15 16 26 34 29 18-17 22-38 10-53-4-5-10-9-17-10Z" fill="#9ecdb0"/><circle cx="48" cy="49" r="7" fill="#ebaf3c"/></g>
+      </g>
+    </g>
+    <g transform="translate(718 58)">
+      <rect width="698" height="188" rx="34" fill="#174b34"/>
+      <text x="28" y="32" class="panel-caption" fill="#a9c7b4">DARK GREEN</text>
+      <rect x="34" y="46" width="112" height="112" rx="33" fill="#f7f4eb"/>
+      <g transform="translate(58 62)"><path d="M31 4C8 22 2 45 14 64c9 14 25 20 42 16-19-8-26-22-20-39 6-16 19-22 32-25C55 6 43 1 31 4Z" fill="#236747"/><path d="M64 20C45 25 34 39 37 54c3 15 16 26 34 29 18-17 22-38 10-53-4-5-10-9-17-10Z" fill="#9ecdb0"/><circle cx="48" cy="49" r="7" fill="#d79b2d"/></g>
+      <g transform="translate(190 86)">
+        <text class="word word-light">Kisan</text><text x="108" class="word word-mint">Link</text>
+        <text y="36" font-family="Manrope, Arial, sans-serif" font-size="13" font-weight="700" letter-spacing="2" fill="#a9c7b4">GROWN TOGETHER</text>
+      </g>
+      <g transform="translate(591 54)">
+        <rect width="82" height="82" rx="24" fill="#236747" stroke="#4d8469"/>
+        <g transform="translate(17 15) scale(.56)"><path d="M31 4C8 22 2 45 14 64c9 14 25 20 42 16-19-8-26-22-20-39 6-16 19-22 32-25C55 6 43 1 31 4Z" fill="#ffffff"/><path d="M64 20C45 25 34 39 37 54c3 15 16 26 34 29 18-17 22-38 10-53-4-5-10-9-17-10Z" fill="#c9e8d3"/><circle cx="48" cy="49" r="7" fill="#ebaf3c"/></g>
+      </g>
+    </g>
+  </g>
+</svg>
