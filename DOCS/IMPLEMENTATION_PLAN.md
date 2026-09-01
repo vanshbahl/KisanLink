@@ -4,7 +4,7 @@
 **Problem Statement ID:** 26033 (Smart India Hackathon 2026)  
 **Document Version:** 1.0.0  
 **Status:** Approved Engineering Blueprint  
-**Target Stack:** FastAPI (Python 3.11+) + PostgreSQL (v16 with PostGIS) + Next.js 14 / React (TypeScript) + Google OR-Tools + Tailwind CSS  
+**Target Stack:** FastAPI (Python 3.11+) + PostgreSQL (v16 with PostGIS) + React 18 / Vite (TypeScript, Tailwind CSS, MapLibre GL JS) + Google OR-Tools  
 **Last Updated:** September 2026  
 
 ---
@@ -44,16 +44,23 @@
 
 ### 1.1 Codebase State
 - **Root Directory:** `/Users/vansh/Documents/Hackathons/KisanLink`
-- **Current Structure:** Clean, green-field workspace with initial documentation specifications in `DOCS/`.
+- **Current Structure:** Clean, green-field workspace with complete documentation specifications in `DOCS/`.
 - **Active Documents:**
   - `DOCS/PRD.md`: Master Product Requirements Document.
-  - `DOCS/PLAN.md`: Initial architectural research and notes.
-  - `DOCS/SIH-INFO.md`: Problem statement 26033 metadata.
+  - `DOCS/TRD.md`: Technical Requirements & Architecture Document.
+  - `DOCS/FLOWS.md`: End-to-End System Flows & State Machines.
+  - `DOCS/UI_UX_DESIGN.md`: UI/UX Design System & Wireframes.
+  - `DOCS/API_DESIGN.md`: REST API & WebSocket Specifications.
+  - `DOCS/DATABASE_DESIGN.md`: Database Schema & PostGIS Specifications.
+  - `DOCS/AI_SYSTEMS.md`: AI, ML & Optimization Specifications.
+  - `DOCS/DEPLOYMENT.md`: Deployment & Infrastructure Guide.
+  - `DOCS/FUTURE_ROADMAP.md`: Future Roadmap & Post-MVP Specifications.
+  - `DOCS/IMPLEMENTATION_PLAN.md`: System Implementation Plan & Roadmap.
 
 ### 1.2 Architectural Decisions & Alignment
 - **Architecture Style:** **Modular Monolith** with cleanly separated domain services (Marketplace, Clustering, Optimization, Intelligence, Payments, Logistics, Assisted Access).
 - **Backend Selection:** **FastAPI (Python 3.11+)** chosen for native asynchronous performance, strict Pydantic v2 data validation, and first-class integration with Python scientific/optimization libraries (`ortools`, `lightgbm`, `numpy`, `pandas`, `scipy`).
-- **Frontend Selection:** **Next.js 14 (React / TypeScript)** configured as a Progressive Web App (PWA) with Vanilla/Tailwind CSS, ensuring fast mobile rendering, offline service-worker caching, and responsive layouts across farmer mobile screens and buyer desktop monitors.
+- **Frontend Selection:** **Single React 18 + Vite (TypeScript)** configured as a Progressive Web App (PWA) with Tailwind CSS, MapLibre GL JS, and role shells (`/farmer`, `/buyer`, `/logistics`), ensuring fast mobile rendering, offline service-worker caching, and responsive layouts across farmer mobile screens and buyer desktop monitors.
 - **Database Selection:** **PostgreSQL 16** with spatial extension (**PostGIS**) for native geodetic bounding box queries and distance matrix indexing.
 
 ---
@@ -102,7 +109,7 @@ graph TD
     classDef ai fill:#fff3e0,stroke:#e65100,stroke-width:2px;
     classDef db fill:#fbe9e7,stroke:#d84315,stroke-width:2px;
 
-    subgraph Client_Tier [Client Presentation Layer (Next.js 14 PWA)]
+    subgraph Client_Tier [Client Presentation Layer (React 18 + Vite PWA)]
         FarmerApp["Farmer UI (Simplified 6-Card + Voice + Hindi)"]:::client
         BuyerApp["Buyer Dashboard (Reverse Mkt + Calendar + Twin)"]:::client
         LogisticsApp["Transporter Load Board (Route Sheet + GPS)"]:::client
@@ -219,7 +226,7 @@ frontend/
 │   ├── components/
 │   │   ├── ui/                      # Touch-friendly button cards, modals, steppers
 │   │   ├── voice/                   # Audio recording microphone widget & feedback
-│   │   ├── maps/                    # Leaflet / Mapbox route renderer
+│   │   ├── maps/                    # MapLibre GL JS route renderer
 │   │   └── common/                  # Call Support persistent floating widget, language toggle
 │   ├── hooks/                       # Custom hooks (useVoice, useLocation, useAuth)
 │   └── lib/                         # API client, i18n runtime, formatters
