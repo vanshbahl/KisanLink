@@ -123,6 +123,6 @@ docker-compose up --build
 
 ## 👥 Team & Attribution
 
-**Smart India Hackathon 2026** — *Problem Statement 26033*  
+**Smart India Hackathon 2026** - *Problem Statement 26033*  
 **Team Aeris**  
 *Maintained for the Department of Consumer Affairs (DoCA), Ministry of Consumer Affairs, Food & Public Distribution.*
