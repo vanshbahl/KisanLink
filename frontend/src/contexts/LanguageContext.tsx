@@ -1,11 +1,11 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
-import { translations, type TranslationKey } from '../i18n/translations'
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { translations, type TranslationKey } from '../i18n'
 import type { Language } from '../types'
 
 interface LanguageContextValue {
   language: Language
   setLanguage: (language: Language) => void
-  t: (key: TranslationKey) => string
+  t: (key: TranslationKey, values?: Record<string, string | number>) => string
 }
 
 const LanguageContext = createContext<LanguageContextValue | null>(null)
@@ -14,14 +14,18 @@ const LANGUAGE_KEY = 'kisanlink_language'
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>(() => localStorage.getItem(LANGUAGE_KEY) === 'hi' ? 'hi' : 'en')
 
+  useEffect(() => {
+    document.documentElement.lang = language
+  }, [language])
+
   const value = useMemo(() => ({
     language,
     setLanguage(next: Language) {
       localStorage.setItem(LANGUAGE_KEY, next)
       setLanguageState(next)
     },
-    t(key: TranslationKey) {
-      return translations[language][key]
+    t(key: TranslationKey, values = {}) {
+      return Object.entries(values).reduce((text, [name, value]) => text.replaceAll(`{${name}}`, String(value)), translations[language][key] as string)
     },
   }), [language])
 

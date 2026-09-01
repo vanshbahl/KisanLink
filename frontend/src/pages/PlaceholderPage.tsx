@@ -2,32 +2,33 @@ import { ArrowLeft, BellRing, CheckCircle2, Clock3, Sparkles } from 'lucide-reac
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
+import { useLanguage } from '../contexts/LanguageContext'
+import { placeholderTranslations, type PlaceholderId } from '../i18n/placeholders'
 import { roleHome } from '../utils/routes'
 
 interface PlaceholderPageProps {
-  eyebrow: string
-  title: string
-  description: string
-  features?: string[]
+  copyId: PlaceholderId
   tone?: 'green' | 'amber' | 'soil'
 }
 
-export function PlaceholderPage({ eyebrow, title, description, features = [], tone = 'green' }: PlaceholderPageProps) {
+export function PlaceholderPage({ copyId, tone = 'green' }: PlaceholderPageProps) {
   const { session } = useAuth()
+  const { language, t } = useLanguage()
   const { showToast } = useToast()
   const home = session ? roleHome(session.role) : '/'
+  const copy = placeholderTranslations[language][copyId]
   return (
     <div className="page placeholder-page">
-      <Link to={home} className="back-link"><ArrowLeft size={17} /> Back to dashboard</Link>
+      <Link to={home} className="back-link"><ArrowLeft size={17} /> {t('backDashboard')}</Link>
       <section className={`placeholder-hero placeholder-${tone}`}>
         <span className="placeholder-icon"><Sparkles size={30} /></span>
-        <span className="eyebrow">{eyebrow}</span>
-        <h1>{title}</h1>
-        <p>{description}</p>
-        <div className="phase-badge"><Clock3 size={16} /> Coming in the next prototype phase</div>
+        <span className="eyebrow">{copy.eyebrow}</span>
+        <h1>{copy.title}</h1>
+        <p>{copy.description}</p>
+        <div className="phase-badge"><Clock3 size={16} /> {t('comingNextPhase')}</div>
       </section>
-      {features.length > 0 && <section className="placeholder-features"><h2>What you’ll be able to do</h2><div>{features.map((feature) => <article key={feature}><CheckCircle2 size={20} /><span>{feature}</span></article>)}</div></section>}
-      <div className="placeholder-actions"><Link to={home} className="btn btn-primary">Return to dashboard</Link><button className="btn btn-secondary" onClick={() => showToast('We’ll highlight this feature in the next demo')}><BellRing size={17} /> Keep me updated</button></div>
+      <section className="placeholder-features"><h2>{t('whatYouCanDo')}</h2><div>{copy.features.map((feature) => <article key={feature}><CheckCircle2 size={20} /><span>{feature}</span></article>)}</div></section>
+      <div className="placeholder-actions"><Link to={home} className="btn btn-primary">{t('returnDashboard')}</Link><button className="btn btn-secondary" onClick={() => showToast(t('featureNextDemo'))}><BellRing size={17} /> {t('keepUpdated')}</button></div>
     </div>
   )
 }
