@@ -21,7 +21,10 @@ export function ProfilePage() {
     showToast(`Switched to ${roleLabel(role)} demo`)
     navigate(roleHome(role))
   }
-  const signOut = () => { logout(); navigate('/', { replace: true }) }
+  const signOut = () => {
+    logout()
+    window.location.replace('/')
+  }
 
   return (
     <div className="page profile-page">

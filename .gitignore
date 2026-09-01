@@ -64,6 +64,7 @@ venv.bak/
 # Node & Frontend dependencies
 node_modules/
 npm-debug.log*
+*.tsbuildinfo
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
@@ -76,6 +77,8 @@ out/
 # Production build artifacts
 dist/
 build/
+vite.config.js
+vite.config.d.ts
 
 # IDE & Editor files
 .vscode/

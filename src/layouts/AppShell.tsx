@@ -1,5 +1,5 @@
 import {
-  BarChart3, Bell, Boxes, ClipboardList, Heart, HelpCircle, Home, IndianRupee,
+  BarChart3, Bell, Boxes, ClipboardList, Heart, HelpCircle, Home,
   LayoutDashboard, ListChecks, PackageCheck, Search, ShoppingBag, Sprout, UserRound,
 } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
@@ -7,10 +7,20 @@ import { LanguageSwitcher } from '../components/LanguageSwitcher'
 import { Logo } from '../components/Logo'
 import { useAuth } from '../contexts/AuthContext'
 import { useLanguage } from '../contexts/LanguageContext'
+import type { LucideIcon } from 'lucide-react'
 import type { Role } from '../types'
 import { roleLabel } from '../utils/routes'
 
-const navByRole = {
+interface NavItemConfig {
+  label: string
+  labelHi?: string
+  to: string
+  icon: LucideIcon
+  end?: boolean
+  primary?: boolean
+}
+
+const navByRole: Record<Role, NavItemConfig[]> = {
   farmer: [
     { label: 'Home', labelHi: 'मुख्य', to: '/farmer', icon: Home, end: true },
     { label: 'Produce', labelHi: 'फसल', to: '/farmer/produce', icon: Sprout },
@@ -32,7 +42,7 @@ const navByRole = {
     { label: 'Orders', to: '/bulk/orders', icon: ListChecks },
     { label: 'Profile', to: '/bulk/profile', icon: UserRound },
   ],
-} satisfies Record<Role, Array<{ label: string; labelHi?: string; to: string; icon: typeof Home; end?: boolean; primary?: boolean }>>
+}
 
 export function AppShell() {
   const { session, user } = useAuth()
@@ -72,7 +82,7 @@ export function AppShell() {
   )
 }
 
-function NavItem({ item, language, mobile = false }: { item: (typeof navByRole)[Role][number]; language: string; mobile?: boolean }) {
+function NavItem({ item, language, mobile = false }: { item: NavItemConfig; language: string; mobile?: boolean }) {
   const Icon = item.icon
   const label = language === 'hi' && item.labelHi ? item.labelHi : item.label
   return (
