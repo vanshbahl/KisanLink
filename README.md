@@ -44,4 +44,4 @@ The platform is designed around demonstrating a single complete agricultural tra
 7. **Live Macroeconomic Impact:** Dashboard displays real-time farmer income improvement (+32.4%), buyer savings (18.1%), and transport km saved (68 km).
 
 ---
-*Maintained by Team KisanLink for Smart India Hackathon 2026.*
+*Maintained by Team Aeris for Smart India Hackathon 2026 SIH26033*
