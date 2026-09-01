@@ -454,7 +454,7 @@ Deterministic seed script `seed_demo_data.py` populating the **Delhi NCR – Har
 - Containers:
   1. `kisanlink-db`: PostgreSQL 16 with PostGIS extension (`postgis/postgis:16-3.4`).
   2. `kisanlink-backend`: FastAPI backend server (`uvicorn app.main:app --host 0.0.0.0 --port 8000`).
-  3. `kisanlink-frontend`: Next.js production server (`node server.js` or `npm run dev` on port 3000).
+  3. `kisanlink-frontend`: React 18 + Vite development/production server on port 5173.
 
 ---
 
@@ -481,10 +481,10 @@ Deterministic seed script `seed_demo_data.py` populating the **Delhi NCR – Har
 
 ### Phase 0: Foundation, Scaffolding & Repository Setup
 - **Objective:** Initialize clean project structure, dependencies, Docker configurations, and base database migrations.
-- **Frontend Work:** Initialize Next.js 14 TypeScript app, Tailwind CSS configuration, Lucide icon set, and base layout shell.
+- **Frontend Work:** Initialize React 18 + Vite TypeScript PWA, Tailwind CSS configuration, MapLibre GL JS, Lucide icon set, and base layout shell.
 - **Backend Work:** Initialize FastAPI app, Pydantic settings, SQLAlchemy PostGIS base model, and CORS middleware.
 - **Dependencies:** None.
-- **Acceptance Criteria:** `docker-compose up` launches backend on `:8000` and frontend on `:3000` with clean health checks.
+- **Acceptance Criteria:** `docker-compose up` launches backend on `:8000` and frontend on `:5173` with clean health checks.
 
 ### Phase 1: Auth, User Profiles & Role Selection
 - **Objective:** Enable phone OTP authentication and profile setup for Farmers, Buyers, Transporters, and Support Agents.
@@ -595,7 +595,7 @@ graph TD
 |---|---|---|---|
 | **RSK-01** | Google OR-Tools routing convergence timeout | High | Set solver timeout limit to 2.0s; implement greedy nearest-neighbor TSP fallback. |
 | **RSK-02** | Speech-to-text latency or unsupported browser API | Medium | Native Web Speech API with immediate fallback to structured touch-based wizard. |
-| **RSK-03** | Map tile server latency during live demo | Medium | Cache OpenStreetMap tiles locally in Next.js public directory for demo bounding box. |
+| **RSK-03** | Map tile server latency during live demo | Medium | Cache MapLibre vector style & tiles locally in React public directory for demo bounding box. |
 | **RSK-04** | Corrupted demo state during repeated presentations | High | Dedicated `/api/v1/demo/reset` endpoint that restores database to clean baseline seed in 1 second. |
 
 ---
