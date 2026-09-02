@@ -7,7 +7,6 @@ const PENDING_KEY = 'kisanlink_pending_auth'
 export interface PendingAuth {
   phone: string
   role: Role
-  mode: 'login' | 'signup'
 }
 
 const delay = (ms = 300) => new Promise((resolve) => window.setTimeout(resolve, ms))

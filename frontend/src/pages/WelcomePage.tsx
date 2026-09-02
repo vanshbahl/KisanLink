@@ -23,13 +23,13 @@ export function WelcomePage() {
 
   return (
     <main className="welcome-page">
-      <header className="welcome-header"><Logo /><div className="public-header-actions"><LanguageSwitcher compact /><Link to="/auth" className="btn btn-ghost">{t('signIn')}</Link></div></header>
+      <header className="welcome-header"><Logo /><div className="public-header-actions"><LanguageSwitcher compact /><Link to="/auth" className="btn btn-ghost">{t('continue')}</Link></div></header>
       <section className="welcome-hero">
         <div className="welcome-copy">
           <span className="eyebrow"><Sprout size={15} /> {t('freshProduceFairTrade')}</span>
           <h1>{t('heroTitleStart')}<br /><em>{t('heroTitleEnd')}</em></h1>
           <p>{t('heroCopy')}</p>
-          <div className="welcome-actions"><Link to="/auth?mode=signup" className="btn btn-primary btn-large">{t('getStarted')} <ArrowRight size={19} /></Link><a href="#demo" className="btn btn-secondary btn-large">{t('exploreDemo')}</a></div>
+          <div className="welcome-actions"><Link to="/auth" className="btn btn-primary btn-large">{t('getStarted')} <ArrowRight size={19} /></Link><a href="#demo" className="btn btn-secondary btn-large">{t('exploreDemo')}</a></div>
           <div className="welcome-proof"><span><ShieldCheck size={17} /> {t('verifiedFarmers')}</span><span><BadgeIndianRupee size={17} /> {t('transparentPricing')}</span><span><Truck size={17} /> {t('pickupSupport')}</span></div>
         </div>
         <div className="hero-visual" aria-label={t('heroAria')}>
