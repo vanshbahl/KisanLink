@@ -7,6 +7,7 @@ import { BulkSupplyPage } from './pages/BulkSupplyPage'
 import { ConsumerExplorePage } from './pages/ConsumerExplorePage'
 import { ConsumerHome } from './pages/ConsumerHome'
 import { FarmerDashboard } from './pages/FarmerDashboard'
+import { FarmerEarningsPage, FarmerInsightsPage, FarmerOrderDetailPage, FarmerOrdersPage, FarmerPickupsPage, FarmerProduceDetailPage, FarmerProfilePage, SellProducePage } from './pages/FarmerExperience'
 import { FarmerProducePage } from './pages/FarmerProducePage'
 import { ListingDetailPage } from './pages/ListingDetailPage'
 import { OtpPage } from './pages/OtpPage'
@@ -43,12 +44,14 @@ export default function App() {
         <Route path="farmer">
           <Route index element={<RoleGuard role="farmer"><FarmerDashboard /></RoleGuard>} />
           <Route path="produce" element={<RoleGuard role="farmer"><FarmerProducePage /></RoleGuard>} />
-          <Route path="produce/details" element={<RoleGuard role="farmer"><PlaceholderPage copyId="produceDetails" /></RoleGuard>} />
-          <Route path="sell" element={<RoleGuard role="farmer"><PlaceholderPage copyId="sell" /></RoleGuard>} />
-          <Route path="orders" element={<RoleGuard role="farmer"><PlaceholderPage copyId="farmerOrders" tone="amber" /></RoleGuard>} />
-          <Route path="earnings" element={<RoleGuard role="farmer"><PlaceholderPage copyId="earnings" tone="soil" /></RoleGuard>} />
-          <Route path="insights" element={<RoleGuard role="farmer"><PlaceholderPage copyId="insights" /></RoleGuard>} />
-          <Route path="profile" element={<RoleGuard role="farmer"><ProfilePage /></RoleGuard>} />
+          <Route path="produce/:id" element={<RoleGuard role="farmer"><FarmerProduceDetailPage /></RoleGuard>} />
+          <Route path="sell" element={<RoleGuard role="farmer"><SellProducePage /></RoleGuard>} />
+          <Route path="orders" element={<RoleGuard role="farmer"><FarmerOrdersPage /></RoleGuard>} />
+          <Route path="orders/:id" element={<RoleGuard role="farmer"><FarmerOrderDetailPage /></RoleGuard>} />
+          <Route path="earnings" element={<RoleGuard role="farmer"><FarmerEarningsPage /></RoleGuard>} />
+          <Route path="insights" element={<RoleGuard role="farmer"><FarmerInsightsPage /></RoleGuard>} />
+          <Route path="pickups" element={<RoleGuard role="farmer"><FarmerPickupsPage /></RoleGuard>} />
+          <Route path="profile" element={<RoleGuard role="farmer"><FarmerProfilePage /></RoleGuard>} />
         </Route>
 
         <Route path="consumer">

@@ -1,22 +1,26 @@
-import { ArrowRight, Lightbulb, PackageOpen, Sprout } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Copy, Edit3, Eye, PackageOpen, Pause, Play, Plus, SlidersHorizontal, Sprout, Trash2, XCircle } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { DashboardSkeleton } from '../components/LoadingSkeleton'
 import { ProductImage } from '../components/ProductImage'
 import { StatusBadge } from '../components/StatusBadge'
 import { useLanguage } from '../contexts/LanguageContext'
-import { useAsyncData } from '../hooks/useAsyncData'
-import { farmerService } from '../services/farmerService'
-import { productKey } from '../i18n'
+import { useToast } from '../contexts/ToastContext'
+import { farmerText } from '../i18n/farmerFeature'
+import { prototypeService } from '../services/prototypeService'
+import type { FarmerListing, ListingStatus } from '../types'
+
+const tabs: ListingStatus[] = ['active', 'draft', 'paused', 'sold']
+const keys = { active: 'active', draft: 'draft', paused: 'paused', sold: 'sold', unavailable: 'unavailable' } as const
 
 export function FarmerProducePage() {
-  const { t } = useLanguage()
-  const { data, loading } = useAsyncData(() => farmerService.getListings())
-  if (loading) return <DashboardSkeleton />
-  return (
-    <div className="page">
-      <div className="page-title-row"><div><span className="eyebrow">{t('yourHarvest')}</span><h1>{t('myProduce')}</h1><p>{t('produceSubtitle')}</p></div><Link className="btn btn-primary" to="/farmer/sell"><Sprout size={18} /> {t('sellNewProduce')}</Link></div>
-      <div className="farmer-listing-grid">{data?.map((listing) => <article className="farmer-listing" key={listing.id}><ProductImage imageSrc={listing.imageSrc} alt={t(productKey(listing.id))} visual={listing.visual} size="mini" /><div><div><h2>{t(productKey(listing.id))}</h2><StatusBadge tone="green">{t('active')}</StatusBadge></div><p><PackageOpen size={15} /> {t('kgAvailable', { count: listing.availableKg })}</p><strong>₹{listing.pricePerKg}{t('perKg')} <small>{t('directPrice')}</small></strong></div><Link to="/farmer/produce/details">{t('manage')} <ArrowRight size={16} /></Link></article>)}</div>
-      <article className="gentle-banner"><Lightbulb size={25} /><div><strong>{t('buyerInterest')}</strong><p>{t('quantityHelp')}</p></div><Link to="/farmer/insights">{t('seeInsight')}</Link></article>
-    </div>
-  )
+  const { language } = useLanguage(); const f = (key: Parameters<typeof farmerText>[1]) => farmerText(language, key); const { showToast } = useToast(); const [params, setParams] = useSearchParams(); const [items, setItems] = useState<FarmerListing[] | null>(null); const [filtersOpen, setFiltersOpen] = useState(false); const [search, setSearch] = useState(''); const tab = (params.get('tab') as ListingStatus) || 'active'
+  const load = () => prototypeService.getListings().then(setItems); useEffect(() => { load() }, [])
+  const patch = async (id: string, status: ListingStatus) => { await prototypeService.patchListing(id, { status }); showToast(f('listingUpdated')); load() }
+  const updateQuantity = async (item: FarmerListing) => { const answer = window.prompt(f('updateQuantity'), String(item.remainingKg)); if (!answer) return; const value = Number(answer); if (!Number.isFinite(value) || value < 0) return; await prototypeService.patchListing(item.id, { remainingKg: value, quantityKg: value + item.allocatedKg }); showToast(f('listingUpdated')); load() }
+  const remove = async (id: string) => { if (!window.confirm(f('confirmDelete'))) return; await prototypeService.deleteListing(id); load() }
+  const duplicate = async (id: string) => { await prototypeService.duplicateListing(id); showToast(f('draftSaved')); setParams({ tab: 'draft' }); load() }
+  if (!items) return <DashboardSkeleton />
+  const visible = items.filter((item) => item.status === tab && `${item.crop} ${item.cropHi}`.toLowerCase().includes(search.toLowerCase()))
+  return <div className="page farmer-feature-page"><div className="page-title-row"><div><span className="eyebrow">{f('demoBadge')}</span><h1>{f('allProduce')}</h1></div><div className="title-actions"><button className="icon-button" aria-label={f('filter')} onClick={() => setFiltersOpen(!filtersOpen)}><SlidersHorizontal size={19} /></button><Link className="btn btn-primary" to="/farmer/sell"><Plus size={18} /> {f('sellTitle')}</Link></div></div>{filtersOpen && <div className="filter-panel"><label className="field"><span>{f('search')}</span><input autoFocus value={search} onChange={(e) => setSearch(e.target.value)} placeholder={f('searchCrop')} /></label><button className="btn btn-ghost" onClick={() => setSearch('')}>{f('clearFilters')}</button></div>}<div className="tab-strip">{tabs.map((key) => <button className={tab === key ? 'active' : ''} key={key} onClick={() => setParams({ tab: key })}>{f(keys[key])}<span>{items.filter((item) => item.status === key).length}</span></button>)}</div><div className="produce-manage-grid">{visible.map((item) => <article className="manage-card" key={item.id}><div className="manage-card-top"><ProductImage imageSrc={item.imageSrc} alt={item.crop} visual={item.visual} size="mini" /><div><div className="status-line"><StatusBadge tone={item.status === 'draft' ? 'amber' : item.status === 'paused' ? 'soil' : 'green'}>{f(keys[item.status])}</StatusBadge>{item.assisted && <small>{f('callCenterBadge')}</small>}</div><h2>{language === 'hi' ? item.cropHi : item.crop}</h2><p><PackageOpen size={15} /> {item.remainingKg} kg {f('remaining')}</p><strong>₹{item.pricePerKg}{f('priceUnit')}</strong></div></div><div className="listing-stats"><span><Eye size={15} />{item.views} {f('views')}</span><span>{item.inquiries} {f('inquiries')}</span><small>{item.createdAt}</small></div><div className="manage-actions"><Link to={`/farmer/produce/${item.id}`}><Eye size={16} />{f('manage')}</Link><Link to={`/farmer/sell?edit=${item.id}`}><Edit3 size={16} />{f('edit')}</Link><button onClick={() => updateQuantity(item)}><PackageOpen size={16} />{f('updateQuantity')}</button>{item.status === 'active' && <button onClick={() => patch(item.id, 'paused')}><Pause size={16} />{f('pause')}</button>}{item.status === 'paused' && <button onClick={() => patch(item.id, 'active')}><Play size={16} />{f('resume')}</button>}{item.status === 'draft' && <button onClick={() => patch(item.id, 'active')}><Sprout size={16} />{f('publish')}</button>}<button onClick={() => duplicate(item.id)}><Copy size={16} />{f('duplicate')}</button>{item.status !== 'unavailable' && <button onClick={() => patch(item.id, 'unavailable')}><XCircle size={16} />{f('markUnavailable')}</button>}<button className="danger" onClick={() => remove(item.id)}><Trash2 size={16} />{f('delete')}</button></div></article>)}{!visible.length && <div className="empty-feature"><Sprout size={34} /><h2>{search ? f('noResults') : f('noListings')}</h2><Link className="btn btn-primary" to="/farmer/sell">{f('sellTitle')}</Link></div>}</div></div>
 }

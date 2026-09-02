@@ -6,11 +6,16 @@ import { MetricCard } from '../components/MetricCard'
 import { SupportCard } from '../components/SupportCard'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useAsyncData } from '../hooks/useAsyncData'
-import { farmerService } from '../services/farmerService'
+import { prototypeService } from '../services/prototypeService'
 
 export function FarmerDashboard() {
   const { t } = useLanguage()
-  const { data, loading, error } = useAsyncData(() => farmerService.getDashboard())
+  const { data, loading, error } = useAsyncData(async () => {
+    const state = await prototypeService.getState()
+    const earnings = state.earnings.reduce((sum, item) => sum + item.net, 0)
+    const pending = state.earnings.filter((item) => item.status === 'pending').reduce((sum, item) => sum + item.net, 0)
+    return { earnings, pending, activeListings: state.listings.filter((item) => item.status === 'active').length, newOrders: state.orders.filter((item) => item.status === 'new').length, upcomingPickup: state.pickups.find((item) => item.status !== 'completed') }
+  })
   if (loading) return <DashboardSkeleton />
   if (error || !data) return <div className="error-panel"><h2>{t('farmLoadError')}</h2><p>{error}</p><button className="btn btn-primary" onClick={() => window.location.reload()}>{t('tryAgain')}</button></div>
 
@@ -29,7 +34,7 @@ export function FarmerDashboard() {
       <section className="section-block">
         <div className="section-heading"><div><span className="eyebrow">{t('quickActions')}</span><h2>{t('attention')}</h2></div><Link to="/farmer/produce">{t('viewDetails')}</Link></div>
         <div className="farmer-metrics">
-          <MetricCard icon={IndianRupee} value={`₹${data.earnings.toLocaleString('en-IN')}`} label={t('earningsMonth')} tone="green" hint={t('fromAugust')} />
+          <MetricCard icon={IndianRupee} value={`₹${data.earnings.toLocaleString('en-IN')}`} label={t('earningsMonth')} tone="green" hint={`₹${data.pending.toLocaleString('en-IN')} pending`} />
           <MetricCard icon={Sprout} value={data.activeListings} label={t('activeListings')} tone="soil" hint={t('listingSummary')} />
           <MetricCard icon={PackageCheck} value={data.newOrders} label={t('newOrders')} tone="amber" hint={t('tapReview')} />
         </div>
@@ -47,7 +52,7 @@ export function FarmerDashboard() {
         </section>
 
         <section className="farmer-side-stack">
-          <article className="pickup-card"><span className="pickup-icon"><CalendarClock size={24} /></span><div><small>{t('upcomingPickup')}</small><strong>{t('tomorrowPickup')}</strong><p>{t('pickupDetail')}</p></div><Link to="/farmer/orders">{t('view')}</Link></article>
+          <article className="pickup-card"><span className="pickup-icon"><CalendarClock size={24} /></span><div><small>{t('upcomingPickup')}</small><strong>{data.upcomingPickup?.date ?? t('tomorrowPickup')}</strong><p>{data.upcomingPickup ? `${data.upcomingPickup.quantityKg} kg ${data.upcomingPickup.crop} · ${data.upcomingPickup.id}` : t('pickupDetail')}</p></div><Link to="/farmer/pickups">{t('view')}</Link></article>
           <article className="price-insight-card">
             <div className="price-insight-head"><div><span className="eyebrow">{t('priceInsight')}</span><h2>{t('tomatoes')}</h2></div><span className="price-up">{t('goodDemand')}</span></div>
             <div className="price-compare"><div><span>{t('localMarket')}</span><strong>₹24<small>/kg</small></strong></div><div className="direct-price"><span>{t('directPotential')}</span><strong>₹31<small>/kg</small></strong></div></div>

@@ -64,3 +64,112 @@ export interface BulkSupply {
   visual: ProduceListing['visual']
   locations: string
 }
+
+export type ListingStatus = 'active' | 'draft' | 'paused' | 'sold' | 'unavailable'
+export type OrderStatus = 'new' | 'accepted' | 'preparing' | 'pickup_scheduled' | 'in_transit' | 'delivered' | 'cancelled'
+export type PickupStatus = 'scheduled' | 'driver_assigned' | 'arriving' | 'collected' | 'in_transit' | 'completed'
+
+export interface FarmerListing {
+  id: string
+  crop: string
+  cropHi: string
+  category: Category
+  imageSrc: string
+  visual: ProduceListing['visual']
+  quantityKg: number
+  remainingKg: number
+  allocatedKg: number
+  unit: 'kg' | 'quintal' | 'tonne'
+  grade: 'Grade A' | 'Grade A+'
+  harvestDate: string
+  availableFrom: string
+  farmingMethod: string
+  notes: string
+  pricePerKg: number
+  mandiPricePerKg: number
+  farm: string
+  pickupDate: string
+  pickupWindow: string
+  fulfillment: 'pickup' | 'self_delivery'
+  status: ListingStatus
+  assisted: boolean
+  views: number
+  inquiries: number
+  createdAt: string
+}
+
+export interface FarmerOrder {
+  id: string
+  buyerName: string
+  buyerType: 'Consumer' | 'Bulk Buyer'
+  crop: string
+  cropHi: string
+  listingId: string
+  quantityKg: number
+  ratePerKg: number
+  total: number
+  farmerPayout: number
+  platformFee: number
+  logisticsFee: number
+  orderedAt: string
+  status: OrderStatus
+  paymentStatus: 'pending' | 'processing' | 'paid' | 'refunded'
+  pickupId?: string
+}
+
+export interface Pickup {
+  id: string
+  orderId: string
+  crop: string
+  cropHi: string
+  quantityKg: number
+  date: string
+  timeWindow: string
+  driver: string
+  vehicle: string
+  farmAddress: string
+  status: PickupStatus
+}
+
+export interface EarningsTransaction {
+  id: string
+  orderId: string
+  crop: string
+  cropHi: string
+  gross: number
+  deductions: number
+  net: number
+  mandiEquivalent: number
+  date: string
+  status: 'pending' | 'paid'
+}
+
+export interface PrototypeNotification {
+  id: string
+  role: Role
+  title: string
+  titleHi: string
+  body: string
+  bodyHi: string
+  timestamp: string
+  read: boolean
+  href: string
+}
+
+export interface FarmerProfileData {
+  name: string
+  phone: string
+  language: Language
+  farmName: string
+  village: string
+  district: string
+  state: string
+  farmSizeAcres: number
+  mainCrops: string
+  pickupLocation: string
+  payoutMethod: 'UPI' | 'Bank account'
+  payoutMasked: string
+  farmerVerified: boolean
+  farmVerified: boolean
+  identityStatus: 'Verified' | 'Pending'
+}

@@ -42,8 +42,11 @@ export function AuthPage() {
         <ul><li><Check size={18} /> {t('phoneSimple')}</li><li><Check size={18} /> {t('transparentFarmPricing')}</li><li><Check size={18} /> {t('tailoredProfiles')}</li></ul>
       </section>
       <section className="auth-form-panel">
-        <div className="auth-mobile-logo"><Logo /></div><div className="auth-language"><LanguageSwitcher compact /></div>
-        <Link to="/" className="back-link"><ArrowLeft size={17} /> {t('back')}</Link>
+        <header className="auth-form-header">
+          <div className="auth-mobile-logo"><Logo /></div>
+          <Link to="/" className="back-link"><ArrowLeft size={17} /> {t('back')}</Link>
+          <LanguageSwitcher compact />
+        </header>
         <div className="auth-form-wrap">
           <span className="eyebrow">{t('welcome')}</span>
           <h2>{mode === 'signup' ? t('createYourAccount') : t('signInContinue')}</h2>
@@ -60,7 +63,7 @@ export function AuthPage() {
           </form>
           <p className="auth-alt"><Mail size={16} /> {t('emailSoon')}</p>
           <p className="terms">{t('terms')}</p>
-          <div className="demo-numbers"><strong>{t('demoNumbers')}</strong><span>{t('farmer')} 9876543210 · {t('consumer')} 9811122233 · {t('bulkBuyer')} 9899001122</span></div>
+          <div className="demo-numbers"><strong>{t('demoNumbers')}</strong><div>{[{ role: 'farmer' as Role, phone: '9876543210' }, { role: 'consumer' as Role, phone: '9811122233' }, { role: 'bulk' as Role, phone: '9899001122' }].map((demo) => <button type="button" key={demo.role} onClick={() => { setRole(demo.role); setPhone(demo.phone); setError('') }}>{t(roleKey[demo.role])} · {demo.phone}</button>)}</div></div>
         </div>
       </section>
     </main>

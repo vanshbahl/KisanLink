@@ -1,10 +1,11 @@
 import {
-  BarChart3, Bell, Boxes, ClipboardList, Heart, HelpCircle, Home,
+  BarChart3, Boxes, ClipboardList, Heart, HelpCircle, Home,
   LayoutDashboard, ListChecks, PackageCheck, Search, ShoppingBag, Sprout, UserRound,
 } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { LanguageSwitcher } from '../components/LanguageSwitcher'
 import { Logo } from '../components/Logo'
+import { NotificationCenter } from '../components/NotificationCenter'
 import { useAuth } from '../contexts/AuthContext'
 import { useLanguage } from '../contexts/LanguageContext'
 import type { LucideIcon } from 'lucide-react'
@@ -17,6 +18,7 @@ interface NavItemConfig {
   icon: LucideIcon
   end?: boolean
   primary?: boolean
+  desktopOnly?: boolean
 }
 
 const navByRole: Record<Role, NavItemConfig[]> = {
@@ -25,6 +27,9 @@ const navByRole: Record<Role, NavItemConfig[]> = {
     { labelKey: 'produce', to: '/farmer/produce', icon: Sprout },
     { labelKey: 'sell', to: '/farmer/sell', icon: ShoppingBag, primary: true },
     { labelKey: 'orders', to: '/farmer/orders', icon: PackageCheck },
+    { labelKey: 'earnings', to: '/farmer/earnings', icon: BarChart3, desktopOnly: true },
+    { labelKey: 'demandInsights', to: '/farmer/insights', icon: BarChart3, desktopOnly: true },
+    { labelKey: 'pickupSupport', to: '/farmer/pickups', icon: Boxes, desktopOnly: true },
     { labelKey: 'profile', to: '/farmer/profile', icon: UserRound },
   ],
   consumer: [
@@ -65,17 +70,17 @@ export function AppShell() {
       <div className="shell-main">
         <header className="mobile-header">
           <Logo />
-          <div><LanguageSwitcher compact /><button aria-label={t('notifications')} className="icon-button"><Bell size={20} /><span className="notification-dot" /></button></div>
+          <div><LanguageSwitcher compact /><NotificationCenter /></div>
         </header>
         <header className="desktop-topbar">
           <div><span>{t('deliveringTo')}</span><strong>{session.role === 'farmer' ? t('location') : user.location}</strong></div>
-          <div><LanguageSwitcher /><button className="icon-button" aria-label={t('notifications')}><Bell size={20} /><span className="notification-dot" /></button><NavLink to={`/${session.role}/profile`} className="topbar-profile"><span>{user.avatarInitials}</span><div><strong>{user.name}</strong><small>{t(roleKey[session.role])}</small></div></NavLink></div>
+          <div><LanguageSwitcher /><NotificationCenter /><NavLink to={`/${session.role}/profile`} className="topbar-profile"><span>{user.avatarInitials}</span><div><strong>{user.name}</strong><small>{t(roleKey[session.role])}</small></div></NavLink></div>
         </header>
         <main className="app-main"><Outlet /></main>
       </div>
 
       <nav className="bottom-nav" aria-label={`${t(roleKey[session.role])} ${t('overview')}`}>
-        {nav.map((item) => <NavItem key={item.to} item={item} mobile />)}
+        {nav.filter((item) => !item.desktopOnly).map((item) => <NavItem key={item.to} item={item} mobile />)}
       </nav>
     </div>
   )
