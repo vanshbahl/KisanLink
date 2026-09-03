@@ -4,13 +4,13 @@ import { farmersById } from '../data/farmers'
 import type { ProduceListing } from '../types'
 import { ProductImage } from './ProductImage'
 import { StatusBadge } from './StatusBadge'
-import { freshnessKey, productKey } from '../i18n'
+import { freshnessKey } from '../i18n'
 import { useLanguage } from '../contexts/LanguageContext'
 
 export function ProductCard({ listing }: { listing: ProduceListing }) {
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const farmer = farmersById[listing.farmerId]
-  const productName = t(productKey(listing.id))
+  const productName = language === 'hi' && listing.productHi ? listing.productHi : listing.product
   return (
     <article className="product-card">
       <div className="product-visual">

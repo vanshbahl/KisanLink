@@ -4,15 +4,15 @@ import { AppShell } from './layouts/AppShell'
 import { AuthPage } from './pages/AuthPage'
 import { BulkDashboard } from './pages/BulkDashboard'
 import { BulkSupplyPage } from './pages/BulkSupplyPage'
+import { BulkOrderDetailPage, BulkOrdersPage, BulkProfilePage, BulkRequestDetailPage, BulkRequestsPage, BulkSupplyDetailPage } from './pages/BulkPhase2'
 import { ConsumerExplorePage } from './pages/ConsumerExplorePage'
 import { ConsumerHome } from './pages/ConsumerHome'
+import { ConsumerCartPage, ConsumerCheckoutPage, ConsumerHowItWorksPage, ConsumerOrderDetailPage, ConsumerOrdersPage, ConsumerProfilePage, ConsumerSavedPage } from './pages/ConsumerPhase2'
 import { FarmerDashboard } from './pages/FarmerDashboard'
 import { FarmerEarningsPage, FarmerInsightsPage, FarmerOrderDetailPage, FarmerOrdersPage, FarmerPickupsPage, FarmerProduceDetailPage, FarmerProfilePage, SellProducePage } from './pages/FarmerExperience'
 import { FarmerProducePage } from './pages/FarmerProducePage'
 import { ListingDetailPage } from './pages/ListingDetailPage'
 import { OtpPage } from './pages/OtpPage'
-import { PlaceholderPage } from './pages/PlaceholderPage'
-import { ProfilePage } from './pages/ProfilePage'
 import { WelcomePage } from './pages/WelcomePage'
 import type { Role } from './types'
 import { roleHome } from './utils/routes'
@@ -58,19 +58,24 @@ export default function App() {
           <Route index element={<RoleGuard role="consumer"><ConsumerHome /></RoleGuard>} />
           <Route path="explore" element={<RoleGuard role="consumer"><ConsumerExplorePage /></RoleGuard>} />
           <Route path="listing/:id" element={<RoleGuard role="consumer"><ListingDetailPage /></RoleGuard>} />
-          <Route path="orders" element={<RoleGuard role="consumer"><PlaceholderPage copyId="consumerOrders" tone="amber" /></RoleGuard>} />
-          <Route path="saved" element={<RoleGuard role="consumer"><PlaceholderPage copyId="saved" /></RoleGuard>} />
-          <Route path="how-it-works" element={<RoleGuard role="consumer"><PlaceholderPage copyId="howItWorks" /></RoleGuard>} />
-          <Route path="profile" element={<RoleGuard role="consumer"><ProfilePage /></RoleGuard>} />
+          <Route path="cart" element={<RoleGuard role="consumer"><ConsumerCartPage /></RoleGuard>} />
+          <Route path="checkout" element={<RoleGuard role="consumer"><ConsumerCheckoutPage /></RoleGuard>} />
+          <Route path="orders" element={<RoleGuard role="consumer"><ConsumerOrdersPage /></RoleGuard>} />
+          <Route path="orders/:id" element={<RoleGuard role="consumer"><ConsumerOrderDetailPage /></RoleGuard>} />
+          <Route path="saved" element={<RoleGuard role="consumer"><ConsumerSavedPage /></RoleGuard>} />
+          <Route path="how-it-works" element={<RoleGuard role="consumer"><ConsumerHowItWorksPage /></RoleGuard>} />
+          <Route path="profile" element={<RoleGuard role="consumer"><ConsumerProfilePage /></RoleGuard>} />
         </Route>
 
         <Route path="bulk">
           <Route index element={<RoleGuard role="bulk"><BulkDashboard /></RoleGuard>} />
           <Route path="supply" element={<RoleGuard role="bulk"><BulkSupplyPage /></RoleGuard>} />
-          <Route path="supply/:id" element={<RoleGuard role="bulk"><PlaceholderPage copyId="bulkSupply" /></RoleGuard>} />
-          <Route path="requests" element={<RoleGuard role="bulk"><PlaceholderPage copyId="bulkRequests" tone="amber" /></RoleGuard>} />
-          <Route path="orders" element={<RoleGuard role="bulk"><PlaceholderPage copyId="bulkOrders" tone="soil" /></RoleGuard>} />
-          <Route path="profile" element={<RoleGuard role="bulk"><ProfilePage /></RoleGuard>} />
+          <Route path="supply/:id" element={<RoleGuard role="bulk"><BulkSupplyDetailPage /></RoleGuard>} />
+          <Route path="requests" element={<RoleGuard role="bulk"><BulkRequestsPage /></RoleGuard>} />
+          <Route path="requests/:id" element={<RoleGuard role="bulk"><BulkRequestDetailPage /></RoleGuard>} />
+          <Route path="orders" element={<RoleGuard role="bulk"><BulkOrdersPage /></RoleGuard>} />
+          <Route path="orders/:id" element={<RoleGuard role="bulk"><BulkOrderDetailPage /></RoleGuard>} />
+          <Route path="profile" element={<RoleGuard role="bulk"><BulkProfilePage /></RoleGuard>} />
         </Route>
       </Route>
 

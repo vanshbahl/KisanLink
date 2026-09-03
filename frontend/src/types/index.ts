@@ -34,6 +34,7 @@ export interface Farmer {
 export interface ProduceListing {
   id: string
   product: string
+  productHi?: string
   category: Category
   farmerId: string
   pricePerKg: number
@@ -173,3 +174,28 @@ export interface FarmerProfileData {
   farmVerified: boolean
   identityStatus: 'Verified' | 'Pending'
 }
+
+export type ConsumerOrderStatus = 'confirmed' | 'farmer_preparing' | 'pickup_scheduled' | 'collected' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'cancelled'
+export interface CartItem { listingId: string; quantityKg: number }
+export interface Address { id: string; label: string; recipient: string; phone: string; line1: string; city: string; pincode: string; isDefault: boolean }
+export interface ConsumerOrderItem { listingId: string; crop: string; cropHi: string; farm: string; imageSrc: string; quantityKg: number; ratePerKg: number }
+export interface ConsumerOrder {
+  id: string; items: ConsumerOrderItem[]; subtotal: number; logisticsFee: number; platformFee: number; farmerShare: number; total: number
+  address: Address; deliverySlot: string; eta: string; note: string; paymentMethod: 'UPI' | 'Card' | 'Pay on Delivery'; paymentStatus: 'Mock paid' | 'Pay on delivery'
+  status: ConsumerOrderStatus; orderedAt: string; timeline: Array<{ status: ConsumerOrderStatus; label: string; at: string }>
+}
+export interface ConsumerProfileData { name: string; phone: string; language: Language; defaultLocation: string; addresses: Address[]; notifications: { orders: boolean; freshness: boolean; offers: boolean } }
+
+export type RfqStatus = 'open' | 'matching' | 'partially_matched' | 'fully_matched' | 'converted' | 'closed'
+export interface SupplyContribution { farmer: string; farm: string; listingId: string; quantityKg: number; ratePerKg: number }
+export interface BulkRfq {
+  id: string; crop: string; grade: FarmerListing['grade']; requiredQuantityKg: number; targetPrice: number; deliveryLocation: string; deliveryWindow: string
+  frequency: 'one-time' | 'recurring'; notes: string; status: RfqStatus; createdAt: string; matches: SupplyContribution[]
+}
+export type BulkOrderStatus = 'confirmed' | 'farmers_preparing' | 'pickup_scheduled' | 'consolidating' | 'in_transit' | 'delivered' | 'cancelled'
+export interface BulkOrder {
+  id: string; rfqId: string; crop: string; grade: FarmerListing['grade']; orderedQuantityKg: number; suppliedQuantityKg: number; contributions: SupplyContribution[]
+  produceValue: number; logisticsFee: number; platformFee: number; total: number; traditionalEstimate: number; deliveryLocation: string; deliveryWindow: string
+  status: BulkOrderStatus; invoiceStatus: 'Mock invoice generated' | 'Mock paid'; orderedAt: string
+}
+export interface BulkProfileData { businessName: string; representative: string; phone: string; gst: string; language: Language; procurementLocations: string[]; deliveryAddresses: string[]; notifications: { matches: boolean; orders: boolean; deliveries: boolean } }

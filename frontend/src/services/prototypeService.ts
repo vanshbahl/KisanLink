@@ -1,12 +1,19 @@
-import type { EarningsTransaction, FarmerListing, FarmerOrder, FarmerProfileData, ListingStatus, OrderStatus, Pickup, PrototypeNotification } from '../types'
+import type { BulkOrder, BulkProfileData, BulkRfq, ConsumerOrder, ConsumerProfileData, EarningsTransaction, FarmerListing, FarmerOrder, FarmerProfileData, ListingStatus, OrderStatus, Pickup, PrototypeNotification } from '../types'
 
-interface PrototypeState {
+export interface PrototypeState {
   listings: FarmerListing[]
   orders: FarmerOrder[]
   pickups: Pickup[]
   earnings: EarningsTransaction[]
   notifications: PrototypeNotification[]
   profile: FarmerProfileData
+  consumerOrders: ConsumerOrder[]
+  rfqs: BulkRfq[]
+  bulkOrders: BulkOrder[]
+  consumerProfile: ConsumerProfileData
+  bulkProfile: BulkProfileData
+  savedListingIds: string[]
+  savedFarmNames: string[]
 }
 
 const STORAGE_KEY = 'kisanlink_phase1_state_v1'
@@ -42,11 +49,27 @@ const seedState: PrototypeState = {
     { id: 'note_4', role: 'bulk', title: 'Supply match found', titleHi: 'सप्लाई मिल गई', body: '1.8 tonnes of tomatoes matched nearby.', bodyHi: 'पास में 1.8 टन टमाटर मिले हैं।', timestamp: new Date(Date.now() - 10800000).toISOString(), read: false, href: '/bulk/supply' },
   ],
   profile: { name: 'Ramesh Kumar', phone: '9876543210', language: 'en', farmName: 'Green Field Farm', village: 'Murthal', district: 'Sonipat', state: 'Haryana', farmSizeAcres: 7.5, mainCrops: 'Tomato, spinach, wheat', pickupLocation: 'Gate 1, Green Field Farm, Murthal', payoutMethod: 'UPI', payoutMasked: 'ramesh•••@upi', farmerVerified: true, farmVerified: true, identityStatus: 'Verified' },
+  consumerOrders: [],
+  rfqs: [],
+  bulkOrders: [],
+  consumerProfile: { name: 'Aarav Mehta', phone: '9811122233', language: 'en', defaultLocation: 'Dwarka, New Delhi', addresses: [{ id: 'addr_home', label: 'Home', recipient: 'Aarav Mehta', phone: '9811122233', line1: 'Sector 12, Dwarka', city: 'New Delhi', pincode: '110078', isDefault: true }], notifications: { orders: true, freshness: true, offers: false } },
+  bulkProfile: { businessName: 'FreshKart Foods Pvt. Ltd.', representative: 'Neha Kapoor', phone: '9899001122', gst: '07AABCF1234M1Z5 (mock)', language: 'en', procurementLocations: ['Delhi NCR', 'Gurugram'], deliveryAddresses: ['Okhla Distribution Centre, New Delhi'], notifications: { matches: true, orders: true, deliveries: true } },
+  savedListingIds: ['listing_011'],
+  savedFarmNames: ['Green Field Farm'],
 }
 
 const cloneSeed = () => JSON.parse(JSON.stringify(seedState)) as PrototypeState
+const normalize = (value: Partial<PrototypeState>): PrototypeState => {
+  const base = cloneSeed()
+  return {
+    ...base,
+    ...value,
+    consumerProfile: value.consumerProfile?.addresses ? value.consumerProfile : base.consumerProfile,
+    bulkProfile: value.bulkProfile?.businessName ? value.bulkProfile : base.bulkProfile,
+  }
+}
 const readLocal = (): PrototypeState => {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '') as PrototypeState } catch { const state = cloneSeed(); localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); return state }
+  try { return normalize(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '') as Partial<PrototypeState>) } catch { const state = cloneSeed(); localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); return state }
 }
 const writeLocal = (state: PrototypeState) => { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); window.dispatchEvent(new Event('kisanlink-state')) }
 
@@ -61,7 +84,7 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 async function readState() {
-  try { const remote = await api<PrototypeState>('/state'); writeLocal(remote); return remote } catch { return readLocal() }
+  try { const remote = normalize(await api<PrototypeState>('/state')); writeLocal(remote); return remote } catch { return readLocal() }
 }
 async function persist(state: PrototypeState) {
   writeLocal(state)
@@ -70,6 +93,7 @@ async function persist(state: PrototypeState) {
 
 export const prototypeService = {
   getState: readState,
+  async replaceState(state: PrototypeState) { return persist(state) },
   async getListings() { return (await readState()).listings },
   async getListing(id: string) { return (await readState()).listings.find((item) => item.id === id) },
   async saveListing(input: FarmerListing) { const state = await readState(); const index = state.listings.findIndex((item) => item.id === input.id); if (index >= 0) state.listings[index] = input; else state.listings.unshift(input); await persist(state); return input },
@@ -78,7 +102,17 @@ export const prototypeService = {
   async duplicateListing(id: string) { const state = await readState(); const source = state.listings.find((item) => item.id === id); if (!source) throw new Error('Listing not found'); const copy = { ...source, id: `listing_${Date.now()}`, status: 'draft' as ListingStatus, views: 0, inquiries: 0, createdAt: iso(0) }; state.listings.unshift(copy); await persist(state); return copy },
   async getOrders() { return (await readState()).orders },
   async getOrder(id: string) { return (await readState()).orders.find((item) => item.id === id) },
-  async updateOrder(id: string, status: OrderStatus) { const state = await readState(); const order = state.orders.find((item) => item.id === id); if (!order) throw new Error('Order not found'); order.status = status; if (status === 'accepted' && !order.pickupId) { const pickupId = `PK-${Date.now().toString().slice(-4)}`; order.pickupId = pickupId; state.pickups.unshift({ id: pickupId, orderId: order.id, crop: order.crop, cropHi: order.cropHi, quantityKg: order.quantityKg, date: iso(1), timeWindow: 'Morning · 7–10 AM', driver: 'Assigning shortly', vehicle: 'To be assigned', farmAddress: state.profile.pickupLocation, status: 'scheduled' }); state.notifications.unshift({ id: `note_${Date.now()}`, role: 'farmer', title: 'Pickup request created', titleHi: 'पिकअप अनुरोध बना', body: `Pickup ${pickupId} is scheduled for tomorrow.`, bodyHi: `पिकअप ${pickupId} कल के लिए तय है।`, timestamp: new Date().toISOString(), read: false, href: '/farmer/pickups' }) } await persist(state); return order },
+  async updateOrder(id: string, status: OrderStatus) { const state = await readState(); const order = state.orders.find((item) => item.id === id); if (!order) throw new Error('Order not found'); order.status = status; if (status === 'accepted' && !order.pickupId) { const pickupId = `PK-${Date.now().toString().slice(-4)}`; order.pickupId = pickupId; state.pickups.unshift({ id: pickupId, orderId: order.id, crop: order.crop, cropHi: order.cropHi, quantityKg: order.quantityKg, date: iso(1), timeWindow: 'Morning · 7–10 AM', driver: 'Assigning shortly', vehicle: 'To be assigned', farmAddress: state.profile.pickupLocation, status: 'scheduled' }); state.notifications.unshift({ id: `note_${Date.now()}`, role: 'farmer', title: 'Pickup request created', titleHi: 'पिकअप अनुरोध बना', body: `Pickup ${pickupId} is scheduled for tomorrow.`, bodyHi: `पिकअप ${pickupId} कल के लिए तय है।`, timestamp: new Date().toISOString(), read: false, href: '/farmer/pickups' }) }
+    const parentId = order.id.replace(/-\d+$/, '')
+    const consumerOrder = state.consumerOrders.find((item) => item.id === parentId)
+    const consumerMap = { new: 'confirmed', accepted: 'farmer_preparing', preparing: 'farmer_preparing', pickup_scheduled: 'pickup_scheduled', in_transit: 'in_transit', delivered: 'delivered', cancelled: 'cancelled' } as const
+    if (consumerOrder) { const next = consumerMap[status]; consumerOrder.status = next; if (!consumerOrder.timeline.some((item) => item.status === next)) consumerOrder.timeline.push({ status: next, label: next.replaceAll('_', ' '), at: new Date().toISOString() }); state.notifications.unshift({ id: `note_${Date.now()}`, role: 'consumer', title: `Order ${next.replaceAll('_', ' ')}`, titleHi: 'ऑर्डर की स्थिति बदली', body: `${consumerOrder.id} is now ${next.replaceAll('_', ' ')}.`, bodyHi: 'आपके ऑर्डर की स्थिति बदल गई है।', timestamp: new Date().toISOString(), read: false, href: `/consumer/orders/${consumerOrder.id}` }) }
+    const bulkOrder = state.bulkOrders.find((item) => item.id === parentId)
+    const bulkMap = { new: 'confirmed', accepted: 'farmers_preparing', preparing: 'farmers_preparing', pickup_scheduled: 'pickup_scheduled', in_transit: 'in_transit', delivered: 'delivered', cancelled: 'cancelled' } as const
+    if (bulkOrder) { bulkOrder.status = bulkMap[status]; state.notifications.unshift({ id: `note_${Date.now()}`, role: 'bulk', title: `Procurement ${bulkMap[status].replaceAll('_', ' ')}`, titleHi: 'खरीद ऑर्डर की स्थिति बदली', body: `${bulkOrder.id} logistics status was updated.`, bodyHi: 'खरीद ऑर्डर की स्थिति बदल गई है।', timestamp: new Date().toISOString(), read: false, href: `/bulk/orders/${bulkOrder.id}` }) }
+    const pickup = state.pickups.find((item) => item.orderId === order.id); if (pickup) pickup.status = status === 'delivered' ? 'completed' : status === 'in_transit' ? 'in_transit' : status === 'pickup_scheduled' ? 'driver_assigned' : pickup.status
+    if (status === 'delivered') { const earning = state.earnings.find((item) => item.orderId === order.id); if (earning) earning.status = 'paid' }
+    await persist(state); return order },
   async getPickups() { return (await readState()).pickups },
   async getEarnings() { return (await readState()).earnings },
   async getProfile() { return (await readState()).profile },

@@ -1,6 +1,6 @@
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class StatePayload(BaseModel):
@@ -13,3 +13,10 @@ class StatePayload(BaseModel):
     earnings: list[dict[str, Any]]
     notifications: list[dict[str, Any]]
     profile: dict[str, Any]
+    consumerOrders: list[dict[str, Any]] = Field(default_factory=list)
+    rfqs: list[dict[str, Any]] = Field(default_factory=list)
+    bulkOrders: list[dict[str, Any]] = Field(default_factory=list)
+    consumerProfile: dict[str, Any] = Field(default_factory=dict)
+    bulkProfile: dict[str, Any] = Field(default_factory=dict)
+    savedListingIds: list[str] = Field(default_factory=list)
+    savedFarmNames: list[str] = Field(default_factory=list)

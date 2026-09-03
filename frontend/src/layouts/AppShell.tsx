@@ -35,6 +35,7 @@ const navByRole: Record<Role, NavItemConfig[]> = {
   consumer: [
     { labelKey: 'home', to: '/consumer', icon: Home, end: true },
     { labelKey: 'explore', to: '/consumer/explore', icon: Search },
+    { labelKey: 'cart', to: '/consumer/cart', icon: ShoppingBag, primary: true },
     { labelKey: 'orders', to: '/consumer/orders', icon: ShoppingBag },
     { labelKey: 'saved', to: '/consumer/saved', icon: Heart },
     { labelKey: 'profile', to: '/consumer/profile', icon: UserRound },
@@ -70,11 +71,11 @@ export function AppShell() {
       <div className="shell-main">
         <header className="mobile-header">
           <Logo />
-          <div><LanguageSwitcher compact /><NotificationCenter /></div>
+          <div>{session.role !== 'bulk' && <LanguageSwitcher compact />}<NotificationCenter /></div>
         </header>
         <header className="desktop-topbar">
           <div><span>{t('deliveringTo')}</span><strong>{session.role === 'farmer' ? t('location') : user.location}</strong></div>
-          <div><LanguageSwitcher /><NotificationCenter /><NavLink to={`/${session.role}/profile`} className="topbar-profile"><span>{user.avatarInitials}</span><div><strong>{user.name}</strong><small>{t(roleKey[session.role])}</small></div></NavLink></div>
+          <div>{session.role !== 'bulk' && <LanguageSwitcher />}<NotificationCenter /><NavLink to={`/${session.role}/profile`} className="topbar-profile"><span>{user.avatarInitials}</span><div><strong>{user.name}</strong><small>{t(roleKey[session.role])}</small></div></NavLink></div>
         </header>
         <main className="app-main"><Outlet /></main>
       </div>

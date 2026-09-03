@@ -1,42 +1,20 @@
-import { ArrowLeft, BadgeCheck, Clock3, MapPin, Scale, ShieldCheck, Sprout, Truck } from 'lucide-react'
-import { Link, useParams } from 'react-router-dom'
+import { ArrowLeft, BadgeCheck, CalendarDays, Clock3, Heart, MapPin, Minus, Plus, Scale, ShieldCheck, Sprout, Truck } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { DashboardSkeleton } from '../components/LoadingSkeleton'
-import { PriceTransparency } from '../components/PriceTransparency'
 import { ProductImage } from '../components/ProductImage'
 import { StatusBadge } from '../components/StatusBadge'
-import { farmersById } from '../data/farmers'
-import { useAsyncData } from '../hooks/useAsyncData'
-import { marketplaceService } from '../services/marketplaceService'
-import { useToast } from '../contexts/ToastContext'
 import { useLanguage } from '../contexts/LanguageContext'
-import { freshnessKey, productKey } from '../i18n'
+import { useToast } from '../contexts/ToastContext'
+import { useAsyncData } from '../hooks/useAsyncData'
+import { phase2Service } from '../services/phase2Service'
 
 export function ListingDetailPage() {
-  const { id = '' } = useParams()
-  const { showToast } = useToast()
-  const { t } = useLanguage()
-  const { data, loading } = useAsyncData(() => marketplaceService.getListing(id), [id])
+  const { id = '' } = useParams(); const navigate = useNavigate(); const { language } = useLanguage(); const { showToast } = useToast(); const { data, loading, error } = useAsyncData(() => phase2Service.listing(id), [id]); const [quantity, setQuantity] = useState(1); const [saved, setSaved] = useState(false)
+  useEffect(() => { phase2Service.saved().then((value) => setSaved(value.listingIds.includes(id))) }, [id])
   if (loading) return <DashboardSkeleton />
-  if (!data) return <div className="error-panel"><h2>{t('listingUnavailable')}</h2><Link className="btn btn-primary" to="/consumer/explore">{t('browseFresh')}</Link></div>
-  const farmer = farmersById[data.farmerId]
-  const productName = t(productKey(data.id))
-  return (
-    <div className="page listing-detail-page">
-      <Link to="/consumer/explore" className="back-link"><ArrowLeft size={17} /> {t('backMarketplace')}</Link>
-      <div className="listing-detail-grid">
-        <ProductImage imageSrc={data.imageSrc} alt={productName} visual={data.visual} size="hero" />
-        <section className="listing-detail-copy">
-          <StatusBadge tone="green">{t(freshnessKey[data.freshness] ?? 'freshToday')}</StatusBadge>
-          <h1>{productName}</h1>
-          <p className="listing-farm"><BadgeCheck size={18} /> {farmer.farmName} · {t('verifiedFarmer')}</p>
-          <p className="listing-location"><MapPin size={17} /> {farmer.location} · {t('kmAway', { count: data.distanceKm })}</p>
-          <div className="listing-price"><strong>₹{data.pricePerKg}</strong><span>{t('perKg')}</span><small>{t('typicalMarket', { price: data.marketPricePerKg })}</small></div>
-          <div className="listing-facts"><span><Scale size={18} /><strong>{t('kgAvailable', { count: data.availableKg })}</strong><small>{t('availableNow')}</small></span><span><Clock3 size={18} /><strong>{t('today')}</strong><small>{t('harvested')}</small></span><span><Truck size={18} /><strong>{t('oneTwoDays')}</strong><small>{t('estimatedDelivery')}</small></span></div>
-          <button className="btn btn-primary btn-large btn-full" onClick={() => showToast(t('cartNextPhase'))}>{t('reserveInterest')}</button>
-          <p className="listing-assurance"><ShieldCheck size={17} /> {t('noPayment')}</p>
-        </section>
-      </div>
-      <div className="listing-lower-grid"><PriceTransparency compact /><article className="farm-story"><span className="eyebrow">{t('meetGrower')}</span><h2>{farmer.name}</h2><p>{t('growerStory', { farm: farmer.farmName, years: farmer.yearsFarming })}</p><div><span><Sprout size={13} /> {t('yearsFarming', { years: farmer.yearsFarming })}</span><span><BadgeCheck size={13} /> {t('identityVerified')}</span></div></article></div>
-    </div>
-  )
+  if (!data || error) return <div className="error-panel"><h2>Listing unavailable</h2><p>This supply may have been paused or removed.</p><Link className="btn btn-primary" to="/consumer/explore">Browse fresh produce</Link></div>
+  const out = data.status !== 'active' || data.remainingKg === 0; const low = data.remainingKg > 0 && data.remainingKg <= 20; const title = language === 'hi' ? data.cropHi : data.crop
+  const add = (buyNow = false) => { if (quantity < 1 || quantity > data.remainingKg) return; phase2Service.addToCart(data.id, quantity); showToast(`${quantity} kg ${data.crop} added to cart`); if (buyNow) navigate('/consumer/checkout') }
+  return <div className="page listing-detail-page"><Link to="/consumer/explore" className="back-link"><ArrowLeft size={17} /> Back to marketplace</Link><div className="listing-detail-grid"><ProductImage imageSrc={data.imageSrc} alt={title} visual={data.visual} size="hero" /><section className="listing-detail-copy"><div className="card-heading"><StatusBadge tone={out ? 'red' : low ? 'amber' : 'green'}>{out ? 'Out of stock' : low ? 'Low stock' : 'Harvest fresh'}</StatusBadge><button className={`icon-button ${saved ? 'active' : ''}`} aria-label="Save produce" onClick={async () => setSaved((await phase2Service.toggleSavedListing(data.id)).includes(data.id))}><Heart size={20} fill={saved ? 'currentColor' : 'none'} /></button></div><h1>{title}</h1><p className="listing-farm"><BadgeCheck size={18} /> {data.farm} · Verified farmer</p><p className="listing-location"><MapPin size={17} /> Sonipat, Haryana · 42 km away</p><div className="listing-price"><strong>₹{data.pricePerKg}</strong><span>/kg</span><small>Comparable mandi reference ₹{data.mandiPricePerKg}/kg</small></div><div className="listing-facts"><span><Scale size={18} /><strong>{data.remainingKg} kg</strong><small>available now</small></span><span><CalendarDays size={18} /><strong>{data.harvestDate}</strong><small>harvest date</small></span><span><Truck size={18} /><strong>1–2 days</strong><small>delivery estimate</small></span></div><div className="quantity-buy"><span>Choose quantity</span><div className="qty-stepper"><button disabled={quantity <= 1} onClick={() => setQuantity(quantity - 1)}><Minus size={17} /></button><strong>{quantity} kg</strong><button disabled={quantity >= data.remainingKg} onClick={() => setQuantity(quantity + 1)}><Plus size={17} /></button></div></div>{low && <p className="warning-copy">Only {data.remainingKg} kg remains from this harvest.</p>}<div className="split-actions"><button className="btn btn-secondary btn-large" disabled={out} onClick={() => add(false)}>Add to cart</button><button className="btn btn-primary btn-large" disabled={out} onClick={() => add(true)}>Buy now</button></div><p className="listing-assurance"><ShieldCheck size={17} /> Stock is checked again at mock checkout</p></section></div><div className="listing-lower-grid"><article className="feature-card"><span className="eyebrow">Price transparency</span><h2>Where ₹{data.pricePerKg} goes</h2><div className="price-rows"><span>Farmer share <b>₹{Math.round(data.pricePerKg * .9)}</b></span><span>Platform amount <b>₹{Math.round(data.pricePerKg * .03)}</b></span><span>Indicative logistics <b>₹{Math.round(data.pricePerKg * .07)}</b></span></div><p className="muted-copy">The final logistics amount is calculated across your cart.</p></article><article className="farm-story"><span className="eyebrow">Meet the grower</span><h2>{data.farm}</h2><p>{data.notes || 'A verified nearby farmer supplying carefully sorted seasonal produce.'}</p><div><span><Sprout size={13} /> {data.farmingMethod}</span><span><BadgeCheck size={13} /> Identity verified</span><span><Clock3 size={13} /> Ready {data.availableFrom}</span></div></article></div></div>
 }

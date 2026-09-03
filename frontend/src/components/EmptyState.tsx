@@ -1,12 +1,12 @@
-import { Sprout } from 'lucide-react'
+import { Sprout, type LucideIcon } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
-export function EmptyState({ title, message, actionLabel, actionTo }: { title: string; message: string; actionLabel: string; actionTo: string }) {
+export function EmptyState({ title, message, copy, actionLabel, actionTo, icon: Icon = Sprout }: { title: string; message?: string; copy?: string; actionLabel: string; actionTo: string; icon?: LucideIcon }) {
   return (
     <div className="empty-state">
-      <span><Sprout size={30} /></span>
+      <span><Icon size={30} /></span>
       <h2>{title}</h2>
-      <p>{message}</p>
+      <p>{message ?? copy}</p>
       <Link className="btn btn-primary" to={actionTo}>{actionLabel}</Link>
     </div>
   )

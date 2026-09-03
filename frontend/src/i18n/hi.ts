@@ -1,7 +1,7 @@
 import type { en } from './en'
 
 export const hi: Record<keyof typeof en, string> = {
-  home: 'मुख्य पृष्ठ', produce: 'फसल', sell: 'बेचें', orders: 'ऑर्डर', profile: 'प्रोफ़ाइल', explore: 'खोजें', saved: 'सहेजे गए', overview: 'जानकारी', supply: 'उपलब्ध फसल', requests: 'ज़रूरतें',
+  home: 'मुख्य पृष्ठ', produce: 'फसल', sell: 'बेचें', orders: 'ऑर्डर', profile: 'प्रोफ़ाइल', explore: 'खोजें', cart: 'कार्ट', saved: 'सहेजे गए', overview: 'जानकारी', supply: 'उपलब्ध फसल', requests: 'ज़रूरतें',
   farmer: 'किसान', consumer: 'ग्राहक', bulkBuyer: 'थोक खरीदार', verifiedRole: 'सत्यापित {role}', current: 'अभी चुना है',
   continue: 'आगे बढ़ें', back: 'वापस', notifications: 'सूचनाएं', selectLanguage: 'भाषा चुनें', logoHome: 'KisanLink मुख्य पृष्ठ', dismiss: 'बंद करें', loading: 'सामग्री लोड हो रही है', locationLabel: 'स्थान', dwarkaLocation: 'द्वारका, नई दिल्ली', tomorrowPickup: 'कल, सुबह 7:30 बजे',
   greeting: 'नमस्ते, रमेश जी', location: 'सोनीपत, हरियाणा', deliveringTo: 'डिलीवरी स्थान', clear: 'साफ़ मौसम', todayFarm: 'आज आपके खेत पर',

@@ -1,23 +1,13 @@
-import { Boxes, ClipboardCheck, Plus, TrendingUp } from 'lucide-react'
+import { ArrowRight, Boxes, CircleDollarSign, ClipboardList, PackageCheck, Plus, Truck } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { BulkSupplyCard } from '../components/BulkSupplyCard'
 import { DashboardSkeleton } from '../components/LoadingSkeleton'
 import { MetricCard } from '../components/MetricCard'
 import { useAsyncData } from '../hooks/useAsyncData'
-import { bulkService } from '../services/bulkService'
-import { useLanguage } from '../contexts/LanguageContext'
+import { phase2Service } from '../services/phase2Service'
 
 export function BulkDashboard() {
-  const { t } = useLanguage()
-  const { data, loading, error } = useAsyncData(() => bulkService.getDashboard())
-  if (loading) return <DashboardSkeleton />
-  if (!data || error) return <div className="error-panel"><h2>{t('loadFreshError')}</h2><p>{error}</p></div>
-  return (
-    <div className="page bulk-page">
-      <section className="bulk-hero"><div><span className="eyebrow">{t('tuesdayDelhi')}</span><h1>{t('bulkWelcome').split('\n').map((line, index) => <span key={line}>{line}{index === 0 && <br />}</span>)}</h1><p>{t('bulkCopy')}</p><Link className="btn btn-light btn-large" to="/bulk/requests"><Plus size={19} /> {t('newRequirement')}</Link></div><div className="bulk-hero-stat"><span>{t('savingsMonth')}</span><strong>₹42,600</strong><small>{t('wholesaleBenchmark')}</small><i><TrendingUp size={16} /> {t('lowerCost')}</i></div></section>
-      <section className="bulk-metrics"><MetricCard icon={ClipboardCheck} label={t('todayRequirement')} value={data.todayRequirement} tone="green" hint={`${t('tomatoes')} · Grade A`} /><MetricCard icon={ClipboardCheck} label={t('activeRequests')} value={data.activeRequests} tone="amber" hint={t('needsAttention')} /><MetricCard icon={Boxes} label={t('nearbySupply')} value={data.nearbySupply} tone="soil" hint={t('within120')} /></section>
-      <section className="section-block"><div className="section-heading"><div><span className="eyebrow">{t('verifiedNetwork')}</span><h2>{t('supplyReady')}</h2></div><Link to="/bulk/supply">{t('viewAll')}</Link></div><div className="bulk-card-grid">{data.supplies.map((supply) => <BulkSupplyCard key={supply.id} supply={supply} />)}</div></section>
-      <article className="procurement-banner"><div><span className="eyebrow">{t('nextPhasePreview')}</span><h2>{t('customQuantity')}</h2><p>{t('customQuantityCopy')}</p></div><Link className="btn btn-secondary" to="/bulk/requests">{t('previewRequests')}</Link></article>
-    </div>
-  )
+  const { data, loading, error } = useAsyncData(async () => { const [rfqs, orders, pools] = await Promise.all([phase2Service.rfqs(), phase2Service.bulkOrders(), phase2Service.supplyPools()]); const monthly = orders.reduce((sum, item) => sum + item.total, 0); const savings = orders.reduce((sum, item) => sum + item.traditionalEstimate - item.total, 0); return { rfqs, orders, pools, monthly, savings } })
+  if (loading) return <DashboardSkeleton />; if (!data || error) return <div className="error-panel"><h2>Unable to load procurement overview</h2><button className="btn btn-primary" onClick={() => window.location.reload()}>Retry</button></div>
+  const open = data.rfqs.filter((item) => !['converted', 'closed'].includes(item.status)).length; const matched = data.rfqs.reduce((sum, item) => sum + item.matches.reduce((total, match) => total + match.quantityKg, 0), 0); const active = data.orders.filter((item) => !['delivered', 'cancelled'].includes(item.status)).length; const upcoming = data.orders.filter((item) => !['delivered', 'cancelled'].includes(item.status)).length
+  return <div className="page bulk-page"><section className="bulk-hero"><div><span className="eyebrow">FreshKart procurement desk</span><h1>Direct sourcing,<br />pooled intelligently.</h1><p>Post requirements, compare farmer supply and follow consolidated delivery from one connected prototype.</p><div className="hero-actions"><Link className="btn btn-light btn-large" to="/bulk/requests"><Plus size={18} /> Post requirement</Link><Link className="btn btn-secondary btn-large" to="/bulk/supply">Browse supply</Link><Link className="btn btn-ghost btn-large" to="/bulk/orders">View orders</Link></div></div><div className="bulk-hero-stat"><span>Estimated savings this month</span><strong>₹{data.savings.toLocaleString('en-IN')}</strong><small>Prototype benchmark vs traditional procurement</small><i><CircleDollarSign size={16} /> Transparent landed cost</i></div></section><section className="dashboard-six"><MetricCard icon={ClipboardList} label="Open requirements" value={open} tone="green" /><MetricCard icon={Boxes} label="Matched supply" value={`${matched.toLocaleString('en-IN')} kg`} tone="amber" /><MetricCard icon={PackageCheck} label="Active orders" value={active} tone="soil" /><MetricCard icon={CircleDollarSign} label="Monthly procurement" value={`₹${data.monthly.toLocaleString('en-IN')}`} tone="green" /><MetricCard icon={CircleDollarSign} label="Estimated savings" value={`₹${data.savings.toLocaleString('en-IN')}`} tone="amber" /><MetricCard icon={Truck} label="Upcoming deliveries" value={upcoming} tone="soil" /></section><section className="section-block"><div className="section-heading"><div><span className="eyebrow">Verified network</span><h2>Supply ready now</h2></div><Link to="/bulk/supply">View all <ArrowRight size={15} /></Link></div><div className="pool-preview">{data.pools.slice(0, 3).map((pool) => <Link to={`/bulk/supply/${pool.id}`} key={pool.id}><strong>{pool.product}</strong><span>{pool.totalQuantityKg.toLocaleString('en-IN')} kg · {pool.farmerCount} farmers</span><small>From ₹{pool.startingPrice}/kg · {pool.corridor}</small></Link>)}</div></section></div>
 }

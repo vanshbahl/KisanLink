@@ -26,6 +26,13 @@ SEED_STATE = {
         {"id": "note_2", "role": "farmer", "title": "Driver assigned", "titleHi": "ड्राइवर तय हुआ", "body": "Suresh will arrive tomorrow morning.", "bodyHi": "सुरेश कल सुबह पहुंचेंगे।", "timestamp": datetime.now().isoformat(), "read": False, "href": "/farmer/pickups"},
     ],
     "profile": {"name": "Ramesh Kumar", "phone": "9876543210", "language": "en", "farmName": "Green Field Farm", "village": "Murthal", "district": "Sonipat", "state": "Haryana", "farmSizeAcres": 7.5, "mainCrops": "Tomato, spinach, wheat", "pickupLocation": "Gate 1, Green Field Farm, Murthal", "payoutMethod": "UPI", "payoutMasked": "ramesh•••@upi", "farmerVerified": True, "farmVerified": True, "identityStatus": "Verified"},
+    "consumerOrders": [],
+    "rfqs": [],
+    "bulkOrders": [],
+    "consumerProfile": {"name": "Aarav Mehta", "phone": "9811122233", "language": "en", "defaultLocation": "Dwarka, New Delhi", "addresses": [{"id": "addr_home", "label": "Home", "recipient": "Aarav Mehta", "phone": "9811122233", "line1": "Sector 12, Dwarka", "city": "New Delhi", "pincode": "110078", "isDefault": True}], "notifications": {"orders": True, "freshness": True, "offers": False}},
+    "bulkProfile": {"businessName": "FreshKart Foods Pvt. Ltd.", "representative": "Neha Kapoor", "phone": "9899001122", "gst": "07AABCF1234M1Z5 (mock)", "language": "en", "procurementLocations": ["Delhi NCR", "Gurugram"], "deliveryAddresses": ["Okhla Distribution Centre, New Delhi"], "notifications": {"matches": True, "orders": True, "deliveries": True}},
+    "savedListingIds": ["listing_011"],
+    "savedFarmNames": ["Green Field Farm"],
 }
 
 

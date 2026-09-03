@@ -17,7 +17,7 @@ export function ConsumerHome() {
   const [category, setCategory] = useState<Category | 'All'>('All')
   const { data, loading, error } = useAsyncData(() => marketplaceService.getFeaturedListings())
   const categories = marketplaceService.getCategories()
-  const filtered = data?.filter((listing) => (category === 'All' || listing.category === category) && listing.product.toLowerCase().includes(search.toLowerCase())) ?? []
+  const filtered = data?.filter((listing) => (category === 'All' || listing.category === category) && `${listing.product} ${listing.productHi ?? ''} Ramesh Kumar Ramesh Farms`.toLowerCase().includes(search.toLowerCase())) ?? []
 
   return (
     <div className="page consumer-page">
