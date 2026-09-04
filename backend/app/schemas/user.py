@@ -54,6 +54,51 @@ class FarmerProfileOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class FarmerUpcomingPickupOut(BaseModel):
+    id: str
+    order_id: str
+    crop: str
+    crop_hi: Optional[str] = None
+    quantity_kg: float
+    date: str
+    status: str
+
+
+class FarmerDashboardOut(BaseModel):
+    earnings: float
+    pending: float
+    active_listings: int
+    new_orders: int
+    upcoming_pickup: Optional[FarmerUpcomingPickupOut] = None
+
+
+class FarmerEarningOut(BaseModel):
+    id: str
+    order_id: str
+    crop: str
+    crop_hi: Optional[str] = None
+    gross: float
+    deductions: float
+    net: float
+    mandi_equivalent: float
+    date: str
+    status: str
+
+
+class FarmerPickupOut(BaseModel):
+    id: str
+    order_id: str
+    crop: str
+    crop_hi: Optional[str] = None
+    quantity_kg: float
+    date: str
+    time_window: str
+    driver: str
+    vehicle: str
+    farm_address: str
+    status: str
+
+
 class BuyerProfileCreate(BaseModel):
     business_name: str = Field(..., min_length=2, max_length=256)
     buyer_type: str = Field(..., min_length=2, max_length=64)

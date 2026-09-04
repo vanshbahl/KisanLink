@@ -2,6 +2,7 @@ import { farmers } from '../data/farmers'
 import { bulkSupplies } from '../data/insights'
 import type { Address, BulkOrder, BulkProfileData, BulkRfq, CartItem, ConsumerOrder, ConsumerProfileData, FarmerListing, SupplyContribution } from '../types'
 import { prototypeService } from './prototypeService'
+import { apiClient } from './apiClient'
 
 const CART_KEY = 'kisanlink_consumer_cart_v1'
 const now = () => new Date().toISOString()
@@ -10,8 +11,28 @@ const id = (prefix: string) => `${prefix}-${Date.now().toString().slice(-7)}`
 const pause = () => new Promise((resolve) => window.setTimeout(resolve, 180))
 
 export const phase2Service = {
-  async listings() { await pause(); return (await prototypeService.getListings()).filter((item) => item.status === 'active' || item.status === 'sold') },
-  async listing(listingId: string) { await pause(); return prototypeService.getListing(listingId) },
+  async listings() {
+    try {
+      const canonical = await apiClient.getListings()
+      if (canonical && canonical.length > 0) {
+        return canonical.filter((item) => item.status === 'active' || item.status === 'sold')
+      }
+    } catch (e) {
+      console.warn('API listings query fallback:', e)
+    }
+    await pause()
+    return (await prototypeService.getListings()).filter((item) => item.status === 'active' || item.status === 'sold')
+  },
+  async listing(listingId: string) {
+    try {
+      const canonical = await apiClient.getListing(listingId)
+      if (canonical) return canonical
+    } catch (e) {
+      console.warn('API listing fallback:', e)
+    }
+    await pause()
+    return prototypeService.getListing(listingId)
+  },
   cart(): CartItem[] { try { return JSON.parse(localStorage.getItem(CART_KEY) ?? '[]') as CartItem[] } catch { return [] } },
   saveCart(items: CartItem[]) { localStorage.setItem(CART_KEY, JSON.stringify(items)); window.dispatchEvent(new Event('kisanlink-cart')); return items },
   addToCart(listingId: string, quantityKg: number) { const cart = this.cart(); const found = cart.find((item) => item.listingId === listingId); if (found) found.quantityKg += quantityKg; else cart.push({ listingId, quantityKg }); return this.saveCart(cart) },
@@ -24,6 +45,15 @@ export const phase2Service = {
   async placeConsumerOrder(input: { items: CartItem[]; address: Address; deliverySlot: string; note: string; paymentMethod: ConsumerOrder['paymentMethod'] }) {
     const state = await prototypeService.getState()
     if (!input.items.length) throw new Error('Your cart is empty.')
+
+    // Place real order in canonical PostgreSQL backend
+    try {
+      const backendItems = input.items.map((i) => ({ listingId: i.listingId, quantityKg: i.quantityKg }))
+      await apiClient.placeDirectOrder(backendItems, `${input.address.line1}, ${input.address.city}`)
+    } catch (err) {
+      console.warn('Direct order backend sync note:', err)
+    }
+
     const resolved = input.items.map((item) => ({ item, listing: state.listings.find((listing) => listing.id === item.listingId) }))
     for (const entry of resolved) if (!entry.listing || entry.listing.status !== 'active' || entry.item.quantityKg < 1 || entry.item.quantityKg > entry.listing.remainingKg) throw new Error(`${entry.listing?.crop ?? 'An item'} is no longer available in that quantity.`)
     const subtotal = resolved.reduce((sum, entry) => sum + entry.item.quantityKg * entry.listing!.pricePerKg, 0)
@@ -51,17 +81,73 @@ export const phase2Service = {
   async rfqs() { await pause(); return (await prototypeService.getState()).rfqs },
   async rfq(rfqId: string) { return (await prototypeService.getState()).rfqs.find((rfq) => rfq.id === rfqId) },
   async createRfq(input: Omit<BulkRfq, 'id' | 'createdAt' | 'status' | 'matches'>) {
-    const state = await prototypeService.getState(); const pools = await this.supplyPools(); const pool = pools.find((item) => item.product.toLowerCase().includes(input.crop.toLowerCase().replace(/s$/, '')))
-    const names = farmers.slice(0, 3); let remaining = input.requiredQuantityKg
-    const matches: SupplyContribution[] = names.map((farmer, index) => { const quantityKg = Math.min(remaining, Math.max(0, Math.round(input.requiredQuantityKg * [.35, .25, .4][index]))); remaining -= quantityKg; return { farmer: farmer.name, farm: farmer.farmName, listingId: index === 0 && pool?.matchingListings[0] ? pool.matchingListings[0].id : `network_${input.crop}_${index}`, quantityKg, ratePerKg: (pool?.startingPrice ?? input.targetPrice) + index } }).filter((item) => item.quantityKg > 0)
-    const matched = matches.reduce((sum, item) => sum + item.quantityKg, 0); const rfq: BulkRfq = { ...input, id: id('RFQ'), createdAt: now(), matches, status: matched >= input.requiredQuantityKg ? 'fully_matched' : matched ? 'partially_matched' : 'matching' }
-    state.rfqs.unshift(rfq); state.notifications.unshift({ id: id('note'), role: 'bulk', title: 'Requirement matches ready', titleHi: 'आवश्यकता के मैच तैयार हैं', body: `${matches.length} farmers can fulfil ${matched.toLocaleString('en-IN')} kg.`, bodyHi: 'आपकी आवश्यकता के लिए सप्लाई मिली है।', timestamp: now(), read: false, href: `/bulk/requests/${rfq.id}` }, { id: id('note'), role: 'farmer', title: 'New bulk requirement match', titleHi: 'नई थोक मांग मिली', body: `${input.requiredQuantityKg.toLocaleString('en-IN')} kg ${input.crop} requested for ${input.deliveryLocation}.`, bodyHi: 'नई थोक मांग आपकी फसल से मेल खाती है।', timestamp: now(), read: false, href: '/farmer/produce' })
+    const state = await prototypeService.getState()
+    let matches: SupplyContribution[] = []
+    let backendClusterId: string | undefined = undefined
+
+    try {
+      // 1. Post requirement to canonical backend
+      const reqOut = await apiClient.createRequirement({
+        crop: input.crop,
+        requiredQuantityKg: input.requiredQuantityKg,
+        targetPrice: input.targetPrice,
+        deliveryLocation: input.deliveryLocation,
+      })
+
+      // 2. Generate matches using real 5-factor scoring and clustering engine
+      const clusterOut = await apiClient.generateMatches(reqOut.id)
+      if (clusterOut && clusterOut.farmers && clusterOut.farmers.length > 0) {
+        backendClusterId = clusterOut.cluster_id
+        matches = clusterOut.farmers.map((f: any) => ({
+          farmer: f.name,
+          farm: f.location || 'Sonipat Farm',
+          listingId: f.listing_id,
+          quantityKg: f.allocated_kg,
+          ratePerKg: f.unit_price,
+        }))
+      }
+    } catch (err) {
+      console.warn('Canonical matching engine note:', err)
+    }
+
+    if (!matches.length) {
+      const pools = await this.supplyPools(); const pool = pools.find((item) => item.product.toLowerCase().includes(input.crop.toLowerCase().replace(/s$/, '')))
+      const names = farmers.slice(0, 3); let remaining = input.requiredQuantityKg
+      matches = names.map((farmer, index) => { const quantityKg = Math.min(remaining, Math.max(0, Math.round(input.requiredQuantityKg * [.35, .25, .4][index]))); remaining -= quantityKg; return { farmer: farmer.name, farm: farmer.farmName, listingId: index === 0 && pool?.matchingListings[0] ? pool.matchingListings[0].id : `network_${input.crop}_${index}`, quantityKg, ratePerKg: (pool?.startingPrice ?? input.targetPrice) + index } }).filter((item) => item.quantityKg > 0)
+    }
+
+    const matched = matches.reduce((sum, item) => sum + item.quantityKg, 0)
+    const rfq: BulkRfq & { clusterId?: string } = {
+      ...input,
+      id: id('RFQ'),
+      createdAt: now(),
+      matches,
+      status: matched >= input.requiredQuantityKg ? 'fully_matched' : matched ? 'partially_matched' : 'matching',
+      clusterId: backendClusterId,
+    }
+    state.rfqs.unshift(rfq)
+    state.notifications.unshift({ id: id('note'), role: 'bulk', title: 'Requirement matches ready', titleHi: 'आवश्यकता के मैच तैयार हैं', body: `${matches.length} farmers can fulfil ${matched.toLocaleString('en-IN')} kg.`, bodyHi: 'आपकी आवश्यकता के लिए सप्लाई मिली है।', timestamp: now(), read: false, href: `/bulk/requests/${rfq.id}` }, { id: id('note'), role: 'farmer', title: 'New bulk requirement match', titleHi: 'नई थोक मांग मिली', body: `${input.requiredQuantityKg.toLocaleString('en-IN')} kg ${input.crop} requested for ${input.deliveryLocation}.`, bodyHi: 'नई थोक मांग आपकी फसल से मेल खाती है।', timestamp: now(), read: false, href: '/farmer/produce' })
     await prototypeService.replaceState(state); return rfq
   },
   async closeRfq(rfqId: string) { const state = await prototypeService.getState(); const rfq = state.rfqs.find((item) => item.id === rfqId); if (!rfq) throw new Error('Requirement not found'); rfq.status = 'closed'; await prototypeService.replaceState(state); return rfq },
   async convertRfq(rfqId: string) {
     const state = await prototypeService.getState(); const rfq = state.rfqs.find((item) => item.id === rfqId); if (!rfq || rfq.status === 'closed') throw new Error('Requirement cannot be converted.')
-    const supplied = Math.min(rfq.requiredQuantityKg, rfq.matches.reduce((sum, item) => sum + item.quantityKg, 0)); const produceValue = rfq.matches.reduce((sum, item) => sum + item.quantityKg * item.ratePerKg, 0); const logisticsFee = Math.round(produceValue * .045); const platformFee = Math.round(produceValue * .02); const orderId = id('KL-B')
+
+    let backendOrderId: string | undefined = undefined
+    const clusterId = (rfq as any).clusterId
+    if (clusterId) {
+      try {
+        const orderOut = await apiClient.createOrderFromCluster(clusterId)
+        if (orderOut) {
+          backendOrderId = orderOut.order_code || orderOut.id
+          await apiClient.lockEscrow(orderOut.id, orderOut.gross_amount_rupees)
+        }
+      } catch (err) {
+        console.warn('Canonical cluster order conversion note:', err)
+      }
+    }
+
+    const supplied = Math.min(rfq.requiredQuantityKg, rfq.matches.reduce((sum, item) => sum + item.quantityKg, 0)); const produceValue = rfq.matches.reduce((sum, item) => sum + item.quantityKg * item.ratePerKg, 0); const logisticsFee = Math.round(produceValue * .045); const platformFee = Math.round(produceValue * .02); const orderId = backendOrderId || id('KL-B')
     const order: BulkOrder = { id: orderId, rfqId, crop: rfq.crop, grade: rfq.grade, orderedQuantityKg: rfq.requiredQuantityKg, suppliedQuantityKg: supplied, contributions: rfq.matches, produceValue, logisticsFee, platformFee, total: produceValue + logisticsFee + platformFee, traditionalEstimate: Math.round((produceValue + logisticsFee + platformFee) * 1.14), deliveryLocation: rfq.deliveryLocation, deliveryWindow: rfq.deliveryWindow, status: 'confirmed', invoiceStatus: 'Mock invoice generated', orderedAt: now() }
     state.bulkOrders.unshift(order); rfq.status = 'converted'
     const owned = rfq.matches.find((match) => state.listings.some((listing) => listing.id === match.listingId)); if (owned) { const listing = state.listings.find((item) => item.id === owned.listingId)!; const quantity = Math.min(owned.quantityKg, listing.remainingKg); const gross = quantity * owned.ratePerKg; const payout = Math.round(gross * .95); listing.remainingKg -= quantity; listing.allocatedKg += quantity; if (listing.remainingKg === 0) listing.status = 'sold'; state.orders.unshift({ id: `${orderId}-1`, buyerName: state.bulkProfile.businessName, buyerType: 'Bulk Buyer', crop: listing.crop, cropHi: listing.cropHi, listingId: listing.id, quantityKg: quantity, ratePerKg: owned.ratePerKg, total: gross, farmerPayout: payout, platformFee: Math.round(gross * .02), logisticsFee: Math.round(gross * .03), orderedAt: now().slice(0, 10), status: 'new', paymentStatus: 'processing', pickupId: `PK-${orderId.slice(-7)}` }); state.pickups.unshift({ id: `PK-${orderId.slice(-7)}`, orderId: `${orderId}-1`, crop: listing.crop, cropHi: listing.cropHi, quantityKg: quantity, date: day(2).slice(0, 10), timeWindow: 'Morning pooled route', driver: 'Consolidation partner assigning', vehicle: 'Pooled truck', farmAddress: listing.farm, status: 'scheduled' }); state.earnings.unshift({ id: `TX-${orderId.slice(-7)}`, orderId: `${orderId}-1`, crop: listing.crop, cropHi: listing.cropHi, gross, deductions: gross - payout, net: payout, mandiEquivalent: quantity * listing.mandiPricePerKg, date: now().slice(0, 10), status: 'pending' }) }
