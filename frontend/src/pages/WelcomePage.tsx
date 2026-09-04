@@ -48,6 +48,7 @@ export function WelcomePage() {
             ['farmer', Sprout, 'Ramesh Kumar', 'farmerDemoHint'],
             ['consumer', ShoppingBasket, 'Aarav Mehta', 'consumerDemoHint'],
             ['bulk', Building2, 'FreshKart', 'bulkDemoHint'],
+            ['logistics', Truck, 'Kavita Logistics', 'logisticsDemoHint'],
           ] as Array<[Role, LucideIcon, string, TranslationKey]>).map(([role, RoleIcon, name, descriptionKey]) => (
             <button key={role} onClick={() => enterDemo(role)} disabled={Boolean(loadingRole)} className="demo-role-card">
               <span className={`demo-role-icon role-${role}`}><RoleIcon size={24} /></span>

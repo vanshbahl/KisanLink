@@ -1,4 +1,4 @@
-import { Bell, Building2, Languages, LogOut, MapPin, Save, ShoppingBasket, Sprout, UserRound, type LucideIcon } from 'lucide-react'
+import { Bell, Building2, Languages, LogOut, MapPin, Save, ShoppingBasket, Sprout, Truck, UserRound, type LucideIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { DashboardSkeleton } from '../components/LoadingSkeleton'
@@ -12,7 +12,7 @@ import { phase2Service } from '../services/phase2Service'
 import type { BulkProfileData, ConsumerProfileData, Role } from '../types'
 import { roleHome } from '../utils/routes'
 
-const roleOptions: Array<{ role: Role; icon: LucideIcon }> = [{ role: 'farmer', icon: Sprout }, { role: 'consumer', icon: ShoppingBasket }, { role: 'bulk', icon: Building2 }]
+const roleOptions: Array<{ role: Role; icon: LucideIcon }> = [{ role: 'farmer', icon: Sprout }, { role: 'consumer', icon: ShoppingBasket }, { role: 'bulk', icon: Building2 }, { role: 'logistics', icon: Truck }]
 
 export function ProfilePage() {
   const { session, user, logout, switchRole } = useAuth(); const { t } = useLanguage(); const { showToast } = useToast(); const navigate = useNavigate(); const { data, loading, error } = useAsyncData(async () => session?.role === 'consumer' ? phase2Service.consumerProfile() : session?.role === 'bulk' ? phase2Service.bulkProfile() : null, [session?.role]); const [consumer, setConsumer] = useState<ConsumerProfileData | null>(null); const [bulk, setBulk] = useState<BulkProfileData | null>(null); const [saving, setSaving] = useState(false)

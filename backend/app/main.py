@@ -22,9 +22,17 @@ def get_db():
 async def lifespan(_: FastAPI):
     Base.metadata.create_all(bind=engine)
     with SessionLocal() as db:
-        if db.get(PrototypeState, 1) is None:
+        state = db.get(PrototypeState, 1)
+        if state is None:
             db.add(PrototypeState(id=1, data=fresh_seed()))
             db.commit()
+        else:
+            defaults = fresh_seed()
+            missing = {key: value for key, value in defaults.items() if key not in state.data}
+            if missing:
+                state.data = {**state.data, **missing}
+                db.add(state)
+                db.commit()
     yield
 
 
@@ -141,3 +149,23 @@ def list_pickups(db: Session = Depends(get_db)):
 @app.get("/api/earnings")
 def list_earnings(db: Session = Depends(get_db)):
     return _state(db).data["earnings"]
+
+
+@app.get("/api/logistics/pickups")
+def list_logistics_pickups(db: Session = Depends(get_db)):
+    return _state(db).data.get("logisticsPickups", [])
+
+
+@app.get("/api/logistics/deliveries")
+def list_deliveries(db: Session = Depends(get_db)):
+    return _state(db).data.get("deliveries", [])
+
+
+@app.get("/api/logistics/routes")
+def list_routes(db: Session = Depends(get_db)):
+    return _state(db).data.get("logisticsRoutes", [])
+
+
+@app.get("/api/logistics/vehicles")
+def list_vehicles(db: Session = Depends(get_db)):
+    return _state(db).data.get("vehicles", [])

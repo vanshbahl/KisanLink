@@ -14,10 +14,15 @@ export const demoUsers: Record<string, User> = {
     location: 'Delhi NCR', avatarInitials: 'FP', company: 'FreshKart Foods Pvt. Ltd.',
     representative: 'Neha Kapoor', gst: 'GST verification pending',
   },
+  logistics_001: {
+    id: 'logistics_001', role: 'logistics', name: 'Kavita Logistics', phone: '9877004455',
+    location: 'KisanLink Sonipat Hub', avatarInitials: 'KL',
+  },
 }
 
 export const demoUserIdByRole = {
   farmer: 'farmer_001',
   consumer: 'consumer_001',
   bulk: 'bulk_001',
+  logistics: 'logistics_001',
 } as const

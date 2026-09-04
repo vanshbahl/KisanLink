@@ -1,6 +1,6 @@
 import {
   BarChart3, Boxes, ClipboardList, Heart, HelpCircle, Home,
-  LayoutDashboard, ListChecks, PackageCheck, Search, ShoppingBag, Sprout, UserRound,
+  LayoutDashboard, ListChecks, MapPinned, PackageCheck, Search, ShoppingBag, Sprout, Truck, UserRound,
 } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { LanguageSwitcher } from '../components/LanguageSwitcher'
@@ -46,6 +46,14 @@ const navByRole: Record<Role, NavItemConfig[]> = {
     { labelKey: 'requests', to: '/bulk/requests', icon: ClipboardList },
     { labelKey: 'orders', to: '/bulk/orders', icon: ListChecks },
     { labelKey: 'profile', to: '/bulk/profile', icon: UserRound },
+  ],
+  logistics: [
+    { labelKey: 'overview', to: '/logistics', icon: LayoutDashboard, end: true },
+    { labelKey: 'pickups', to: '/logistics/pickups', icon: Boxes },
+    { labelKey: 'deliveries', to: '/logistics/deliveries', icon: PackageCheck },
+    { labelKey: 'routes', to: '/logistics/routes', icon: MapPinned },
+    { labelKey: 'vehicles', to: '/logistics/vehicles', icon: Truck },
+    { labelKey: 'profile', to: '/logistics/profile', icon: UserRound },
   ],
 }
 

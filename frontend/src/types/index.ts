@@ -1,4 +1,4 @@
-export type Role = 'farmer' | 'consumer' | 'bulk'
+export type Role = 'farmer' | 'consumer' | 'bulk' | 'logistics'
 export type Language = 'en' | 'hi'
 
 export interface User {
@@ -199,3 +199,14 @@ export interface BulkOrder {
   status: BulkOrderStatus; invoiceStatus: 'Mock invoice generated' | 'Mock paid'; orderedAt: string
 }
 export interface BulkProfileData { businessName: string; representative: string; phone: string; gst: string; language: Language; procurementLocations: string[]; deliveryAddresses: string[]; notifications: { matches: boolean; orders: boolean; deliveries: boolean } }
+
+export type LogisticsPickupStatus = 'unassigned' | 'assigned' | 'en_route' | 'arrived' | 'loaded' | 'completed' | 'issue'
+export type DeliveryStatus = 'scheduled' | 'loaded' | 'in_transit' | 'at_hub' | 'out_for_delivery' | 'delivered' | 'issue'
+export type VehicleStatus = 'available' | 'assigned' | 'in_transit' | 'maintenance'
+export interface LogisticsTimelineItem { label: string; labelHi: string; at: string }
+export interface LogisticsPickup { id: string; farmer: string; farm: string; farmLocation: string; crop: string; cropHi: string; quantityKg: number; pickupWindow: string; orderRefs: string[]; vehicleId?: string; driver?: string; status: LogisticsPickupStatus; notes: string; routeId?: string; checklist: { arrived: boolean; quantityVerified: boolean; qualityChecked: boolean; loadSecured: boolean; pickupCompleted: boolean }; timeline: LogisticsTimelineItem[] }
+export interface Delivery { id: string; origin: string; destination: string; buyer: string; buyerType: 'Consumer' | 'Bulk Buyer'; shipment: string; produce: string; produceHi: string; quantityKg: number; eta: string; vehicleId?: string; orderRefs: string[]; status: DeliveryStatus; handlingNotes: string; issues: string[]; timeline: LogisticsTimelineItem[] }
+export interface LogisticsRoute { id: string; name: string; nameHi: string; vehicleId: string; pickups: string[]; deliveries: string[]; stops: string[]; distanceKm: number; durationMinutes: number; capacityKg: number; loadKg: number; status: 'planned' | 'active' | 'completed'; pooled: boolean }
+export interface Vehicle { id: string; registration: string; type: string; typeHi: string; capacityKg: number; driver: string; currentAssignment?: string; status: VehicleStatus }
+export interface LogisticsProfileData { name: string; phone: string; hub: string; shift: string; language: Language; notifications: { pickups: boolean; deliveries: boolean; issues: boolean; delays: boolean } }
+export type DemoScenario = 'full' | 'empty' | 'consumer' | 'bulk' | 'issue'

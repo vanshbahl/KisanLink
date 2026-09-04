@@ -12,6 +12,7 @@ import { FarmerDashboard } from './pages/FarmerDashboard'
 import { FarmerEarningsPage, FarmerInsightsPage, FarmerOrderDetailPage, FarmerOrdersPage, FarmerPickupsPage, FarmerProduceDetailPage, FarmerProfilePage, SellProducePage } from './pages/FarmerExperience'
 import { FarmerProducePage } from './pages/FarmerProducePage'
 import { ListingDetailPage } from './pages/ListingDetailPage'
+import { LogisticsDashboard, LogisticsDeliveriesPage, LogisticsDeliveryDetailPage, LogisticsPickupsPage, LogisticsPickupDetailPage, LogisticsProfilePage, LogisticsRoutesPage, LogisticsVehiclesPage } from './pages/LogisticsExperience'
 import { OtpPage } from './pages/OtpPage'
 import { WelcomePage } from './pages/WelcomePage'
 import type { Role } from './types'
@@ -76,6 +77,17 @@ export default function App() {
           <Route path="orders" element={<RoleGuard role="bulk"><BulkOrdersPage /></RoleGuard>} />
           <Route path="orders/:id" element={<RoleGuard role="bulk"><BulkOrderDetailPage /></RoleGuard>} />
           <Route path="profile" element={<RoleGuard role="bulk"><BulkProfilePage /></RoleGuard>} />
+        </Route>
+
+        <Route path="logistics">
+          <Route index element={<RoleGuard role="logistics"><LogisticsDashboard /></RoleGuard>} />
+          <Route path="pickups" element={<RoleGuard role="logistics"><LogisticsPickupsPage /></RoleGuard>} />
+          <Route path="pickups/:id" element={<RoleGuard role="logistics"><LogisticsPickupDetailPage /></RoleGuard>} />
+          <Route path="deliveries" element={<RoleGuard role="logistics"><LogisticsDeliveriesPage /></RoleGuard>} />
+          <Route path="deliveries/:id" element={<RoleGuard role="logistics"><LogisticsDeliveryDetailPage /></RoleGuard>} />
+          <Route path="routes" element={<RoleGuard role="logistics"><LogisticsRoutesPage /></RoleGuard>} />
+          <Route path="vehicles" element={<RoleGuard role="logistics"><LogisticsVehiclesPage /></RoleGuard>} />
+          <Route path="profile" element={<RoleGuard role="logistics"><LogisticsProfilePage /></RoleGuard>} />
         </Route>
       </Route>
 

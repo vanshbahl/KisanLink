@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Building2, Check, Phone, ShoppingBasket, Sprout } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Building2, Check, Phone, ShoppingBasket, Sprout, Truck } from 'lucide-react'
 import { FormEvent, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Logo } from '../components/Logo'
@@ -12,6 +12,7 @@ const roles: Array<{ role: Role; hintKey: TranslationKey; icon: typeof Sprout }>
   { role: 'farmer', hintKey: 'farmerHint', icon: Sprout },
   { role: 'consumer', hintKey: 'consumerHint', icon: ShoppingBasket },
   { role: 'bulk', hintKey: 'bulkHint', icon: Building2 },
+  { role: 'logistics', hintKey: 'logisticsHint', icon: Truck },
 ]
 
 export function AuthPage() {
@@ -58,7 +59,7 @@ export function AuthPage() {
             <button className="btn btn-primary btn-full btn-large" disabled={loading}>{loading ? <><i className="spinner spinner-light" /> {t('sendingCode')}</> : <>{t('continue')} <ArrowRight size={19} /></>}</button>
           </form>
           <p className="terms">{t('terms')}</p>
-          <div className="demo-numbers"><strong>{t('demoNumbers')}</strong><div>{[{ role: 'farmer' as Role, phone: '9876543210' }, { role: 'consumer' as Role, phone: '9811122233' }, { role: 'bulk' as Role, phone: '9899001122' }].map((demo) => <button type="button" key={demo.role} onClick={() => { setRole(demo.role); setPhone(demo.phone); setError('') }}>{t(roleKey[demo.role])} · {demo.phone}</button>)}</div></div>
+          <div className="demo-numbers"><strong>{t('demoNumbers')}</strong><div>{[{ role: 'farmer' as Role, phone: '9876543210' }, { role: 'consumer' as Role, phone: '9811122233' }, { role: 'bulk' as Role, phone: '9899001122' }, { role: 'logistics' as Role, phone: '9877004455' }].map((demo) => <button type="button" key={demo.role} onClick={() => { setRole(demo.role); setPhone(demo.phone); setError('') }}>{t(roleKey[demo.role])} · {demo.phone}</button>)}</div></div>
         </div>
       </section>
     </main>
