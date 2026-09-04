@@ -1,4 +1,5 @@
 import type { BulkOrder, BulkProfileData, BulkRfq, ConsumerOrder, ConsumerProfileData, Delivery, DemoScenario, EarningsTransaction, FarmerListing, FarmerOrder, FarmerProfileData, ListingStatus, LogisticsPickup, LogisticsProfileData, LogisticsRoute, OrderStatus, Pickup, PrototypeNotification, Role, Vehicle } from '../types'
+import { apiClient } from './apiClient'
 
 export interface PrototypeState {
   listings: FarmerListing[]
@@ -127,15 +128,67 @@ async function persist(state: PrototypeState) {
 export const prototypeService = {
   getState: readState,
   async replaceState(state: PrototypeState) { return persist(state) },
-  async getListings() { return (await readState()).listings },
-  async getListing(id: string) { return (await readState()).listings.find((item) => item.id === id) },
-  async saveListing(input: FarmerListing) { const state = await readState(); const index = state.listings.findIndex((item) => item.id === input.id); if (index >= 0) state.listings[index] = input; else state.listings.unshift(input); await persist(state); return input },
-  async patchListing(id: string, patch: Partial<FarmerListing>) { const state = await readState(); const item = state.listings.find((entry) => entry.id === id); if (!item) throw new Error('Listing not found'); Object.assign(item, patch); await persist(state); return item },
-  async deleteListing(id: string) { const state = await readState(); state.listings = state.listings.filter((item) => item.id !== id); await persist(state) },
+  async getListings() {
+    try {
+      const canonical = await apiClient.getListings()
+      if (canonical && canonical.length > 0) return canonical
+    } catch (e) {
+      console.warn('Backend listings fallback:', e)
+    }
+    return (await readState()).listings
+  },
+  async getListing(id: string) {
+    try {
+      const canonical = await apiClient.getListing(id)
+      if (canonical) return canonical
+    } catch (e) {
+      console.warn('Backend listing fallback:', e)
+    }
+    return (await readState()).listings.find((item) => item.id === id)
+  },
+  async saveListing(input: FarmerListing) {
+    try {
+      const saved = await apiClient.createListing(input)
+      if (saved) input.id = saved.id
+    } catch (e) {
+      console.warn('Backend save listing fallback:', e)
+    }
+    const state = await readState(); const index = state.listings.findIndex((item) => item.id === input.id); if (index >= 0) state.listings[index] = input; else state.listings.unshift(input); await persist(state); return input
+  },
+  async patchListing(id: string, patch: Partial<FarmerListing>) {
+    try {
+      await apiClient.updateListing(id, patch)
+    } catch (e) {
+      console.warn('Backend patch listing fallback:', e)
+    }
+    const state = await readState(); const item = state.listings.find((entry) => entry.id === id); if (!item) throw new Error('Listing not found'); Object.assign(item, patch); await persist(state); return item
+  },
+  async deleteListing(id: string) {
+    try {
+      await apiClient.deleteListing(id)
+    } catch (e) {
+      console.warn('Backend delete listing fallback:', e)
+    }
+    const state = await readState(); state.listings = state.listings.filter((item) => item.id !== id); await persist(state)
+  },
   async duplicateListing(id: string) { const state = await readState(); const source = state.listings.find((item) => item.id === id); if (!source) throw new Error('Listing not found'); const copy = { ...source, id: `listing_${Date.now()}`, status: 'draft' as ListingStatus, views: 0, inquiries: 0, createdAt: iso(0) }; state.listings.unshift(copy); await persist(state); return copy },
-  async getOrders() { return (await readState()).orders },
+  async getOrders() {
+    try {
+      const canonical = await apiClient.getMyOrders('farmer')
+      if (canonical && canonical.length > 0) return canonical
+    } catch (e) {
+      console.warn('Backend orders fallback:', e)
+    }
+    return (await readState()).orders
+  },
   async getOrder(id: string) { return (await readState()).orders.find((item) => item.id === id) },
-  async updateOrder(id: string, status: OrderStatus) { const state = await readState(); const order = state.orders.find((item) => item.id === id); if (!order) throw new Error('Order not found'); order.status = status; if (status === 'accepted' && !order.pickupId) { const pickupId = `PK-${Date.now().toString().slice(-4)}`; order.pickupId = pickupId; state.pickups.unshift({ id: pickupId, orderId: order.id, crop: order.crop, cropHi: order.cropHi, quantityKg: order.quantityKg, date: iso(1), timeWindow: 'Morning · 7–10 AM', driver: 'Assigning shortly', vehicle: 'To be assigned', farmAddress: state.profile.pickupLocation, status: 'scheduled' }); state.notifications.unshift({ id: `note_${Date.now()}`, role: 'farmer', title: 'Pickup request created', titleHi: 'पिकअप अनुरोध बना', body: `Pickup ${pickupId} is scheduled for tomorrow.`, bodyHi: `पिकअप ${pickupId} कल के लिए तय है।`, timestamp: new Date().toISOString(), read: false, href: '/farmer/pickups' }) }
+  async updateOrder(id: string, status: OrderStatus) {
+    try {
+      await apiClient.updateOrderStatus(id, status)
+    } catch (e) {
+      console.warn('Backend order status update fallback:', e)
+    }
+    const state = await readState(); const order = state.orders.find((item) => item.id === id); if (!order) throw new Error('Order not found'); order.status = status; if (status === 'accepted' && !order.pickupId) { const pickupId = `PK-${Date.now().toString().slice(-4)}`; order.pickupId = pickupId; state.pickups.unshift({ id: pickupId, orderId: order.id, crop: order.crop, cropHi: order.cropHi, quantityKg: order.quantityKg, date: iso(1), timeWindow: 'Morning · 7–10 AM', driver: 'Assigning shortly', vehicle: 'To be assigned', farmAddress: state.profile.pickupLocation, status: 'scheduled' }); state.notifications.unshift({ id: `note_${Date.now()}`, role: 'farmer', title: 'Pickup request created', titleHi: 'पिकअप अनुरोध बना', body: `Pickup ${pickupId} is scheduled for tomorrow.`, bodyHi: `पिकअप ${pickupId} कल के लिए तय है।`, timestamp: new Date().toISOString(), read: false, href: '/farmer/pickups' }) }
     const parentId = order.id.replace(/-\d+$/, '')
     const consumerOrder = state.consumerOrders.find((item) => item.id === parentId)
     const consumerMap = { new: 'confirmed', accepted: 'farmer_preparing', preparing: 'farmer_preparing', pickup_scheduled: 'pickup_scheduled', in_transit: 'in_transit', delivered: 'delivered', cancelled: 'cancelled' } as const
@@ -147,8 +200,24 @@ export const prototypeService = {
     const pickup = state.pickups.find((item) => item.orderId === order.id); if (pickup) pickup.status = status === 'delivered' ? 'completed' : status === 'in_transit' ? 'in_transit' : status === 'pickup_scheduled' ? 'driver_assigned' : pickup.status
     if (status === 'delivered') { const earning = state.earnings.find((item) => item.orderId === order.id); if (earning) earning.status = 'paid' }
     await persist(state); return order },
-  async getPickups() { return (await readState()).pickups },
-  async getEarnings() { return (await readState()).earnings },
+  async getPickups() {
+    try {
+      const canonical = await apiClient.getFarmerPickups()
+      if (canonical && canonical.length > 0) return canonical
+    } catch (e) {
+      console.warn('Backend pickups fallback:', e)
+    }
+    return (await readState()).pickups
+  },
+  async getEarnings() {
+    try {
+      const canonical = await apiClient.getFarmerEarnings()
+      if (canonical && canonical.length > 0) return canonical
+    } catch (e) {
+      console.warn('Backend earnings fallback:', e)
+    }
+    return (await readState()).earnings
+  },
   async getProfile() { return (await readState()).profile },
   async saveProfile(profile: FarmerProfileData) { const state = await readState(); state.profile = profile; await persist(state); return profile },
   async getNotifications(role: Role) { return (await readState()).notifications.filter((item) => item.role === role) },

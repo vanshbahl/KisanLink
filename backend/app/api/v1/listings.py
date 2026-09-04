@@ -78,10 +78,13 @@ async def create_listing(
         farmer_district=current_user.farmer_profile.district,
         crop_type_id=crop_type.id,
         crop_name=crop_type.name_en,
+        crop_name_hi=crop_type.name_hi,
+        category=crop_type.category,
         variety=listing.variety,
         quantity_kg=float(listing.quantity_kg),
         available_quantity_kg=float(listing.available_quantity_kg),
         expected_price_per_kg=float(listing.expected_price_per_kg),
+        mandi_price_per_kg=round(float(listing.expected_price_per_kg) * 0.8, 2),
         quality_grade=listing.quality_grade,
         is_pre_harvest=listing.is_pre_harvest,
         harvest_date=listing.harvest_date,
@@ -115,6 +118,8 @@ async def list_listings(
         select(
             CropListing,
             CropType.name_en.label("crop_name"),
+            CropType.name_hi.label("crop_name_hi"),
+            CropType.category.label("category"),
             FarmerProfile.full_name.label("farmer_name"),
             FarmerProfile.village.label("farmer_village"),
             FarmerProfile.district.label("farmer_district"),
@@ -150,9 +155,9 @@ async def list_listings(
     output = []
     for row in rows:
         if ref_geom is not None:
-            listing, crop_name, f_name, f_village, f_district, item_lon, item_lat, dist_km = row
+            listing, crop_name, crop_name_hi, category, f_name, f_village, f_district, item_lon, item_lat, dist_km = row
         else:
-            listing, crop_name, f_name, f_village, f_district, item_lon, item_lat = row[0:7]
+            listing, crop_name, crop_name_hi, category, f_name, f_village, f_district, item_lon, item_lat = row[0:9]
             dist_km = None
 
         output.append(
@@ -164,10 +169,13 @@ async def list_listings(
                 farmer_district=f_district,
                 crop_type_id=listing.crop_type_id,
                 crop_name=crop_name,
+                crop_name_hi=crop_name_hi,
+                category=category,
                 variety=listing.variety,
                 quantity_kg=float(listing.quantity_kg),
                 available_quantity_kg=float(listing.available_quantity_kg),
                 expected_price_per_kg=float(listing.expected_price_per_kg),
+                mandi_price_per_kg=round(float(listing.expected_price_per_kg) * 0.8, 2),
                 quality_grade=listing.quality_grade,
                 is_pre_harvest=listing.is_pre_harvest,
                 harvest_date=listing.harvest_date,
@@ -191,6 +199,8 @@ async def get_listing(id: UUID, db: AsyncSession = Depends(get_db)):
         select(
             CropListing,
             CropType.name_en.label("crop_name"),
+            CropType.name_hi.label("crop_name_hi"),
+            CropType.category.label("category"),
             FarmerProfile.full_name.label("farmer_name"),
             FarmerProfile.village.label("farmer_village"),
             FarmerProfile.district.label("farmer_district"),
@@ -207,7 +217,7 @@ async def get_listing(id: UUID, db: AsyncSession = Depends(get_db)):
     if not row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Crop listing not found.")
 
-    listing, crop_name, f_name, f_village, f_district, item_lon, item_lat = row
+    listing, crop_name, crop_name_hi, category, f_name, f_village, f_district, item_lon, item_lat = row
     return CropListingOut(
         id=listing.id,
         farmer_id=listing.farmer_id,
@@ -216,10 +226,13 @@ async def get_listing(id: UUID, db: AsyncSession = Depends(get_db)):
         farmer_district=f_district,
         crop_type_id=listing.crop_type_id,
         crop_name=crop_name,
+        crop_name_hi=crop_name_hi,
+        category=category,
         variety=listing.variety,
         quantity_kg=float(listing.quantity_kg),
         available_quantity_kg=float(listing.available_quantity_kg),
         expected_price_per_kg=float(listing.expected_price_per_kg),
+        mandi_price_per_kg=round(float(listing.expected_price_per_kg) * 0.8, 2),
         quality_grade=listing.quality_grade,
         is_pre_harvest=listing.is_pre_harvest,
         harvest_date=listing.harvest_date,

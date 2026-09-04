@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.models.order import OrderStatusEnum
 
@@ -41,3 +41,22 @@ class OrderOut(BaseModel):
 class LockEscrowRequest(BaseModel):
     payment_method: str = "SIMULATED_UPI"
     amount_rupees: float
+
+
+class DirectOrderItem(BaseModel):
+    listing_id: UUID
+    quantity_kg: float = Field(..., gt=0)
+
+
+class DirectOrderCreate(BaseModel):
+    items: List[DirectOrderItem] = Field(..., min_length=1)
+    delivery_address: str
+    delivery_slot: Optional[str] = "Tomorrow · 8–11 AM"
+    payment_method: str = "UPI"
+    delivery_latitude: Optional[float] = 28.6139
+    delivery_longitude: Optional[float] = 77.2090
+    note: Optional[str] = ""
+
+
+class OrderStatusUpdate(BaseModel):
+    status: OrderStatusEnum

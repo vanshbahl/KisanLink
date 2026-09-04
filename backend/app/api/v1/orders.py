@@ -23,8 +23,17 @@ from app.models import (
     CropType,
     PaymentsLedger,
     LedgerEntryTypeEnum,
+    BuyerProfile,
+    ListingStatusEnum,
 )
-from app.schemas.order import OrderOut, OrderFarmerAllocationOut, LockEscrowRequest
+from geoalchemy2.elements import WKTElement
+from app.schemas.order import (
+    OrderOut,
+    OrderFarmerAllocationOut,
+    LockEscrowRequest,
+    DirectOrderCreate,
+    OrderStatusUpdate,
+)
 from app.schemas.payment import PaymentsLedgerOut
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
@@ -281,6 +290,144 @@ async def lock_escrow_for_order(
         settled_at=ledger.settled_at,
         created_at=ledger.created_at,
     )
+
+
+@router.post("/direct", response_model=List[OrderOut], status_code=status.HTTP_201_CREATED)
+async def create_direct_order(
+    payload: DirectOrderCreate,
+    current_user: User = Depends(require_buyer),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Direct / B2C consumer checkout for cart items.
+    Atomic transaction with row-level locks on crop listings, stock deduction,
+    order and farmer allocation generation, and simulated escrow ledger tracking.
+    """
+    if not current_user.buyer_profile:
+        lon = payload.delivery_longitude if payload.delivery_longitude is not None else 77.2090
+        lat = payload.delivery_latitude if payload.delivery_latitude is not None else 28.6139
+        profile = BuyerProfile(
+            user_id=current_user.id,
+            business_name="Consumer",
+            buyer_type="CONSUMER",
+            delivery_address=payload.delivery_address,
+            delivery_location=WKTElement(f"POINT({lon} {lat})", srid=4326),
+        )
+        db.add(profile)
+        await db.flush()
+        current_user.buyer_profile = profile
+
+    created_orders: List[Order] = []
+
+    for item in payload.items:
+        stmt_listing = (
+            select(CropListing)
+            .options(
+                selectinload(CropListing.farmer),
+                selectinload(CropListing.crop_type),
+            )
+            .where(CropListing.id == item.listing_id)
+            .with_for_update()
+        )
+        res = await db.execute(stmt_listing)
+        listing = res.scalar_one_or_none()
+
+        if not listing:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Crop listing {item.listing_id} not found.",
+            )
+
+        if listing.status != ListingStatusEnum.ACTIVE:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Listing {listing.id} is no longer active (status: {listing.status.value}).",
+            )
+
+        if float(listing.available_quantity_kg) < item.quantity_kg:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Insufficient stock for {listing.crop_type.name_en}. Requested: {item.quantity_kg}kg, Available: {listing.available_quantity_kg}kg.",
+            )
+
+        # Deduct available stock
+        listing.available_quantity_kg = float(listing.available_quantity_kg) - item.quantity_kg
+        if float(listing.available_quantity_kg) <= 0:
+            listing.status = ListingStatusEnum.SOLD
+
+        gross = round(item.quantity_kg * float(listing.expected_price_per_kg), 2)
+        payout = round(gross * 0.97, 2)
+
+        order = Order(
+            order_code=generate_order_code(),
+            buyer_id=current_user.buyer_profile.id,
+            crop_type_id=listing.crop_type_id,
+            total_quantity_kg=item.quantity_kg,
+            gross_amount_rupees=gross,
+            status=OrderStatusEnum.CONFIRMED,
+            delivery_otp=generate_otp(),
+        )
+        db.add(order)
+        await db.flush()
+
+        allocation = OrderFarmerAllocation(
+            order_id=order.id,
+            farmer_id=listing.farmer_id,
+            listing_id=listing.id,
+            allocated_kg=item.quantity_kg,
+            farmer_payout_amount_rupees=payout,
+            pickup_verification_otp=generate_otp(),
+        )
+        db.add(allocation)
+
+        ledger = PaymentsLedger(
+            order_id=order.id,
+            beneficiary_user_id=current_user.id,
+            entry_type=LedgerEntryTypeEnum.ESCROW_LOCK,
+            amount_rupees=gross,
+            gateway_reference_id=f"SIM_DIRECT_{generate_order_code()}",
+            is_settled=True,
+        )
+        db.add(ledger)
+        created_orders.append(order)
+
+    await db.commit()
+
+    output = []
+    for ord_obj in created_orders:
+        output.append(await get_order_by_id(id=ord_obj.id, current_user=current_user, db=db))
+    return output
+
+
+@router.patch("/{id}/status", response_model=OrderOut)
+async def update_order_status(
+    id: UUID,
+    payload: OrderStatusUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update order status (farmer, buyer, or logistics provider)."""
+    stmt = (
+        select(Order)
+        .options(
+            selectinload(Order.allocations),
+        )
+        .where(Order.id == id)
+    )
+    res = await db.execute(stmt)
+    order = res.scalar_one_or_none()
+
+    if not order:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found.")
+
+    order.status = payload.status
+    if payload.status in (OrderStatusEnum.DELIVERED, OrderStatusEnum.SETTLED):
+        for alloc in order.allocations:
+            alloc.is_picked_up = True
+            alloc.is_settled = (payload.status == OrderStatusEnum.SETTLED)
+
+    await db.commit()
+    return await get_order_by_id(id=order.id, current_user=current_user, db=db)
 
 
 def format_order_out(order: Order, filter_farmer_id: Optional[UUID] = None) -> OrderOut:

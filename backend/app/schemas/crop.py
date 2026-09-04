@@ -17,7 +17,9 @@ class CropTypeOut(BaseModel):
 
 
 class CropListingCreate(BaseModel):
-    crop_name: str = Field(..., min_length=2, max_length=64, example="Tomato")
+    crop_name: str = Field(..., min_length=2, max_length=64, json_schema_extra={"example": "Tomato"})
+    crop_name_hi: Optional[str] = None
+    category: Optional[str] = "Vegetables"
     variety: Optional[str] = Field(default="Desi")
     quantity_kg: float = Field(..., gt=0)
     expected_price_per_kg: float = Field(..., gt=0)
@@ -49,10 +51,13 @@ class CropListingOut(BaseModel):
     farmer_district: Optional[str] = None
     crop_type_id: UUID
     crop_name: str
+    crop_name_hi: Optional[str] = None
+    category: Optional[str] = "Vegetables"
     variety: Optional[str] = None
     quantity_kg: float
     available_quantity_kg: float
     expected_price_per_kg: float
+    mandi_price_per_kg: Optional[float] = None
     quality_grade: QualityGradeEnum
     is_pre_harvest: bool
     harvest_date: date
