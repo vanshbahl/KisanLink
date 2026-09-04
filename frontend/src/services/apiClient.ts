@@ -12,6 +12,19 @@ import type {
 
 const API_BASE = '/api/v1'
 
+const HINDI_CROP_NAMES: Record<string, string> = {
+  tomato: 'टमाटर', tomatoes: 'टमाटर', 'fresh tomatoes': 'ताज़े टमाटर',
+  spinach: 'पालक', 'baby spinach': 'बेबी पालक', onion: 'प्याज', potato: 'आलू', potatoes: 'आलू', 'new potatoes': 'नए आलू',
+  cauliflower: 'फूलगोभी', capsicum: 'शिमला मिर्च', 'green capsicum': 'हरी शिमला मिर्च', carrot: 'गाजर', carrots: 'गाजर', 'sweet carrots': 'मीठी गाजर',
+  cucumber: 'खीरा', cucumbers: 'खीरा', wheat: 'गेहूं', 'sharbati wheat': 'शरबती गेहूं', rice: 'चावल', 'basmati rice': 'बासमती चावल',
+  apple: 'सेब', apples: 'सेब', mustard: 'सरसों', 'yellow mustard': 'पीली सरसों',
+}
+
+function cropNameHi(name: string, supplied?: unknown): string {
+  if (typeof supplied === 'string' && /[\u0900-\u097F]/.test(supplied)) return supplied
+  return HINDI_CROP_NAMES[name.trim().toLowerCase()] ?? name
+}
+
 const ROLE_PHONE_MAP: Record<string, { phone: string; preferred_role: string }> = {
   farmer: { phone: '+919876543210', preferred_role: 'FARMER' },
   bulk: { phone: '+919899001122', preferred_role: 'BUYER' },
@@ -285,7 +298,7 @@ class ApiClient {
     return {
       id: item.id,
       crop: cropName,
-      cropHi: item.crop_name_hi || cropName,
+      cropHi: cropNameHi(cropName, item.crop_name_hi),
       category: (item.category || 'Vegetables') as any,
       imageSrc,
       visual,
@@ -334,7 +347,7 @@ class ApiClient {
       buyerName: ord.buyer_name || 'Verified Buyer',
       buyerType: ord.cluster_id ? 'Bulk Buyer' : 'Consumer',
       crop: ord.crop_name || 'Produce',
-      cropHi: ord.crop_name || 'फसल',
+      cropHi: cropNameHi(ord.crop_name || 'Crop', ord.crop_name_hi),
       listingId: alloc?.listing_id || ord.id,
       quantityKg: qty,
       ratePerKg: rate,

@@ -29,6 +29,7 @@ class OrderOut(BaseModel):
     cluster_id: Optional[UUID] = None
     crop_type_id: UUID
     crop_name: str
+    crop_name_hi: Optional[str] = None
     total_quantity_kg: float
     gross_amount_rupees: float
     status: OrderStatusEnum
