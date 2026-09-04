@@ -46,6 +46,12 @@ export const phase2Service = {
     const state = await prototypeService.getState()
     if (!input.items.length) throw new Error('Your cart is empty.')
 
+    // Resolve against the same canonical listing source used by the marketplace.
+    // The local state still mirrors consumer-facing tracking and temporary logistics data.
+    const listings = await this.listings()
+    const resolved = input.items.map((item) => ({ item, listing: listings.find((listing) => listing.id === item.listingId) }))
+    for (const entry of resolved) if (!entry.listing || entry.listing.status !== 'active' || entry.item.quantityKg < 1 || entry.item.quantityKg > entry.listing.remainingKg) throw new Error(`${entry.listing?.crop ?? 'An item'} is no longer available in that quantity.`)
+
     // Place real order in canonical PostgreSQL backend
     try {
       const backendItems = input.items.map((i) => ({ listingId: i.listingId, quantityKg: i.quantityKg }))
@@ -53,9 +59,6 @@ export const phase2Service = {
     } catch (err) {
       console.warn('Direct order backend sync note:', err)
     }
-
-    const resolved = input.items.map((item) => ({ item, listing: state.listings.find((listing) => listing.id === item.listingId) }))
-    for (const entry of resolved) if (!entry.listing || entry.listing.status !== 'active' || entry.item.quantityKg < 1 || entry.item.quantityKg > entry.listing.remainingKg) throw new Error(`${entry.listing?.crop ?? 'An item'} is no longer available in that quantity.`)
     const subtotal = resolved.reduce((sum, entry) => sum + entry.item.quantityKg * entry.listing!.pricePerKg, 0)
     const logisticsFee = Math.max(35, Math.round(subtotal * .06)); const platformFee = Math.round(subtotal * .03); const farmerShare = subtotal - platformFee; const orderId = id('KL-C')
     const order: ConsumerOrder = { id: orderId, items: resolved.map(({ item, listing }) => ({ listingId: listing!.id, crop: listing!.crop, cropHi: listing!.cropHi, farm: listing!.farm, imageSrc: listing!.imageSrc, quantityKg: item.quantityKg, ratePerKg: listing!.pricePerKg })), subtotal, logisticsFee, platformFee, farmerShare, total: subtotal + logisticsFee, address: input.address, deliverySlot: input.deliverySlot, eta: day(2), note: input.note, paymentMethod: input.paymentMethod, paymentStatus: input.paymentMethod === 'Pay on Delivery' ? 'Pay on delivery' : 'Mock paid', status: 'confirmed', orderedAt: now(), timeline: [{ status: 'confirmed', label: 'Order confirmed', at: now() }] }
