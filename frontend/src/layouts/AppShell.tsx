@@ -36,7 +36,7 @@ const navByRole: Record<Role, NavItemConfig[]> = {
     { labelKey: 'home', to: '/consumer', icon: Home, end: true },
     { labelKey: 'explore', to: '/consumer/explore', icon: Search },
     { labelKey: 'cart', to: '/consumer/cart', icon: ShoppingBag, primary: true },
-    { labelKey: 'orders', to: '/consumer/orders', icon: ShoppingBag },
+    { labelKey: 'orders', to: '/consumer/orders', icon: PackageCheck },
     { labelKey: 'saved', to: '/consumer/saved', icon: Heart, desktopOnly: true },
     { labelKey: 'profile', to: '/consumer/profile', icon: UserRound },
   ],
