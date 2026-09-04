@@ -1,12 +1,28 @@
-from pathlib import Path
+from typing import AsyncGenerator
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from app.core.config import settings
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import DeclarativeBase, sessionmaker
+engine = create_async_engine(
+    settings.DATABASE_URL,
+    echo=(settings.ENVIRONMENT == "development"),
+    future=True,
+    pool_pre_ping=True,
+    pool_size=10,
+    max_overflow=20,
+)
 
-DATABASE_PATH = Path(__file__).resolve().parents[1] / "kisanlink.db"
-engine = create_engine(f"sqlite:///{DATABASE_PATH}", connect_args={"check_same_thread": False})
-SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+AsyncSessionLocal = async_sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autoflush=False,
+    autocommit=False,
+)
 
 
-class Base(DeclarativeBase):
-    pass
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+        finally:
+            await session.close()

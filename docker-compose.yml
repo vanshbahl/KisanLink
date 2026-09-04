@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  kisanlink-db:
+    image: postgis/postgis:16-3.4
+    container_name: kisanlink-db
+    environment:
+      POSTGRES_USER: kisanlink_user
+      POSTGRES_PASSWORD: kisanlink_secure_password
+      POSTGRES_DB: kisanlink_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kisanlink_user -d kisanlink_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
