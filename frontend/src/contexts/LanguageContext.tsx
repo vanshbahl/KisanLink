@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { translations, type TranslationKey } from '../i18n'
+import { useAuth } from './AuthContext'
 import type { Language } from '../types'
 
 interface LanguageContextValue {
@@ -12,7 +13,9 @@ const LanguageContext = createContext<LanguageContextValue | null>(null)
 const LANGUAGE_KEY = 'kisanlink_language'
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<Language>(() => localStorage.getItem(LANGUAGE_KEY) === 'hi' ? 'hi' : 'en')
+  const { session } = useAuth()
+  const [farmerLanguage, setFarmerLanguage] = useState<Language>(() => localStorage.getItem(LANGUAGE_KEY) === 'hi' ? 'hi' : 'en')
+  const language: Language = session && session.role !== 'farmer' ? 'en' : farmerLanguage
 
   useEffect(() => {
     document.documentElement.lang = language
@@ -22,7 +25,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     language,
     setLanguage(next: Language) {
       localStorage.setItem(LANGUAGE_KEY, next)
-      setLanguageState(next)
+      setFarmerLanguage(next)
     },
     t(key: TranslationKey, values = {}) {
       return Object.entries(values).reduce((text, [name, value]) => text.replaceAll(`{${name}}`, String(value)), translations[language][key] as string)
