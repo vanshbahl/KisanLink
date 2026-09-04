@@ -280,7 +280,7 @@ class ApiClient {
   private mapBackendListing(item: any): FarmerListing {
     const cropName = item.crop_name || 'Produce'
     const visual = this.resolveVisual(cropName)
-    const imageSrc = `/assets/produce/${visual}.webp`
+    const imageSrc = `/assets/produce/${visual === 'leafy' ? 'spinach' : visual}.webp`
 
     return {
       id: item.id,
