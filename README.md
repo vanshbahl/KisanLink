@@ -66,12 +66,12 @@ The [`DOCS/`](./DOCS) directory contains the complete architectural, technical, 
 
 ---
 
-## 🎯 Target SIH 2026 Golden Path Demo Scenario
+## 🎯 Target SIH 2026 Scenario
 
 The entire system is optimized to demonstrate a single complete agricultural transaction across the **Delhi NCR – Sonipat – Panipat corridor**:
 
 ```
-                                  SIH DEMO GOLDEN PATH
+                                  SIH ROADMAP
                                   
    [STEP 1: Farmer Pre-Harvest]     ➔   Ramesh (Sonipat) lists 1.2T tomatoes ready in 3 days @ ₹25/kg.
                                          (Demonstrating Hindi voice input & Fair Price Guidance).
