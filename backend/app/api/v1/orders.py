@@ -461,6 +461,7 @@ def format_order_out(order: Order, filter_farmer_id: Optional[UUID] = None) -> O
         cluster_id=order.cluster_id,
         crop_type_id=order.crop_type_id,
         crop_name=order.crop_type.name_en if order.crop_type else "Crop",
+        crop_name_hi=order.crop_type.name_hi if order.crop_type else None,
         total_quantity_kg=float(order.total_quantity_kg),
         gross_amount_rupees=float(order.gross_amount_rupees),
         status=order.status,
