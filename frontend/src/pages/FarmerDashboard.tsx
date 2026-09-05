@@ -1,5 +1,6 @@
 import { BarChart3, CalendarClock, IndianRupee, PackageCheck, Plus, Sprout, Sun, WalletCards } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { FarmerPulseCard } from '../components/ai/FarmerPulseCard'
 import { FarmerQuickAction } from '../components/FarmerQuickAction'
 import { DashboardSkeleton } from '../components/LoadingSkeleton'
 import { MetricCard } from '../components/MetricCard'
@@ -7,6 +8,7 @@ import { SupportCard } from '../components/SupportCard'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useAsyncData } from '../hooks/useAsyncData'
 import { prototypeService } from '../services/prototypeService'
+import type { FarmerListing } from '../types'
 
 export function FarmerDashboard() {
   const { t } = useLanguage()
@@ -14,7 +16,7 @@ export function FarmerDashboard() {
     const state = await prototypeService.getState()
     const earnings = state.earnings.reduce((sum, item) => sum + item.net, 0)
     const pending = state.earnings.filter((item) => item.status === 'pending').reduce((sum, item) => sum + item.net, 0)
-    return { earnings, pending, activeListings: state.listings.filter((item) => item.status === 'active').length, newOrders: state.orders.filter((item) => item.status === 'new').length, upcomingPickup: state.pickups.find((item) => item.status !== 'completed') }
+    return { earnings, pending, activeListings: state.listings.filter((item) => item.status === 'active').length, newOrders: state.orders.filter((item) => item.status === 'new').length, upcomingPickup: state.pickups.find((item) => item.status !== 'completed'), listings: state.listings as FarmerListing[] }
   })
   if (loading) return <DashboardSkeleton />
   if (error || !data) return <div className="error-panel"><h2>{t('farmLoadError')}</h2><p>{error}</p><button className="btn btn-primary" onClick={() => window.location.reload()}>{t('tryAgain')}</button></div>
@@ -39,6 +41,8 @@ export function FarmerDashboard() {
           <MetricCard icon={PackageCheck} value={data.newOrders} label={t('newOrders')} tone="amber" hint={t('tapReview')} />
         </div>
       </section>
+
+      <FarmerPulseCard listings={data.listings} />
 
       <div className="farmer-content-grid">
         <section className="quick-action-section">

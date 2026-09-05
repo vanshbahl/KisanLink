@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { ArrowLeft, ArrowRight, BadgeIndianRupee, BarChart3, Building2, CalendarDays, Check, CheckCircle2, ChevronRight, CircleHelp, ClipboardCheck, Clock3, Edit3, Eye, IndianRupee, Leaf, LogOut, MapPin, PackageCheck, Phone, Plus, Save, ShoppingBasket, Sprout, Trash2, Truck, UserRound, WalletCards, XCircle } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BadgeIndianRupee, BarChart3, Building2, CalendarDays, Check, CheckCircle2, ChevronRight, CircleHelp, ClipboardCheck, Clock3, Edit3, Eye, IndianRupee, Leaf, LogOut, MapPin, PackageCheck, Phone, Plus, Route, Save, ShoppingBasket, Sparkles, Sprout, Trash2, Truck, UserRound, WalletCards, XCircle } from 'lucide-react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { AiInsightCard } from '../components/ai/AiInsightCard'
+import { FarmerAiTrigger } from '../components/ai/FarmerAiTrigger'
 import { DashboardSkeleton } from '../components/LoadingSkeleton'
 import { ProductImage } from '../components/ProductImage'
 import { StatusBadge } from '../components/StatusBadge'
@@ -8,7 +10,9 @@ import { useLanguage } from '../contexts/LanguageContext'
 import { useToast } from '../contexts/ToastContext'
 import { useAuth } from '../contexts/AuthContext'
 import { roleKey } from '../i18n'
+import { aiText } from '../i18n/farmerAi'
 import { farmerText, type FarmerFeatureKey } from '../i18n/farmerFeature'
+import { analyseMarket, buildEarningsStory, FARMER_CROPS, getCropIntel, getPriceOptions, rankOrders, type FarmerCrop } from '../services/farmerAiService'
 import { prototypeService } from '../services/prototypeService'
 import type { FarmerListing, FarmerOrder, FarmerProfileData, ListingStatus, OrderStatus, Pickup } from '../types'
 import { roleHome } from '../utils/routes'
@@ -19,6 +23,7 @@ const crops = [
   { en: 'New Potatoes', hi: 'नए आलू', image: '/assets/produce/potato.webp', visual: 'potato' as const, category: 'Staples' as const, mandi: 21, recommended: 25 },
   { en: 'Sharbati Wheat', hi: 'शरबती गेहूं', image: '/assets/produce/wheat.webp', visual: 'grain' as const, category: 'Grains' as const, mandi: 31, recommended: 37 },
   { en: 'Sweet Carrots', hi: 'मीठी गाजर', image: '/assets/produce/carrot.webp', visual: 'root' as const, category: 'Vegetables' as const, mandi: 29, recommended: 36 },
+  { en: 'Red Onion', hi: 'लाल प्याज़', image: '/assets/produce/onion.webp', visual: 'onion' as const, category: 'Vegetables' as const, mandi: 18, recommended: 24 },
 ]
 const day = (offset: number) => { const date = new Date(); date.setDate(date.getDate() + offset); return date.toISOString().slice(0, 10) }
 const money = (value: number) => `₹${Math.round(value).toLocaleString('en-IN')}`
@@ -98,8 +103,22 @@ function ListingFields({ form, update, compact = false }: { form: FarmerListing;
 }
 
 function PriceStep({ form, update }: { form: FarmerListing; update: <K extends keyof FarmerListing>(key: K, value: FarmerListing[K]) => void }) {
-  const { f } = useFeatureText(); const earnings = form.quantityKg * form.pricePerKg; const extra = form.quantityKg * (form.pricePerKg - form.mandiPricePerKg)
-  return <><div className="guidance-head"><span><BadgeIndianRupee size={24} /></span><div><h2>{f('smartPrice')}</h2><p>{f('simulated')}</p></div><StatusBadge tone="amber">{f('prototypeInsight')}</StatusBadge></div><div className="price-guide-grid"><article><span>{f('mandiBenchmark')}</span><strong>₹{form.mandiPricePerKg}{f('priceUnit')}</strong></article><article className="recommended"><span>{f('recommendedRange')}</span><strong>₹{form.mandiPricePerKg + 6}–₹{form.mandiPricePerKg + 9}{f('priceUnit')}</strong><button onClick={() => update('pricePerKg', form.mandiPricePerKg + 8)}>{f('useRecommended')}</button></article></div><label className="field full price-input"><span>{f('yourPrice')} *</span><div><IndianRupee size={20} /><input type="number" min="1" value={form.pricePerKg} onChange={(e) => update('pricePerKg', Number(e.target.value))} /><b>{f('priceUnit')}</b></div></label><div className="earning-preview"><div><span>{f('expectedEarnings')}</span><strong>{money(earnings)}</strong></div><div><span>{f('extraVsMandi')}</span><strong className={extra >= 0 ? 'positive' : 'negative'}>{extra >= 0 ? '+' : ''}{money(extra)}</strong></div></div></>
+  const { language, f } = useFeatureText(); const a = (key: Parameters<typeof aiText>[1], values?: Record<string, string | number>) => aiText(language, key, values)
+  const earnings = form.quantityKg * form.pricePerKg; const extra = form.quantityKg * (form.pricePerKg - form.mandiPricePerKg)
+  return <><div className="guidance-head"><span><BadgeIndianRupee size={24} /></span><div><h2>{f('smartPrice')}</h2><p>{f('simulated')}</p></div><StatusBadge tone="amber">{f('prototypeInsight')}</StatusBadge></div><div className="price-guide-grid"><article><span>{f('mandiBenchmark')}</span><strong>₹{form.mandiPricePerKg}{f('priceUnit')}</strong></article><article className="recommended"><span>{f('recommendedRange')}</span><strong>₹{form.mandiPricePerKg + 6}–₹{form.mandiPricePerKg + 9}{f('priceUnit')}</strong><button onClick={() => update('pricePerKg', form.mandiPricePerKg + 8)}>{f('useRecommended')}</button></article></div><label className="field full price-input"><span>{f('yourPrice')} *</span><div><IndianRupee size={20} /><input type="number" min="1" value={form.pricePerKg} onChange={(e) => update('pricePerKg', Number(e.target.value))} /><b>{f('priceUnit')}</b></div></label><div className="earning-preview"><div><span>{f('expectedEarnings')}</span><strong>{money(earnings)}</strong></div><div><span>{f('extraVsMandi')}</span><strong className={extra >= 0 ? 'positive' : 'negative'}>{extra >= 0 ? '+' : ''}{money(extra)}</strong></div></div>
+    <FarmerAiTrigger
+      className="ai-price-advisor"
+      idleLabel={`✨ ${a('analyseBestPrice')}`}
+      stages={[a('stagePriceDemand'), a('stageSimilarListings'), a('stageBuyerAcceptance')]}
+      run={() => getPriceOptions(form)}
+      renderResult={(options, reset) => { const balanced = options.find((option) => option.id === 'balanced')!; return <AiInsightCard eyebrow={`✨ ${a('kisanIntelligence')}`} onClose={reset}>
+        <h2 className="ai-headline">{a('priceAdvisorHeadline', { price: balanced.price })}</h2>
+        <div className="ai-price-options">{options.map((option) => <div className={`ai-price-option${option.id === 'balanced' ? ' recommended' : ''}`} key={option.id}><span className="ai-price-tag">{a(option.hintKey as Parameters<typeof aiText>[1])}</span><strong>₹{option.price}{f('priceUnit')}</strong><small>{a(option.labelKey as Parameters<typeof aiText>[1])}</small></div>)}</div>
+        <div><span className="eyebrow light">{a('estimatedSaleChance')}</span><div className="ai-sale-chance" style={{ marginTop: 6 }}><div className="ai-sale-chance-bar"><i style={{ width: `${balanced.saleChancePct}%` }} /></div><strong>{balanced.saleChancePct}%</strong></div><small style={{ color: 'rgba(255,255,255,.6)', fontSize: 9 }}>{a('prototypeEstimate')}</small></div>
+        <div className="ai-cta-row"><button type="button" className="btn btn-light" onClick={() => { update('pricePerKg', balanced.price); reset() }}><Sparkles size={16} />{a('useThisPrice', { price: balanced.price })}</button></div>
+      </AiInsightCard> }}
+    />
+  </>
 }
 
 function PickupStep({ form, update }: { form: FarmerListing; update: <K extends keyof FarmerListing>(key: K, value: FarmerListing[K]) => void }) {
@@ -120,12 +139,31 @@ export function FarmerProduceDetailPage() {
 }
 
 export function FarmerOrdersPage() {
-  const { language, f } = useFeatureText(); const { showToast } = useToast(); const [orders, setOrders] = useState<FarmerOrder[] | null>(null); const [filter, setFilter] = useState<OrderStatus | 'all'>('all')
-  const load = () => prototypeService.getOrders().then(setOrders); useEffect(() => { load() }, [])
+  const { language, f } = useFeatureText(); const a = (key: Parameters<typeof aiText>[1], values?: Record<string, string | number>) => aiText(language, key, values)
+  const { showToast } = useToast(); const [orders, setOrders] = useState<FarmerOrder[] | null>(null); const [pickups, setPickups] = useState<Pickup[]>([]); const [filter, setFilter] = useState<OrderStatus | 'all'>('all')
+  const load = () => { prototypeService.getOrders().then(setOrders); prototypeService.getPickups().then(setPickups) }; useEffect(() => { load() }, [])
   const update = async (id: string, status: OrderStatus) => { await prototypeService.updateOrder(id, status); showToast(f('orderUpdated')); load() }
   if (!orders) return <LoadState />
   const visible = filter === 'all' ? orders : orders.filter((order) => order.status === filter)
-  return <div className="page farmer-feature-page"><div className="page-title-row"><div><span className="eyebrow"><PackageCheck size={15} /> {f('demoBadge')}</span><h1>{f('ordersTitle')}</h1><p>{f('ordersSubtitle')}</p></div></div><div className="tab-strip">{(['all','new','accepted','preparing','pickup_scheduled','in_transit','delivered','cancelled'] as const).map((key) => <button className={filter === key ? 'active' : ''} onClick={() => setFilter(key)} key={key}>{key === 'all' ? f('all') : f(statusKey[key])}<span>{orders.filter((order) => key === 'all' || order.status === key).length}</span></button>)}</div><div className="order-list">{visible.map((order) => <article className="order-card farmer-order-card" key={order.id}><div className="order-card-head"><div><span>{order.id} · {buyerTypeLabel(language, order.buyerType)}</span><h2>{language === 'hi' ? order.cropHi : order.crop}</h2><p>{f('buyer')}: {order.buyerName}</p></div><StatusBadge tone={tone(order.status)}>{f(statusKey[order.status])}</StatusBadge></div><div className="order-metrics"><div><span>{f('quantity')}</span><strong>{f('quantityKg', { value: order.quantityKg })}</strong></div><div><span>{f('yourPrice')}</span><strong>₹{order.ratePerKg}{f('priceUnit')}</strong></div><div><span>{f('farmerPayout')}</span><strong>{money(order.farmerPayout)}</strong></div><div><span>{f('payment')}</span><strong>{f(order.paymentStatus as 'pending' | 'paid' | 'processing')}</strong></div></div><div className="order-actions"><Link className="btn btn-secondary" to={`/farmer/orders/${order.id}`}>{f('orderDetail')}<ChevronRight size={16} /></Link>{order.status === 'new' && <><button className="btn btn-primary" onClick={() => update(order.id, 'accepted')}><Check size={17} />{f('accept')}</button><button className="btn btn-ghost danger" onClick={() => update(order.id, 'cancelled')}><XCircle size={17} />{f('decline')}</button></>}{order.status === 'accepted' && <button className="btn btn-primary" onClick={() => update(order.id, 'preparing')}><ClipboardCheck size={17} />{f('markReady')}</button>}{order.pickupId && <Link className="btn btn-ghost" to="/farmer/pickups"><Truck size={17} />{f('viewPickup')}</Link>}</div></article>)}{!visible.length && <Empty message={f('noResults')} />}</div></div>
+  return <div className="page farmer-feature-page"><div className="page-title-row"><div><span className="eyebrow"><PackageCheck size={15} /> {f('demoBadge')}</span><h1>{f('ordersTitle')}</h1><p>{f('ordersSubtitle')}</p></div></div>
+    <FarmerAiTrigger
+      idleLabel={`✨ ${a('whatShouldIPrepareFirst')}`}
+      stages={[a('stagePickupWindows'), a('stageOrderValue'), a('stageSharedRoutes')]}
+      run={() => rankOrders(orders, pickups)}
+      renderResult={(ranked, reset) => { const top = ranked[0]; if (!top) return <AiInsightCard onClose={reset}><p className="ai-explanation">{f('noResults')}</p></AiInsightCard>
+        return <AiInsightCard eyebrow={`✨ ${a('kisanIntelligence')}`} onClose={reset}>
+          <h2 className="ai-headline">{a('prepareFirstHeadline', { buyer: top.order.buyerName, crop: language === 'hi' ? top.order.cropHi : top.order.crop })}</h2>
+          <div className="ai-metric-row">
+            <div><span>{a('pickupArrives')}</span><strong>{top.pickup ? `${top.pickup.date} · ${top.pickup.timeWindow}` : f('pickupScheduled')}</strong></div>
+            <div><span>{a('quantityLabel')}</span><strong>{f('quantityKg', { value: top.order.quantityKg })}</strong></div>
+            <div><span>{a('payoutLabel')}</span><strong>{money(top.order.farmerPayout)}</strong></div>
+            <div><span>{a('routeAdvantage')}</span><strong>{top.routeShared ? a('routeShared') : a('routeSolo')}</strong></div>
+          </div>
+          <div className="ai-priority-list">{ranked.map((entry, index) => <div className="ai-priority-item" key={entry.order.id}><span className="ai-priority-rank">{index + 1}</span><div><strong>{entry.order.buyerName}</strong><small>{language === 'hi' ? entry.order.cropHi : entry.order.crop} · {f('quantityKg', { value: entry.order.quantityKg })}</small></div><span className={`ai-priority-tag ${entry.priority}`}>{entry.priority === 'first' ? a('priorityFirst') : entry.priority === 'next' ? a('priorityNext') : a('priorityLater')}</span></div>)}</div>
+          <div className="ai-cta-row"><Link className="btn btn-light" to={`/farmer/orders/${top.order.id}`}><Route size={16} />{a('openOrder')}</Link></div>
+        </AiInsightCard> }}
+    />
+    <div className="tab-strip">{(['all','new','accepted','preparing','pickup_scheduled','in_transit','delivered','cancelled'] as const).map((key) => <button className={filter === key ? 'active' : ''} onClick={() => setFilter(key)} key={key}>{key === 'all' ? f('all') : f(statusKey[key])}<span>{orders.filter((order) => key === 'all' || order.status === key).length}</span></button>)}</div><div className="order-list">{visible.map((order) => <article className="order-card farmer-order-card" key={order.id}><div className="order-card-head"><div><span>{order.id} · {buyerTypeLabel(language, order.buyerType)}</span><h2>{language === 'hi' ? order.cropHi : order.crop}</h2><p>{f('buyer')}: {order.buyerName}</p></div><StatusBadge tone={tone(order.status)}>{f(statusKey[order.status])}</StatusBadge></div><div className="order-metrics"><div><span>{f('quantity')}</span><strong>{f('quantityKg', { value: order.quantityKg })}</strong></div><div><span>{f('yourPrice')}</span><strong>₹{order.ratePerKg}{f('priceUnit')}</strong></div><div><span>{f('farmerPayout')}</span><strong>{money(order.farmerPayout)}</strong></div><div><span>{f('payment')}</span><strong>{f(order.paymentStatus as 'pending' | 'paid' | 'processing')}</strong></div></div><div className="order-actions"><Link className="btn btn-secondary" to={`/farmer/orders/${order.id}`}>{f('orderDetail')}<ChevronRight size={16} /></Link>{order.status === 'new' && <><button className="btn btn-primary" onClick={() => update(order.id, 'accepted')}><Check size={17} />{f('accept')}</button><button className="btn btn-ghost danger" onClick={() => update(order.id, 'cancelled')}><XCircle size={17} />{f('decline')}</button></>}{order.status === 'accepted' && <button className="btn btn-primary" onClick={() => update(order.id, 'preparing')}><ClipboardCheck size={17} />{f('markReady')}</button>}{order.pickupId && <Link className="btn btn-ghost" to="/farmer/pickups"><Truck size={17} />{f('viewPickup')}</Link>}</div></article>)}{!visible.length && <Empty message={f('noResults')} />}</div></div>
 }
 
 export function FarmerOrderDetailPage() {
@@ -136,16 +174,109 @@ export function FarmerOrderDetailPage() {
 }
 
 export function FarmerEarningsPage() {
-  const { language, f } = useFeatureText(); const [items, setItems] = useState<Awaited<ReturnType<typeof prototypeService.getEarnings>> | null>(null); useEffect(() => { prototypeService.getEarnings().then(setItems) }, []); if (!items) return <LoadState />
+  const { language, f } = useFeatureText(); const a = (key: Parameters<typeof aiText>[1], values?: Record<string, string | number>) => aiText(language, key, values)
+  const navigate = useNavigate()
+  const [items, setItems] = useState<Awaited<ReturnType<typeof prototypeService.getEarnings>> | null>(null)
+  const [orders, setOrders] = useState<FarmerOrder[]>([])
+  useEffect(() => { prototypeService.getEarnings().then(setItems); prototypeService.getOrders().then(setOrders) }, [])
+  if (!items) return <LoadState />
   const paid = items.filter((x) => x.status === 'paid').reduce((sum, x) => sum + x.net, 0); const pending = items.filter((x) => x.status === 'pending').reduce((sum, x) => sum + x.net, 0); const gain = items.reduce((sum, x) => sum + x.net - x.mandiEquivalent, 0); const mandi = items.reduce((sum, x) => sum + x.mandiEquivalent, 0); const percent = mandi ? gain / mandi * 100 : 0
-  return <div className="page farmer-feature-page"><div className="page-title-row"><div><span className="eyebrow"><WalletCards size={15} /> {f('demoBadge')}</span><h1>{f('earningsTitle')}</h1></div></div><div className="earnings-summary"><article><IndianRupee /><span>{f('thisMonth')}</span><strong>{money(paid + pending)}</strong></article><article><Clock3 /><span>{f('pendingPayout')}</span><strong>{money(pending)}</strong></article><article><CheckCircle2 /><span>{f('completedPayout')}</span><strong>{money(paid)}</strong></article></div><section className="value-gain-card"><div><span className="eyebrow light">{f('valueGain')}</span><h2>+{money(gain)}</h2><p>{f('extraIncome')}</p></div><strong>+{percent.toFixed(1)}%<small>{f('betterPrice')}</small></strong></section><section className="feature-card"><div className="card-heading"><div><span className="eyebrow">{f('monthlyTrend')}</span><h2>{f('transactions')}</h2></div><MiniBars /></div><div className="transaction-list">{items.map((item) => <div key={item.id}><span className="transaction-icon"><IndianRupee size={18} /></span><div><strong>{language === 'hi' ? item.cropHi : item.crop}</strong><small>{item.orderId} · {item.date}</small></div><span><strong>{money(item.net)}</strong><small>{f(item.status)}</small></span></div>)}</div></section></div>
+  return <div className="page farmer-feature-page"><div className="page-title-row"><div><span className="eyebrow"><WalletCards size={15} /> {f('demoBadge')}</span><h1>{f('earningsTitle')}</h1></div></div><div className="earnings-summary"><article><IndianRupee /><span>{f('thisMonth')}</span><strong>{money(paid + pending)}</strong></article><article><Clock3 /><span>{f('pendingPayout')}</span><strong>{money(pending)}</strong></article><article><CheckCircle2 /><span>{f('completedPayout')}</span><strong>{money(paid)}</strong></article></div><section className="value-gain-card"><div><span className="eyebrow light">{f('valueGain')}</span><h2>+{money(gain)}</h2><p>{f('extraIncome')}</p></div><strong>+{percent.toFixed(1)}%<small>{f('betterPrice')}</small></strong></section>
+    <FarmerAiTrigger
+      idleLabel={`✨ ${a('explainMyEarnings')}`}
+      stages={[a('stageReviewingOrders'), a('stageComparingMandi'), a('stageBuildingStory')]}
+      run={() => buildEarningsStory(items, orders)}
+      renderResult={(story, reset) => <AiInsightCard eyebrow={`✨ ${a('kisanIntelligence')}`} onClose={reset}>
+        <h2 className="ai-headline">{a('earnedMoreHeadline', { amount: money(story.gain) })}</h2>
+        <div className="ai-metric-row">
+          {story.bestCrop && <div><span>{a('bestPerformingCrop')}</span><strong>{language === 'hi' ? story.bestCrop.cropHi : story.bestCrop.crop} · +{money(story.bestCrop.gain)}</strong></div>}
+          <div><span>{a('averageGain')}</span><strong>₹{story.averageGainPerKg.toFixed(2)}{f('priceUnit')}</strong></div>
+          <div><span>{a('pendingPayment')}</span><strong>{money(story.pendingAmount)}</strong><small style={{ color: 'rgba(255,255,255,.6)' }}>{a('pendingPaymentValue')}</small></div>
+        </div>
+        <div><span className="eyebrow light">{a('earningsOpportunity')}</span><p className="ai-explanation" style={{ marginTop: 6 }}>{a('earningsOpportunityCopy', { crop: language === 'hi' ? story.opportunity.cropHi : story.opportunity.crop, kg: story.opportunity.kg, min: money(story.opportunity.min), max: money(story.opportunity.max) })}</p></div>
+        <div className="ai-cta-row"><button type="button" className="btn btn-light" onClick={() => navigate('/farmer/insights')}><BarChart3 size={16} />{a('seeCurrentDemand')}</button></div>
+      </AiInsightCard>}
+    />
+    <section className="feature-card"><div className="card-heading"><div><span className="eyebrow">{f('monthlyTrend')}</span><h2>{f('transactions')}</h2></div><MiniBars /></div><div className="transaction-list">{items.map((item) => <div key={item.id}><span className="transaction-icon"><IndianRupee size={18} /></span><div><strong>{language === 'hi' ? item.cropHi : item.crop}</strong><small>{item.orderId} · {item.date}</small></div><span><strong>{money(item.net)}</strong><small>{f(item.status)}</small></span></div>)}</div></section></div>
 }
 
 function MiniBars() { return <div className="mini-bars" aria-hidden="true">{[34,52,43,68,60,88,76].map((height, index) => <i style={{ height: `${height}%` }} key={index} />)}</div> }
 
+function ForecastChart({ historical, forecast }: { historical: number[]; forecast: number[] }) {
+  const all = [...historical, ...forecast]
+  const min = Math.min(...all), max = Math.max(...all)
+  const width = 600, height = 150, padY = 14
+  const scaleY = (value: number) => height - padY - ((value - min) / Math.max(1, max - min)) * (height - padY * 2)
+  const scaleX = (index: number) => (index / (all.length - 1)) * width
+  const pointsFor = (values: number[], offset: number) => values.map((value, index) => [scaleX(index + offset), scaleY(value)] as const)
+  const toPath = (points: readonly (readonly [number, number])[]) => points.map(([x, y], index) => `${index === 0 ? 'M' : 'L'}${x.toFixed(1)} ${y.toFixed(1)}`).join(' ')
+  const histPoints = pointsFor(historical, 0)
+  const forecastPoints = pointsFor([historical[historical.length - 1], ...forecast], historical.length - 1)
+  const band = Math.max(1, (max - min) * 0.12)
+  const upper = forecastPoints.map(([x, y]) => [x, y - band] as const)
+  const lower = forecastPoints.map(([x, y]) => [x, y + band] as const)
+  const areaPath = `${toPath(upper)} L${lower[lower.length - 1][0].toFixed(1)} ${lower[lower.length - 1][1].toFixed(1)} ${lower.slice().reverse().map(([x, y]) => `L${x.toFixed(1)} ${y.toFixed(1)}`).join(' ')} Z`
+  return <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
+    <path d={areaPath} fill="var(--harvest)" opacity="0.14" stroke="none" />
+    <path d={toPath(histPoints)} fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
+    <path className="forecast-segment" d={toPath(forecastPoints)} fill="none" stroke="var(--harvest)" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="9 9" />
+  </svg>
+}
+
 export function FarmerInsightsPage() {
-  const { f } = useFeatureText(); const [crop, setCrop] = useState('Tomatoes'); const data = crop === 'Tomatoes' ? { mandi: 24, direct: 32, range: '₹31–₹33', interest: 46 } : { mandi: 35, direct: 42, range: '₹40–₹44', interest: 28 }
-  return <div className="page farmer-feature-page"><div className="page-title-row"><div><span className="eyebrow"><BarChart3 size={15} /> {f('prototypeInsight')}</span><h1>{f('insightsTitle')}</h1></div><label className="field crop-select"><span>{f('crop')}</span><select value={crop} onChange={(e) => setCrop(e.target.value)}><option>Tomatoes</option><option>Spinach</option></select></label></div><section className="opportunity-card"><div><span className="eyebrow light"><Leaf size={15} /> {f('opportunity')}</span><h2>{f('opportunityText')}</h2><Link className="btn btn-light" to="/farmer/sell?crop=Fresh%20Tomatoes">{f('listTomatoes')}<ArrowRight size={17} /></Link></div><div className="demand-orb"><strong>{f('high')}</strong><small>{f('demand')}</small></div></section><div className="insight-grid"><article className="feature-card insight-metric"><span>{f('mandiBenchmark')}</span><strong>₹{data.mandi}/kg</strong><small>{f('demoBadge')}</small></article><article className="feature-card insight-metric highlight"><span>{f('directAverage')}</span><strong>₹{data.direct}/kg</strong><small>{data.range} · {f('recommendedRange')}</small></article><article className="feature-card insight-metric"><span>{f('nearbyInterest')}</span><strong>{data.interest}</strong><small>{f('bulkSignal')} · 1.8 tonnes</small></article></div><section className="feature-card trend-card"><div><span className="eyebrow">{f('priceTrend')}</span><h2>{f('directAverage')}</h2></div><div className="trend-line" aria-label="7 day simulated price trend"><svg viewBox="0 0 600 150" preserveAspectRatio="none"><path d="M0 122 C70 112 84 130 145 92 S240 100 300 65 S390 73 450 42 S535 55 600 20" fill="none" stroke="currentColor" strokeWidth="7" strokeLinecap="round" /></svg><div>{[27,28,28,30,29,31,32].map((value) => <span key={`${value}-${Math.random()}`}>₹{value}</span>)}</div></div><p className="insight-explanation">{f('opportunityText')}</p></section></div>
+  const { language, f } = useFeatureText()
+  const a = (key: Parameters<typeof aiText>[1], values?: Record<string, string | number>) => aiText(language, key, values)
+  const [crop, setCrop] = useState<FarmerCrop>('Tomatoes')
+  const intel = getCropIntel(crop)
+  const cropLabel = language === 'hi' ? intel.cropHi : intel.crop
+
+  return <div className="page farmer-feature-page">
+    <div className="page-title-row"><div><span className="eyebrow"><BarChart3 size={15} /> {a('insightsHeading')}</span><h1>{f('insightsTitle')}</h1></div><label className="field crop-select"><span>{f('crop')}</span><select value={crop} onChange={(e) => setCrop(e.target.value as FarmerCrop)}>{FARMER_CROPS.map((key) => <option key={key} value={key}>{language === 'hi' ? getCropIntel(key).cropHi : key}</option>)}</select></label></div>
+    <section className="opportunity-card"><div><span className="eyebrow light"><Leaf size={15} /> {f('opportunity')}</span><h2>{f('opportunityText')}</h2><Link className="btn btn-light" to={`/farmer/sell?crop=${encodeURIComponent(intel.listingCrop)}`}>{a('listThisCropCta')}<ArrowRight size={17} /></Link></div><div className="demand-orb"><strong>{intel.demandIndex >= 70 ? a('demandHigh') : intel.demandIndex >= 45 ? a('demandModerate') : a('demandLow')}</strong><small>{f('demand')}</small></div></section>
+    <div className="insight-grid">
+      <article className="feature-card insight-metric"><span>{f('mandiBenchmark')}</span><strong>₹{intel.mandi}/kg</strong><small>{f('demoBadge')}</small></article>
+      <article className="feature-card insight-metric highlight"><span>{f('directAverage')}</span><strong>₹{intel.direct}/kg</strong><small>₹{intel.recommendedMin}–₹{intel.recommendedMax} · {f('recommendedRange')}</small></article>
+      <article className="feature-card insight-metric"><span>{f('nearbyInterest')}</span><strong>{intel.buyerCount}</strong><small>{f('bulkSignal')} · {(intel.nearbyDemandKg / 1000).toFixed(1)} {a('tonnesUnit')}</small></article>
+    </div>
+
+    <FarmerAiTrigger
+      idleLabel={`✨ ${a('analyseMarket')}`}
+      idleHint={f('insightsTitle')}
+      stages={[a('stageBuyerDemand'), a('stageMandiTrend'), a('stageDemandChange'), a('stageForecast')]}
+      run={() => analyseMarket(crop)}
+      className="ai-market-panel"
+      renderResult={(analysis, reset) => <AiInsightCard eyebrow={`✨ ${a('insightsHeading')}`} onClose={reset}>
+        <div><h2 className="ai-headline">{a('marketHeadline', { crop: cropLabel })}</h2></div>
+        <div className="ai-metric-row">
+          <div><span>{a('recommendedSellingRange')}</span><strong>₹{intel.recommendedMin}–₹{intel.recommendedMax}{f('priceUnit')}</strong></div>
+          <div><span>{a('expectedDemandIncrease')}</span><strong>↑ {intel.demandChangePct}%</strong></div>
+          <div><span>{a('nearbyUnmetDemand')}</span><strong>{(intel.nearbyDemandKg / 1000).toFixed(1)} {a('tonnesUnit')}</strong></div>
+          <div><span>{a('confidenceLabel')}</span><strong>{intel.confidence}%</strong></div>
+        </div>
+        <p className="ai-explanation">{a('marketExplanation', { grade: analysis.grade, crop: cropLabel, supply: analysis.supplyLabel === 'High' ? a('supplyHigh') : analysis.supplyLabel === 'Moderate' ? a('supplyModerate') : a('supplyLow'), demand: analysis.demandLabel === 'High' ? a('demandHigh') : analysis.demandLabel === 'Moderate' ? a('demandModerate') : a('demandLow') })}</p>
+        <div className="ai-factor-chips">
+          <span className="ai-factor-chip">{f('demand')}: {analysis.demandLabel === 'High' ? a('demandHigh') : analysis.demandLabel === 'Moderate' ? a('demandModerate') : a('demandLow')}</span>
+          <span className="ai-factor-chip">{f('status')}: {analysis.supplyLabel === 'High' ? a('supplyHigh') : analysis.supplyLabel === 'Moderate' ? a('supplyModerate') : a('supplyLow')}</span>
+          <span className="ai-factor-chip">{a('priceMomentum')}: {analysis.momentum === 'Rising' ? a('momentumRising') : analysis.momentum === 'Falling' ? a('momentumFalling') : a('momentumStable')}</span>
+          <span className="ai-factor-chip">{a('pickupCapacity')}: {analysis.pickup === 'Available' ? a('pickupAvailable') : a('pickupLimited')}</span>
+        </div>
+        <div>
+          <span className="eyebrow light">{a('bestAction')}</span>
+          <p className="ai-explanation" style={{ marginTop: 6 }}>{a('bestActionCopy', { min: intel.actionKgMin, max: intel.actionKgMax })}</p>
+        </div>
+        <div className="ai-cta-row">
+          <Link className="btn btn-light" to={`/farmer/sell?crop=${encodeURIComponent(intel.listingCrop)}`}><Sprout size={16} />{f('listTomatoes')}</Link>
+        </div>
+      </AiInsightCard>}
+    />
+
+    <section className="feature-card trend-card">
+      <div><span className="eyebrow">{f('priceTrend')}</span><h2>{cropLabel}</h2></div>
+      <div className="trend-line" aria-label="7 day historical and 3 day forecast price trend"><ForecastChart historical={intel.historical} forecast={intel.forecast} /><div>{intel.historical.map((value, index) => <span key={`h-${index}`}>₹{value}</span>)}{intel.forecast.map((value, index) => <span key={`f-${index}`} style={{ color: 'var(--harvest)' }}>₹{value}</span>)}</div></div>
+      <div className="ai-forecast-legend"><span><i /> {a('historicalLabel')}</span><span><i className="dashed" /> {a('forecastLabel')}</span></div>
+      <p className="insight-explanation">{a('forecastDisclaimer')}</p>
+    </section>
+  </div>
 }
 
 export function FarmerPickupsPage() {
