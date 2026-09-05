@@ -1,5 +1,7 @@
-import { useRef, useState, type ReactNode } from 'react'
-import { Sparkles } from 'lucide-react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { ArrowRight, Sparkles } from 'lucide-react'
+import { useLanguage } from '../../contexts/LanguageContext'
+import { aiText } from '../../i18n/farmerAi'
 import { AiThinkingState } from './AiThinkingState'
 import { usePrefersReducedMotion } from './useReducedMotion'
 
@@ -19,10 +21,13 @@ export function FarmerAiTrigger<T>({ idleLabel, idleHint, stages, run, renderRes
   className?: string
   variant?: 'card' | 'inline'
 }) {
+  const { language } = useLanguage()
   const [state, setState] = useState<AiPanelState>('idle')
   const [result, setResult] = useState<T | null>(null)
   const reduced = usePrefersReducedMotion()
   const timer = useRef<number | null>(null)
+
+  useEffect(() => () => { if (timer.current) window.clearTimeout(timer.current) }, [])
 
   const start = () => {
     setState('thinking')
@@ -36,7 +41,8 @@ export function FarmerAiTrigger<T>({ idleLabel, idleHint, stages, run, renderRes
       {state === 'idle' && (
         <button type="button" className="ai-trigger" onClick={start}>
           <span className="ai-trigger-icon"><Sparkles size={17} /></span>
-          <span className="ai-trigger-copy"><strong>{idleLabel}</strong>{idleHint && <small>{idleHint}</small>}</span>
+          <span className="ai-trigger-copy"><small>{aiText(language, 'kisanIntelligence')}</small><strong>{idleHint ?? idleLabel}</strong></span>
+          <span className="ai-trigger-action">{idleLabel}<ArrowRight size={15} /></span>
         </button>
       )}
       {state === 'thinking' && <AiThinkingState stages={stages} />}

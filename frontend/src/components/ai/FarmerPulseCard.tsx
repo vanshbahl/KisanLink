@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { IndianRupee, MapPin, Sparkles, Truck, TrendingUp } from 'lucide-react'
+import { IndianRupee, MapPin, Sprout, Truck, TrendingUp } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useLanguage } from '../../contexts/LanguageContext'
 import { aiText } from '../../i18n/farmerAi'
@@ -21,14 +21,14 @@ export function FarmerPulseCard({ listings }: { listings: FarmerListing[] }) {
   return (
     <section className="ai-pulse-card">
       <FarmerAiTrigger
-        idleLabel={`✨ ${f('analyseOpportunity')}`}
-        idleHint={f('bestOpportunityToday')}
+        idleLabel={f('analyseOpportunity')}
+        idleHint={f('dashboardSignal')}
         stages={[f('stageDemand'), f('stageMandi'), f('stageProduce'), f('stagePrepare')]}
         run={() => getFarmOpportunity(listings)}
         renderResult={(insight, reset) => {
           const cropLabel = language === 'hi' ? insight.cropHi : insight.crop
           return (
-            <AiInsightCard eyebrow={`✨ ${f('kisanIntelligence')}`} onClose={reset}>
+            <AiInsightCard onClose={reset}>
               <div>
                 <span className="eyebrow light">{f('bestOpportunityToday')}</span>
                 <h2 className="ai-headline">{f('opportunityHeadline', { crop: cropLabel })}</h2>
@@ -41,7 +41,7 @@ export function FarmerPulseCard({ listings }: { listings: FarmerListing[] }) {
               </div>
               {showWhy && <AiReasoningFactors factors={insight.factors.map((factor) => ({ icon: FACTOR_ICONS[factor.id], label: f(factor.labelKey as Parameters<typeof aiText>[1]), value: f(factor.valueKey as Parameters<typeof aiText>[1], factor.values) }))} />}
               <div className="ai-cta-row">
-                <Link className="btn btn-light" to={`/farmer/sell?crop=${encodeURIComponent(insight.listingCrop)}`}><Sparkles size={16} />{f('listCrop', { crop: cropLabel })}</Link>
+                <Link className="btn btn-primary" to={`/farmer/sell?crop=${encodeURIComponent(insight.listingCrop)}`}><Sprout size={16} />{f('listCrop', { crop: cropLabel })}</Link>
                 <button type="button" className="btn btn-ghost-light" onClick={() => setShowWhy((current) => !current)}>{showWhy ? f('hideWhy') : f('seeWhy')}</button>
               </div>
             </AiInsightCard>
