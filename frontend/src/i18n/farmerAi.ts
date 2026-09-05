@@ -4,12 +4,12 @@ import type { Language } from '../types'
 // Hindi strings are natural phrasing, not transliteration.
 const copy = {
   en: {
-    kisanIntelligence: 'Kisan Intelligence', aiAssisted: 'AI-assisted insight',
+    kisanIntelligence: 'Kisan Intelligence', aiAssisted: 'AI-assisted insight', combiningSignals: 'Combining farm signals',
     disclaimerShort: 'AI-assisted prototype insight · Based on nearby demand, prices and your current listings.',
     forecastDisclaimer: 'Prototype forecast based on simulated regional demand and mandi trends.',
 
     // Feature 1 — Farm Pulse
-    bestOpportunityToday: 'Best opportunity today', analyseOpportunity: 'Analyse today’s opportunity',
+    bestOpportunityToday: 'Best opportunity today', analyseOpportunity: 'Analyse', dashboardSignal: 'Tomato demand looks stronger today',
     seeWhy: 'See why', hideWhy: 'Hide details', recommendedAction: 'Recommended action', potentialGain: 'Potential gain',
     listCrop: 'List {crop}', listingThisCrop: 'List this crop',
     stageDemand: 'Checking nearby buyer demand…', stageMandi: 'Comparing mandi prices…', stageProduce: 'Checking your available produce…', stagePrepare: 'Preparing recommendation…',
@@ -34,30 +34,31 @@ const copy = {
     historicalLabel: 'Last 7 days', forecastLabel: 'Forecast',
 
     // Feature 3 — Smart Price Advisor
-    analyseBestPrice: 'Analyse best price', stagePriceDemand: 'Checking nearby demand…', stageSimilarListings: 'Comparing similar listings…', stageBuyerAcceptance: 'Estimating buyer acceptance…',
+    analyseBestPrice: 'Check price', priceSignal: 'Check the best selling price', stagePriceDemand: 'Checking nearby demand…', stageSimilarListings: 'Comparing similar listings…', stageBuyerAcceptance: 'Estimating buyer acceptance…',
     priceAdvisorHeadline: '₹{price}/kg gives the best balance.', fastSale: 'Fast sale', lowerEarnings: 'Lower earnings', bestBalance: 'Recommended', bestBalanceHint: 'Best balance', higherEarnings: 'Higher earnings', lowerSaleProbability: 'Lower sale probability',
     estimatedSaleChance: 'Estimated sale chance', prototypeEstimate: 'Prototype estimate, not a guarantee', useThisPrice: 'Use ₹{price}/kg',
 
     // Feature 4 — Order Advisor
-    whatShouldIPrepareFirst: 'What should I prepare first?', stagePickupWindows: 'Checking pickup windows…', stageOrderValue: 'Comparing order value…', stageSharedRoutes: 'Checking shared routes…',
+    whatShouldIPrepareFirst: 'Analyse orders', orderSignal: 'Which order should I prepare first?', stagePickupWindows: 'Checking pickup windows…', stageOrderValue: 'Comparing order value…', stageSharedRoutes: 'Checking shared routes…',
     prepareFirstHeadline: 'Prepare {buyer}’s {crop} order first.', why: 'Why', pickupArrives: 'Pickup arrives', quantityLabel: 'Quantity', payoutLabel: 'Payout', routeAdvantage: 'Route advantage',
     routeShared: 'Shares tomorrow’s pooled pickup', routeSolo: 'Standalone pickup for this order',
-    priorityFirst: 'Prepare first', priorityNext: 'Prepare next', priorityLater: 'Can wait', openOrder: 'Open order',
+    priorityFirst: 'First', priorityNext: 'Next', priorityLater: 'Later', openOrder: 'Open order',
 
     // Feature 5 — Earnings Story
-    explainMyEarnings: 'Explain my earnings', stageReviewingOrders: 'Reviewing your orders…', stageComparingMandi: 'Comparing mandi equivalent…', stageBuildingStory: 'Preparing your earnings story…',
+    explainMyEarnings: 'See why you earned more', earningsSignal: 'See why you earned more', simpleMonth: 'Your month in simple words', currentOpportunity: 'Current opportunity', demandStrongThreeDays: 'Demand may remain strong for the next 3 days.', stageReviewingOrders: 'Reviewing your orders…', stageComparingMandi: 'Comparing mandi equivalent…', stageBuildingStory: 'Preparing your earnings story…',
     earnedMoreHeadline: 'You earned {amount} more this month by selling directly through KisanLink instead of the local mandi.',
     bestPerformingCrop: 'Best performing crop', averageGain: 'Average gain', pendingPayment: 'Pending payment', pendingPaymentValue: 'expected within 2 days',
     earningsOpportunity: 'Opportunity', earningsOpportunityCopy: 'This week’s {crop} demand could add another {min}–{max} if you list {kg} kg.', seeCurrentDemand: 'See current demand',
 
+    marketOutlook: 'Market outlook', tomorrowFavourable: 'Tomorrow looks favourable', demandStrengthening: 'Demand strengthening', priceOutlook: 'Price outlook', whatFound: 'What KisanLink found', buyerDemandLabel: 'Buyer demand', nearbySupply: 'Nearby supply', mandiArrivals: 'Mandi arrivals', stable: 'Stable', available: 'Available', recommendedActionTitle: 'Recommended action', todayLabel: 'Today',
     perKg: '/kg', kg: 'kg', tonnesUnit: 't',
   },
   hi: {
-    kisanIntelligence: 'किसान इंटेलिजेंस', aiAssisted: 'AI की मदद से जानकारी',
+    kisanIntelligence: 'किसान इंटेलिजेंस', aiAssisted: 'AI की मदद से जानकारी', combiningSignals: 'खेत के संकेत जोड़े जा रहे हैं',
     disclaimerShort: 'AI की मदद से बना अनुमान · पास की मांग, कीमतों और आपकी मौजूदा लिस्टिंग पर आधारित।',
     forecastDisclaimer: 'यह अनुमान क्षेत्रीय मांग और मंडी रुझानों के अनुकरण पर आधारित है।',
 
-    bestOpportunityToday: 'आज का सबसे अच्छा मौका', analyseOpportunity: 'आज का मौका जांचें',
+    bestOpportunityToday: 'आज का सबसे अच्छा मौका', analyseOpportunity: 'जांचें', dashboardSignal: 'आज टमाटर की मांग मज़बूत दिख रही है',
     seeWhy: 'वजह देखें', hideWhy: 'वजह छुपाएं', recommendedAction: 'सुझाई गई कार्रवाई', potentialGain: 'संभावित फायदा',
     listCrop: '{crop} सूचीबद्ध करें', listingThisCrop: 'यह फसल सूचीबद्ध करें',
     stageDemand: 'पास के खरीदारों की मांग देखी जा रही है…', stageMandi: 'मंडी भाव की तुलना हो रही है…', stageProduce: 'आपकी उपलब्ध फसल देखी जा रही है…', stagePrepare: 'सुझाव तैयार किया जा रहा है…',
@@ -79,20 +80,21 @@ const copy = {
     bestAction: 'सबसे अच्छी कार्रवाई', bestActionCopy: 'कल दोपहर से पहले {min}–{max} किलो सूचीबद्ध करें।', listThisCropCta: 'यह फसल सूचीबद्ध करें',
     historicalLabel: 'पिछले 7 दिन', forecastLabel: 'अनुमान',
 
-    analyseBestPrice: 'सबसे अच्छी कीमत जांचें', stagePriceDemand: 'पास की मांग देखी जा रही है…', stageSimilarListings: 'मिलती-जुलती लिस्टिंग की तुलना हो रही है…', stageBuyerAcceptance: 'खरीदार की स्वीकृति का अनुमान लगाया जा रहा है…',
+    analyseBestPrice: 'कीमत जांचें', priceSignal: 'बेचने की सही कीमत जांचें', stagePriceDemand: 'पास की मांग देखी जा रही है…', stageSimilarListings: 'मिलती-जुलती लिस्टिंग की तुलना हो रही है…', stageBuyerAcceptance: 'खरीदार की स्वीकृति का अनुमान लगाया जा रहा है…',
     priceAdvisorHeadline: '₹{price}/किलो सबसे अच्छा संतुलन देता है।', fastSale: 'तेज़ बिक्री', lowerEarnings: 'कम कमाई', bestBalance: 'सुझाया गया', bestBalanceHint: 'सबसे अच्छा संतुलन', higherEarnings: 'ज़्यादा कमाई', lowerSaleProbability: 'बिकने की संभावना कम',
     estimatedSaleChance: 'बिकने की अनुमानित संभावना', prototypeEstimate: 'यह प्रोटोटाइप अनुमान है, गारंटी नहीं', useThisPrice: '₹{price}/किलो इस्तेमाल करें',
 
-    whatShouldIPrepareFirst: 'पहले क्या तैयार करूं?', stagePickupWindows: 'पिकअप समय देखा जा रहा है…', stageOrderValue: 'ऑर्डर की कीमत की तुलना हो रही है…', stageSharedRoutes: 'साझा रूट देखे जा रहे हैं…',
+    whatShouldIPrepareFirst: 'ऑर्डर जांचें', orderSignal: 'पहले कौन सा ऑर्डर तैयार करूं?', stagePickupWindows: 'पिकअप समय देखा जा रहा है…', stageOrderValue: 'ऑर्डर की कीमत की तुलना हो रही है…', stageSharedRoutes: 'साझा रूट देखे जा रहे हैं…',
     prepareFirstHeadline: '{buyer} का {crop} ऑर्डर पहले तैयार करें।', why: 'वजह', pickupArrives: 'पिकअप कब आएगा', quantityLabel: 'मात्रा', payoutLabel: 'भुगतान', routeAdvantage: 'रूट का फायदा',
     routeShared: 'कल के साझा पिकअप का हिस्सा', routeSolo: 'इस ऑर्डर के लिए अलग पिकअप',
-    priorityFirst: 'पहले तैयार करें', priorityNext: 'बाद में तैयार करें', priorityLater: 'इंतज़ार हो सकता है', openOrder: 'ऑर्डर खोलें',
+    priorityFirst: 'पहले', priorityNext: 'अगला', priorityLater: 'बाद में', openOrder: 'ऑर्डर खोलें',
 
-    explainMyEarnings: 'मेरी कमाई समझाएं', stageReviewingOrders: 'आपके ऑर्डर देखे जा रहे हैं…', stageComparingMandi: 'मंडी कीमत से तुलना हो रही है…', stageBuildingStory: 'आपकी कमाई की कहानी तैयार हो रही है…',
+    explainMyEarnings: 'जानें आपने ज़्यादा क्यों कमाया', earningsSignal: 'जानें आपने ज़्यादा क्यों कमाया', simpleMonth: 'आपका महीना, आसान शब्दों में', currentOpportunity: 'मौजूदा अवसर', demandStrongThreeDays: 'अगले 3 दिनों तक मांग मज़बूत रह सकती है।', stageReviewingOrders: 'आपके ऑर्डर देखे जा रहे हैं…', stageComparingMandi: 'मंडी कीमत से तुलना हो रही है…', stageBuildingStory: 'आपकी कमाई की कहानी तैयार हो रही है…',
     earnedMoreHeadline: 'स्थानीय मंडी की तुलना में KisanLink से सीधे बेचकर आपने इस महीने {amount} ज़्यादा कमाए।',
     bestPerformingCrop: 'सबसे अच्छा प्रदर्शन करने वाली फसल', averageGain: 'औसत फायदा', pendingPayment: 'बाकी भुगतान', pendingPaymentValue: '2 दिनों में मिलने की उम्मीद',
     earningsOpportunity: 'मौका', earningsOpportunityCopy: 'इस हफ़्ते {kg} किलो {crop} सूचीबद्ध करने से {min}–{max} और मिल सकते हैं।', seeCurrentDemand: 'मौजूदा मांग देखें',
 
+    marketOutlook: 'बाज़ार का अनुमान', tomorrowFavourable: 'कल बाज़ार अनुकूल दिख रहा है', demandStrengthening: 'मांग मज़बूत हो रही है', priceOutlook: 'कीमत का अनुमान', whatFound: 'KisanLink ने क्या पाया', buyerDemandLabel: 'खरीदारों की मांग', nearbySupply: 'पास की सप्लाई', mandiArrivals: 'मंडी की आवक', stable: 'स्थिर', available: 'उपलब्ध', recommendedActionTitle: 'सुझाई गई कार्रवाई', todayLabel: 'आज',
     perKg: '/किलो', kg: 'किलो', tonnesUnit: 'टन',
   },
 } as const
