@@ -1,6 +1,6 @@
 import { ArrowRight, MapPin, ShieldCheck, Sprout, Truck } from 'lucide-react'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { CategoryChip } from '../components/CategoryChip'
 import { DashboardSkeleton } from '../components/LoadingSkeleton'
 import { PriceTransparency } from '../components/PriceTransparency'
@@ -10,12 +10,18 @@ import { marketplaceService } from '../services/marketplaceService'
 import { useAsyncData } from '../hooks/useAsyncData'
 import type { Category } from '../types'
 import { useLanguage } from '../contexts/LanguageContext'
+import { MarketplaceAiTrigger } from '../components/ai/MarketplaceAiTrigger'
+import { MarketplaceInsightResult } from '../components/ai/MarketplaceInsightResult'
+import { freshPick } from '../services/consumerIntelligenceService'
+import { phase2Service } from '../services/phase2Service'
 
 export function ConsumerHome() {
   const { t } = useLanguage()
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState<Category | 'All'>('All')
   const { data, loading, error } = useAsyncData(() => marketplaceService.getFeaturedListings())
+  const { data: intelligenceListings } = useAsyncData(() => phase2Service.listings())
   const categories = marketplaceService.getCategories()
   const filtered = data?.filter((listing) => (category === 'All' || listing.category === category) && `${listing.product} ${listing.productHi ?? ''} Ramesh Kumar Ramesh Farms`.toLowerCase().includes(search.toLowerCase())) ?? []
 
@@ -24,6 +30,8 @@ export function ConsumerHome() {
       <section className="consumer-intro"><div><span className="eyebrow"><MapPin size={15} /> {t('dwarkaLocation')}</span><h1>{t('freshNearTitle').split('\n').map((line, index) => <span key={line}>{line}{index === 0 && <br />}</span>)}</h1><p>{t('freshNearCopy')}</p></div><div className="consumer-hero-art"><span>{t('farmFreshToday')}</span><div className="hero-basket" aria-hidden="true"><img src="/assets/produce/tomato.webp" alt="" /><img src="/assets/produce/spinach.webp" alt="" /><img src="/assets/produce/carrot.webp" alt="" /><img src="/assets/produce/apple.webp" alt="" /></div><small><ShieldCheck size={15} /> {t('qualityChecked')}</small></div></section>
       <SearchBar value={search} onChange={setSearch} />
       <div className="category-row"><CategoryChip name="All" active={category === 'All'} onClick={() => setCategory('All')} />{categories.map((item) => <CategoryChip key={item.name} {...item} active={category === item.name} onClick={() => setCategory(item.name)} />)}</div>
+
+      <section className="section-block consumer-intelligence-slot"><div className="section-heading"><div><span className="eyebrow">Kisan Intelligence</span><h2>Fresh Pick</h2></div></div><MarketplaceAiTrigger idleLabel="Find my pick" idleHint="Find the strongest current produce option" stages={['Checking fresh harvests', 'Comparing nearby farm prices', 'Checking mandi references', 'Reviewing available supply', 'Preparing your recommendation']} run={() => freshPick(intelligenceListings ?? [])} renderResult={(insight, reset) => <MarketplaceInsightResult {...insight} onClose={reset} onCta={() => insight.listingId ? navigate(`/consumer/listing/${insight.listingId}`) : reset()} footer="Uses active listing price, mandi reference, harvest date, stock and verification fields." />} /></section>
 
       <section className="section-block">
         <div className="section-heading"><div><span className="eyebrow">{t('pickedClose')}</span><h2>{t('freshNearYou')}</h2></div><Link to="/consumer/explore">{t('exploreAll')} <ArrowRight size={16} /></Link></div>

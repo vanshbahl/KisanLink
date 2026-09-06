@@ -1,7 +1,7 @@
 import { useEffect, useState, type CSSProperties, type FormEvent } from 'react'
 import { AlertTriangle, ArrowLeft, ArrowRight, BadgeIndianRupee, BarChart3, Building2, CalendarDays, Check, CheckCircle2, ChevronDown, ChevronRight, CircleHelp, ClipboardCheck, Clock3, Edit3, Eye, IndianRupee, Leaf, LogOut, MapPin, Mic, PackageCheck, Phone, Plus, Route, Save, ShoppingBasket, Sparkles, Sprout, Store, Trash2, TrendingUp, Truck, UserRound, WalletCards, XCircle } from 'lucide-react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { AiInsightCard } from '../components/ai/AiInsightCard'
+import { FarmerInsightCard } from '../components/ai/FarmerInsightCard'
 import { FarmerAiTrigger } from '../components/ai/FarmerAiTrigger'
 import { DashboardSkeleton } from '../components/LoadingSkeleton'
 import { ProductImage } from '../components/ProductImage'
@@ -155,12 +155,12 @@ function PriceStep({ form, update }: { form: FarmerListing; update: <K extends k
       idleHint={a('priceSignal')}
       stages={[a('stagePriceDemand'), a('stageSimilarListings'), a('stageBuyerAcceptance')]}
       run={() => fetchLivePriceOptions(form)}
-      renderResult={(options, reset) => { const balanced = options.find((option) => option.id === 'balanced')!; return <AiInsightCard onClose={reset}>
+      renderResult={(options, reset) => { const balanced = options.find((option) => option.id === 'balanced')!; return <FarmerInsightCard onClose={reset}>
         <h2 className="ai-headline">{a('priceAdvisorHeadline', { price: balanced.price })}</h2>
         <div className="ai-price-options">{options.map((option) => <div className={`ai-price-option${option.id === 'balanced' ? ' recommended' : ''}`} key={option.id}><strong>₹{option.price}{f('priceUnit')}</strong><small>{a(option.labelKey as Parameters<typeof aiText>[1])}</small><span className="ai-price-tag">{a(option.hintKey as Parameters<typeof aiText>[1])}</span></div>)}</div>
         <div><span className="eyebrow">{a('estimatedSaleChance')}</span><div className="ai-sale-chance" style={{ marginTop: 6 }}><div className="ai-sale-chance-bar"><i style={{ width: `${balanced.saleChancePct}%` }} /></div><strong>{balanced.saleChancePct}%</strong></div><small className="ai-estimate-note">{a('prototypeEstimate')}</small></div>
         <div className="ai-cta-row"><button type="button" className="btn btn-primary" onClick={() => { update('pricePerKg', balanced.price); reset() }}>{a('useThisPrice', { price: balanced.price })}</button></div>
-      </AiInsightCard> }}
+      </FarmerInsightCard> }}
     />
   </>
 }
@@ -223,12 +223,12 @@ export function FarmerOrdersPage() {
       idleHint={a('orderSignal')}
       stages={[a('stagePickupWindows'), a('stageOrderValue'), a('stageSharedRoutes')]}
       run={() => rankOrders(orders, pickups)}
-      renderResult={(ranked, reset) => { const top = ranked[0]; if (!top) return <AiInsightCard onClose={reset}><p className="ai-explanation">{f('noResults')}</p></AiInsightCard>
-        return <AiInsightCard onClose={reset}>
+      renderResult={(ranked, reset) => { const top = ranked[0]; if (!top) return <FarmerInsightCard onClose={reset}><p className="ai-explanation">{f('noResults')}</p></FarmerInsightCard>
+        return <FarmerInsightCard onClose={reset}>
           <h2 className="ai-headline">{a('prepareFirstHeadline', { buyer: top.order.buyerName, crop: language === 'hi' ? top.order.cropHi : top.order.crop })}</h2>
           <div className="ai-priority-list">{ranked.map((entry) => <div className="ai-priority-item" key={entry.order.id}><span className={`ai-priority-tag ${entry.priority}`}>{entry.priority === 'first' ? a('priorityFirst') : entry.priority === 'next' ? a('priorityNext') : a('priorityLater')}</span><div className="ai-priority-copy"><strong>{entry.order.buyerName}</strong><small>{language === 'hi' ? entry.order.cropHi : entry.order.crop} · {f('quantityKg', { value: entry.order.quantityKg })}</small><p>{entry.routeShared ? a('routeShared') : a('routeSolo')}</p></div><div className="ai-priority-meta"><strong>{money(entry.order.farmerPayout)}</strong><small>{entry.pickup ? `${entry.pickup.date} · ${entry.pickup.timeWindow}` : f('pickupScheduled')}</small></div></div>)}</div>
           <div className="ai-cta-row"><Link className="btn btn-primary" to={`/farmer/orders/${top.order.id}`}><Route size={16} />{a('openOrder')}</Link></div>
-        </AiInsightCard> }}
+        </FarmerInsightCard> }}
     />
     <div className="tab-strip">{(['all','new','accepted','preparing','pickup_scheduled','in_transit','delivered','cancelled'] as const).map((key) => <button className={filter === key ? 'active' : ''} onClick={() => setFilter(key)} key={key}>{key === 'all' ? f('all') : f(statusKey[key])}<span>{orders.filter((order) => key === 'all' || order.status === key).length}</span></button>)}</div><div className="order-list">{visible.map((order) => <article className="order-card farmer-order-card" key={order.id}><div className="order-card-head"><div><span>{order.id} · {buyerTypeLabel(language, order.buyerType)}</span><h2>{language === 'hi' ? order.cropHi : order.crop}</h2><p>{f('buyer')}: {order.buyerName}</p></div><StatusBadge tone={tone(order.status)}>{f(statusKey[order.status])}</StatusBadge></div><div className="order-metrics"><div><span>{f('quantity')}</span><strong>{f('quantityKg', { value: order.quantityKg })}</strong></div><div><span>{f('yourPrice')}</span><strong>₹{order.ratePerKg}{f('priceUnit')}</strong></div><div><span>{f('farmerPayout')}</span><strong>{money(order.farmerPayout)}</strong></div><div><span>{f('payment')}</span><strong>{f(order.paymentStatus as 'pending' | 'paid' | 'processing')}</strong></div></div><div className="order-actions"><Link className="btn btn-secondary" to={`/farmer/orders/${order.id}`}>{f('orderDetail')}<ChevronRight size={16} /></Link>{order.status === 'new' && <><button className="btn btn-primary" onClick={() => update(order.id, 'accepted')}><Check size={17} />{f('accept')}</button><button className="btn btn-ghost danger" onClick={() => update(order.id, 'cancelled')}><XCircle size={17} />{f('decline')}</button></>}{order.status === 'accepted' && <button className="btn btn-primary" onClick={() => update(order.id, 'preparing')}><ClipboardCheck size={17} />{f('markReady')}</button>}{order.pickupId && <Link className="btn btn-ghost" to="/farmer/pickups"><Truck size={17} />{f('viewPickup')}</Link>}</div></article>)}{!visible.length && <Empty message={f('noResults')} />}</div></div>
 }
@@ -255,7 +255,7 @@ export function FarmerEarningsPage() {
       idleHint={a('earningsSignal')}
       stages={[a('stageReviewingOrders'), a('stageComparingMandi'), a('stageBuildingStory')]}
       run={() => buildEarningsStory(items, orders)}
-      renderResult={(story, reset) => <AiInsightCard onClose={reset}>
+      renderResult={(story, reset) => <FarmerInsightCard onClose={reset}>
         <span className="eyebrow">{a('simpleMonth')}</span><h2 className="ai-headline">{a('earnedMoreHeadline', { amount: money(story.gain) })}</h2>
         <div className="ai-metric-row">
           {story.bestCrop && <div><span>{a('bestPerformingCrop')}</span><strong>{language === 'hi' ? story.bestCrop.cropHi : story.bestCrop.crop} · +{money(story.bestCrop.gain)}</strong></div>}
@@ -264,7 +264,7 @@ export function FarmerEarningsPage() {
         </div>
         <div className="earnings-opportunity"><span>{a('currentOpportunity')}</span><strong>{a('demandStrongThreeDays')}</strong></div>
         <div className="ai-cta-row"><button type="button" className="btn btn-ghost" onClick={() => navigate('/farmer/insights')}><BarChart3 size={16} />{a('seeCurrentDemand')}<ArrowRight size={15} /></button></div>
-      </AiInsightCard>}
+      </FarmerInsightCard>}
     /></div>
     <section className="feature-card"><div className="card-heading"><div><span className="eyebrow">{f('monthlyTrend')}</span><h2>{f('transactions')}</h2></div><MiniBars /></div><div className="transaction-list">{items.map((item) => <div key={item.id}><span className="transaction-icon"><IndianRupee size={18} /></span><div><strong>{language === 'hi' ? item.cropHi : item.crop}</strong><small>{item.orderId} · {item.date}</small></div><span><strong>{money(item.net)}</strong><small>{f(item.status)}</small></span></div>)}</div></section></div>
 }

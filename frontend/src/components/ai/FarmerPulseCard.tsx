@@ -6,7 +6,7 @@ import { aiText } from '../../i18n/farmerAi'
 import { getFarmOpportunity } from '../../services/farmerAiService'
 import type { FarmerListing } from '../../types'
 import { AiConfidenceBadge } from './AiConfidenceBadge'
-import { AiInsightCard } from './AiInsightCard'
+import { FarmerInsightCard } from './FarmerInsightCard'
 import { AiReasoningFactors } from './AiReasoningFactors'
 import { FarmerAiTrigger } from './FarmerAiTrigger'
 
@@ -28,7 +28,7 @@ export function FarmerPulseCard({ listings }: { listings: FarmerListing[] }) {
         renderResult={(insight, reset) => {
           const cropLabel = language === 'hi' ? insight.cropHi : insight.crop
           return (
-            <AiInsightCard onClose={reset}>
+            <FarmerInsightCard onClose={reset}>
               <div>
                 <span className="eyebrow light">{f('bestOpportunityToday')}</span>
                 <h2 className="ai-headline">{f('opportunityHeadline', { crop: cropLabel })}</h2>
@@ -37,14 +37,14 @@ export function FarmerPulseCard({ listings }: { listings: FarmerListing[] }) {
               <div className="ai-metric-row">
                 <div><span>{f('recommendedAction')}</span><strong>₹{insight.intel.recommendedMin}–₹{insight.intel.recommendedMax}{f('perKg')}</strong></div>
                 <div><span>{f('potentialGain')}</span><strong>+₹{insight.gainPerKg}{f('perKg')}</strong></div>
-                <div><AiConfidenceBadge score={insight.confidence} /></div>
+                <div><AiConfidenceBadge score={insight.confidence} labels={{ high: f('confidenceHigh'), medium: f('confidenceMedium'), low: f('confidenceLow') }} /></div>
               </div>
               {showWhy && <AiReasoningFactors factors={insight.factors.map((factor) => ({ icon: FACTOR_ICONS[factor.id], label: f(factor.labelKey as Parameters<typeof aiText>[1]), value: f(factor.valueKey as Parameters<typeof aiText>[1], factor.values) }))} />}
               <div className="ai-cta-row">
                 <Link className="btn btn-primary" to={`/farmer/sell?crop=${encodeURIComponent(insight.listingCrop)}`}><Sprout size={16} />{f('listCrop', { crop: cropLabel })}</Link>
                 <button type="button" className="btn btn-ghost-light" onClick={() => setShowWhy((current) => !current)}>{showWhy ? f('hideWhy') : f('seeWhy')}</button>
               </div>
-            </AiInsightCard>
+            </FarmerInsightCard>
           )
         }}
       />

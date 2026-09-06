@@ -919,6 +919,11 @@ html[lang="hi"] .status-badge { white-space: normal; text-align: center; line-he
 .ai-surface { position:relative; }
 .ai-surface-focused { z-index:91; overflow:visible; transform:translateY(-3px) scale(1.006); filter:drop-shadow(0 24px 38px rgba(8,31,19,.26)); transition:transform .24s ease,filter .24s ease; }
 .ai-surface-focused .ai-trigger-icon,.ai-surface-focused .ai-result-head > svg { animation:aiFocusIcon 1.05s ease-in-out infinite; }
+.consumer-intelligence-slot,.procurement-pulse { margin-top: 18px; }
+.listing-intelligence,.basket-intelligence,.contribution-intelligence { margin: 14px 0; }
+.bulk-price-advisor { margin: -4px 0 18px; padding: 16px; background: #fffdf7; border: 1px solid #e4dcc9; border-radius: 18px; }
+.bulk-price-advisor h2 { font-size: 18px; margin: 4px 0 11px; }
+.target-price-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .ai-error-state { min-height:120px; display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:12px; align-items:center; padding:18px; border:1px solid #e5c9a0; border-radius:18px; background:#fffaf0; color:var(--text); }
 .ai-error-state > svg { color:#9a6613; }.ai-error-state strong { font-size:13px; }.ai-error-state p { margin-top:3px; color:var(--muted); font-size:10px; line-height:1.5; }
 @keyframes aiOverlayIn { from { opacity:0; } }

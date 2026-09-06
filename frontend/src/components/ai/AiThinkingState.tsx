@@ -5,7 +5,7 @@ import { aiText } from '../../i18n/farmerAi'
 import { usePrefersReducedMotion } from './useReducedMotion'
 
 /** Staged intelligence animation shown between the AI trigger and the result surface. */
-export function AiThinkingState({ stages }: { stages: string[] }) {
+export function AiThinkingState({ stages, brandLabel, thinkingLabel }: { stages: string[]; brandLabel?: string; thinkingLabel?: string }) {
   const { language } = useLanguage()
   const reduced = usePrefersReducedMotion()
   const [index, setIndex] = useState(0)
@@ -21,7 +21,7 @@ export function AiThinkingState({ stages }: { stages: string[] }) {
 
   return (
     <div className="ai-thinking" role="status" aria-live="polite">
-      <div className="ai-thinking-head"><span>{aiText(language, 'kisanIntelligence')}</span><strong>{aiText(language, 'combiningSignals')}</strong></div>
+      <div className="ai-thinking-head"><span>{brandLabel ?? aiText(language, 'kisanIntelligence')}</span><strong>{thinkingLabel ?? aiText(language, 'combiningSignals')}</strong></div>
       <div className="ai-signal-scan" aria-hidden="true">
         <div className="ai-scan-rail"><i style={{ width: `${((index + 1) / stages.length) * 100}%` }} /></div>
         {[Sprout, ShoppingBasket, Store, Truck].map((Icon, nodeIndex) => <span className={nodeIndex <= index ? 'active' : ''} key={nodeIndex}><Icon size={14} />{nodeIndex < index && <Check size={10} />}</span>)}

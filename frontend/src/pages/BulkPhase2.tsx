@@ -10,6 +10,7 @@ import { useAsyncData } from '../hooks/useAsyncData'
 import { phase2Service } from '../services/phase2Service'
 import type { BulkOrderStatus, BulkRfq, RfqStatus } from '../types'
 import { ProfilePage } from './ProfilePage'
+import { ContributionMatchIntelligence, TargetPriceAdvisor } from '../components/ai/BulkIntelligenceCards'
 
 const money = (value: number) => `₹${Math.round(value).toLocaleString('en-IN')}`
 const rfqLabel: Record<RfqStatus, string> = { open: 'Open', matching: 'Matching', partially_matched: 'Partially Matched', fully_matched: 'Fully Matched', converted: 'Converted to Order', closed: 'Closed' }
@@ -49,7 +50,7 @@ export function BulkOrderDetailPage() {
 
 export function BulkProfilePage() { return <ProfilePage /> }
 
-function ContributionVisual({ contributions, total }: { contributions: BulkRfq['matches']; total: number }) { return <div className="contribution-list">{contributions.map((item, index) => <div key={`${item.farm}-${index}`}><span className="farmer-dot">{String.fromCharCode(65 + index)}</span><div><strong>{item.farmer} · {item.farm}</strong><p>{item.quantityKg.toLocaleString('en-IN')} kg at {money(item.ratePerKg)}/kg</p><i style={{ width: `${Math.min(100, item.quantityKg / total * 100)}%` }} /></div><b>{Math.round(item.quantityKg / total * 100)}%</b></div>)}</div> }
+function ContributionVisual({ contributions, total }: { contributions: BulkRfq['matches']; total: number }) { return <><div className="contribution-list">{contributions.map((item, index) => <div key={`${item.farm}-${index}`}><span className="farmer-dot">{String.fromCharCode(65 + index)}</span><div><strong>{item.farmer} · {item.farm}</strong><p>{item.quantityKg.toLocaleString('en-IN')} kg at {money(item.ratePerKg)}/kg</p><i style={{ width: `${Math.min(100, item.quantityKg / total * 100)}%` }} /></div><b>{Math.round(item.quantityKg / total * 100)}%</b></div>)}</div><ContributionMatchIntelligence contributions={contributions} total={total} /></> }
 function Field({ label, children }: { label: string; children: React.ReactNode }) { return <label className="field"><span>{label}</span>{children}</label> }
-function PageHead({ eyebrow, title, copy }: { eyebrow: string; title: string; copy: string }) { return <div className="page-title-row"><div><span className="eyebrow">{eyebrow}</span><h1>{title}</h1><p>{copy}</p></div></div> }
+function PageHead({ eyebrow, title, copy }: { eyebrow: string; title: string; copy: string }) { return <><div className="page-title-row"><div><span className="eyebrow">{eyebrow}</span><h1>{title}</h1><p>{copy}</p></div></div>{eyebrow === 'Reverse marketplace' && title === 'Post a requirement' && <TargetPriceAdvisor />}</> }
 function ErrorState({ title = 'Unable to load this page' }: { title?: string }) { return <div className="error-panel"><RefreshCw size={25} /><h2>{title}</h2><button className="btn btn-primary" onClick={() => window.location.reload()}>Retry</button></div> }
