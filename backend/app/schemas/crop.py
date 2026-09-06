@@ -67,6 +67,22 @@ class CropListingOut(BaseModel):
     distance_km: Optional[float] = None
     photos: Optional[List[str]] = None
     is_urgent_rescue: bool = False
+    rescue_discount_price_per_kg: Optional[float] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class VoiceParseRequest(BaseModel):
+    transcript: str = Field(..., min_length=1)
+    language: Optional[str] = "hi"
+
+
+class VoiceParseResponse(BaseModel):
+    crop_name: str
+    crop_name_hi: Optional[str] = None
+    category: Optional[str] = "Vegetables"
+    quantity_kg: float
+    price_per_kg: float
+    harvest_date: str
+    confidence_score: float = 0.95

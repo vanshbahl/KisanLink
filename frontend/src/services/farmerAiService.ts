@@ -9,6 +9,7 @@
 // The shape of these types is deliberately clean so this layer could later be swapped
 // for a real forecasting/LLM backend without touching the UI components that consume it.
 import type { EarningsTransaction, FarmerListing, FarmerOrder, Pickup } from '../types'
+import { apiClient } from './apiClient'
 
 export type FarmerCrop = 'Tomatoes' | 'Potatoes' | 'Onion' | 'Spinach' | 'Wheat' | 'Carrots'
 export type Level = 'Low' | 'Moderate' | 'High'
@@ -137,6 +138,72 @@ export function getPriceOptions(listing: Pick<FarmerListing, 'crop' | 'mandiPric
     { id: 'balanced', price: mid, labelKey: 'bestBalance', hintKey: 'bestBalanceHint', saleChancePct: chanceFor(mid) },
     { id: 'high', price: high, labelKey: 'higherEarnings', hintKey: 'lowerSaleProbability', saleChancePct: chanceFor(high) },
   ]
+}
+
+/**
+ * Backend-backed variant of `getPriceOptions` — tries the real pricing intelligence
+ * API first (deterministic price anchors computed from mandi/demand data server-side)
+ * and falls back to the local deterministic table above if the request fails, so the
+ * price advisor always has an answer regardless of backend availability.
+ */
+export async function fetchLivePriceOptions(listing: Pick<FarmerListing, 'crop' | 'mandiPricePerKg' | 'grade'>): Promise<PriceOption[]> {
+  try {
+    const res = await apiClient.getRecommendPrice(listing.crop, 100, listing.grade || 'Grade A', listing.mandiPricePerKg)
+    if (res && res.options && res.options.length > 0) {
+      type BackendPriceOption = { id: PriceOption['id']; price: number; label_key: string; hint_key: string; sale_chance_pct: number }
+      return (res.options as BackendPriceOption[]).map((opt) => ({
+        id: opt.id,
+        price: opt.price,
+        labelKey: opt.label_key,
+        hintKey: opt.hint_key,
+        saleChancePct: opt.sale_chance_pct,
+      }))
+    }
+  } catch (err) {
+    if (import.meta.env.DEV) {
+      console.warn('[KisanIntel] Price recommendation API call failed; using prototype fallback.', err)
+    }
+  }
+  return getPriceOptions(listing)
+}
+
+/**
+ * Backend-backed variant of `getCropIntel` — same fallback contract as
+ * `fetchLivePriceOptions`.
+ */
+export async function fetchLiveCropIntel(crop: FarmerCrop): Promise<CropIntel> {
+  try {
+    const res = await apiClient.getCropForecast(crop)
+    if (res && res.historical) {
+      return {
+        crop,
+        cropHi: res.crop_hi || crop,
+        listingCrop: `Fresh ${crop}`,
+        listingCropHi: res.crop_hi || crop,
+        mandi: res.mandi,
+        direct: res.direct,
+        historical: res.historical,
+        forecast: res.forecast,
+        demandIndex: res.demand_index,
+        demandChangePct: res.demand_change_pct,
+        nearbyDemandKg: res.nearby_demand_kg,
+        buyerCount: res.buyer_count,
+        volatility: res.volatility as Level,
+        supplyPressure: res.supply_pressure as Level,
+        confidence: res.confidence,
+        recommendedMin: res.recommended_min,
+        recommendedMax: res.recommended_max,
+        actionKgMin: 300,
+        actionKgMax: 500,
+        pickupAvailableTomorrow: true,
+      }
+    }
+  } catch (err) {
+    if (import.meta.env.DEV) {
+      console.warn('[KisanIntel] Crop forecast API call failed; using prototype fallback.', err)
+    }
+  }
+  return getCropIntel(crop)
 }
 
 export interface RankedOrder {

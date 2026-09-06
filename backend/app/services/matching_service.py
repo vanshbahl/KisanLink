@@ -30,6 +30,18 @@ class MatchingEngine:
     """
 
     @staticmethod
+    def effective_price(listing: CropListing) -> float:
+        """
+        The price matching/scoring/payout should use for this listing: the discounted
+        rescue price while the listing is an active wastage-rescue sale, otherwise the
+        farmer's normal asking price. Keeping this in one place stops rescue-tagged
+        listings from being matched or paid out at their pre-discount price.
+        """
+        if listing.status == ListingStatusEnum.RESCUE_ACTIVE and listing.rescue_discount_price_per_kg is not None:
+            return float(listing.rescue_discount_price_per_kg)
+        return float(listing.expected_price_per_kg)
+
+    @staticmethod
     async def find_candidate_listings(
         db: AsyncSession,
         requirement: BuyerRequirement,
@@ -53,9 +65,8 @@ class MatchingEngine:
             .join(CropType, CropListing.crop_type_id == CropType.id)
             .where(
                 CropListing.crop_type_id == requirement.crop_type_id,
-                CropListing.status == ListingStatusEnum.ACTIVE,
+                CropListing.status.in_([ListingStatusEnum.ACTIVE, ListingStatusEnum.RESCUE_ACTIVE]),
                 CropListing.available_quantity_kg > 0,
-                CropListing.expected_price_per_kg <= requirement.max_price_per_kg,
             )
         )
 
@@ -65,6 +76,12 @@ class MatchingEngine:
         stmt = stmt.order_by("dist_km")
         res = await db.execute(stmt)
         rows = res.all()
+        # The price ceiling is applied against each listing's *effective* price (the
+        # discounted rescue price when active) rather than in SQL, since a rescue
+        # listing's normal price may exceed the buyer's ceiling even though its
+        # actual asking price does not.
+        max_price = float(requirement.max_price_per_kg)
+        rows = [row for row in rows if MatchingEngine.effective_price(row[0]) <= max_price]
 
         output = []
         for listing, farmer, c_name, item_lon, item_lat, dist_km in rows:
@@ -86,7 +103,7 @@ class MatchingEngine:
 
         # 2. Price Score (0.25 weight)
         if max_price > min_price:
-            s_price = max(0.0, 1.0 - ((float(listing.expected_price_per_kg) - min_price) / (max_price - min_price + 0.01)))
+            s_price = max(0.0, 1.0 - ((MatchingEngine.effective_price(listing) - min_price) / (max_price - min_price + 0.01)))
         else:
             s_price = 1.0
 
@@ -123,7 +140,7 @@ class MatchingEngine:
         if not candidates:
             raise ValueError(f"No suitable active farmer listings found for requirement {requirement.id}")
 
-        prices = [float(c[0].expected_price_per_kg) for c in candidates]
+        prices = [cls.effective_price(c[0]) for c in candidates]
         min_p = min(prices)
         max_p = max(prices)
 
@@ -157,7 +174,7 @@ class MatchingEngine:
                 continue
 
             accumulated_kg += allocated_kg
-            unit_price = float(listing.expected_price_per_kg)
+            unit_price = cls.effective_price(listing)
             payout = allocated_kg * unit_price
             total_farm_cost += payout
 

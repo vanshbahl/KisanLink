@@ -8,6 +8,10 @@ import type {
   EarningsTransaction,
   SupplyContribution,
   Role,
+  PaymentsLedgerEntry,
+  Review,
+  Dispute,
+  OperatorAuditLog,
 } from '../types'
 
 const API_BASE = '/api/v1'
@@ -29,12 +33,13 @@ const ROLE_PHONE_MAP: Record<string, { phone: string; preferred_role: string }> 
   farmer: { phone: '+919876543210', preferred_role: 'FARMER' },
   bulk: { phone: '+919899001122', preferred_role: 'BUYER' },
   consumer: { phone: '+919811122233', preferred_role: 'BUYER' },
+  operator: { phone: '+919800011122', preferred_role: 'OPERATOR_PROXY' },
 }
 
 class ApiClient {
   private tokenCache: Record<string, string> = {}
 
-  private async ensureToken(role: 'farmer' | 'consumer' | 'bulk'): Promise<string> {
+  private async ensureToken(role: 'farmer' | 'consumer' | 'bulk' | 'operator' = 'farmer'): Promise<string> {
     const cached = this.tokenCache[role] || localStorage.getItem(`kisanlink_jwt_${role}`)
     if (cached) {
       this.tokenCache[role] = cached
@@ -71,7 +76,7 @@ class ApiClient {
   async request<T>(
     path: string,
     options: RequestInit = {},
-    role: 'farmer' | 'consumer' | 'bulk' = 'farmer'
+    role: 'farmer' | 'consumer' | 'bulk' | 'operator' = 'farmer'
   ): Promise<T> {
     const token = await this.ensureToken(role)
     const headers: Record<string, string> = {
@@ -160,6 +165,156 @@ class ApiClient {
 
   async deleteListing(id: string): Promise<void> {
     await this.request(`/listings/${id}`, { method: 'DELETE' }, 'farmer')
+  }
+
+  // --- Wastage Rescue API ---
+  async tagUrgentRescue(listingId: string, urgencyLevel: string = 'HIGH'): Promise<{
+    listing_id: string
+    is_urgent_rescue: boolean
+    normal_price_per_kg: number
+    rescue_price_per_kg: number
+    discount_percentage: number
+    status: string
+  }> {
+    return this.request(
+      '/rescue/tag-urgent',
+      {
+        method: 'POST',
+        body: JSON.stringify({ listing_id: listingId, urgency_level: urgencyLevel }),
+      },
+      'farmer'
+    )
+  }
+
+  // --- Voice NLP Listing Parser API ---
+  async parseVoiceListing(
+    transcript: string,
+    language: string = 'hi'
+  ): Promise<{
+    crop_name: string
+    crop_name_hi?: string
+    category?: string
+    quantity_kg: number
+    price_per_kg: number
+    harvest_date: string
+    confidence_score?: number
+  }> {
+    return this.request(
+      '/listings/parse-voice',
+      { method: 'POST', body: JSON.stringify({ transcript, language }) },
+      'farmer'
+    )
+  }
+
+  // --- Logistics & Route Optimization API ---
+  async getShipments(): Promise<any[]> {
+    return this.request<any[]>('/logistics/shipments', {}, 'farmer')
+  }
+
+  async getShipment(id: string): Promise<any> {
+    return this.request<any>(`/logistics/shipments/${id}`, {}, 'farmer')
+  }
+
+  async optimizeRoute(orderIds?: string[], vehicleCapacityKg: number = 1500): Promise<any> {
+    return this.request<any>(
+      '/logistics/routes/optimize',
+      { method: 'POST', body: JSON.stringify({ order_ids: orderIds, vehicle_capacity_kg: vehicleCapacityKg }) },
+      'farmer'
+    )
+  }
+
+  async verifyPickupOtp(otp: string, allocationId?: string): Promise<{ success: boolean; message: string }> {
+    return this.request(
+      '/logistics/pickups/verify-otp',
+      { method: 'POST', body: JSON.stringify({ otp, allocation_id: allocationId }) },
+      'farmer'
+    )
+  }
+
+  async verifyDeliveryOtp(orderId: string, otp: string): Promise<{ success: boolean; message: string }> {
+    return this.request(
+      '/logistics/deliveries/verify-otp',
+      { method: 'POST', body: JSON.stringify({ order_id: orderId, otp }) },
+      'farmer'
+    )
+  }
+
+  async updateShipmentStatus(shipmentId: string, statusValue: string): Promise<any> {
+    return this.request<any>(
+      `/logistics/shipments/${shipmentId}/status`,
+      { method: 'PATCH', body: JSON.stringify({ status: statusValue }) },
+      'farmer'
+    )
+  }
+
+  // --- Dynamic Pricing & Demand Forecasting API ---
+  async getCropPrices(cropName?: string): Promise<any[]> {
+    const q = cropName ? `?crop_name=${encodeURIComponent(cropName)}` : ''
+    return this.request<any[]>(`/intelligence/prices${q}`, {}, 'farmer')
+  }
+
+  async getCropForecast(cropName: string): Promise<any> {
+    return this.request<any>(`/intelligence/forecast/${encodeURIComponent(cropName)}`, {}, 'farmer')
+  }
+
+  async getRecommendPrice(cropName: string, quantityKg: number = 100, grade: string = 'Grade A', mandiPrice?: number): Promise<any> {
+    return this.request<any>(
+      '/intelligence/recommend-price',
+      {
+        method: 'POST',
+        body: JSON.stringify({ crop_name: cropName, quantity_kg: quantityKg, grade, mandi_price_per_kg: mandiPrice }),
+      },
+      'farmer'
+    )
+  }
+
+  async getImpactSummary(): Promise<any> {
+    return this.request<any>('/intelligence/impact-summary', {}, 'farmer')
+  }
+
+  // --- Payments Ledger, Reviews, Disputes & Operator Audit API ---
+  async getPaymentsLedger(orderId: string): Promise<PaymentsLedgerEntry[]> {
+    return this.request<PaymentsLedgerEntry[]>(`/payments/ledger/${orderId}`, {}, 'farmer')
+  }
+
+  async createReview(payload: {
+    order_id: string
+    target_farmer_id?: string
+    rating_score: number
+    feedback_text?: string
+  }): Promise<Review> {
+    return this.request<Review>('/reviews', { method: 'POST', body: JSON.stringify(payload) }, 'farmer')
+  }
+
+  async getReviewsForUser(userId: string): Promise<Review[]> {
+    return this.request<Review[]>(`/reviews/user/${userId}`, {}, 'farmer')
+  }
+
+  async createDispute(payload: {
+    order_id: string
+    dispute_reason: string
+    withheld_amount_rupees?: number
+  }): Promise<Dispute> {
+    return this.request<Dispute>('/disputes', { method: 'POST', body: JSON.stringify(payload) }, 'farmer')
+  }
+
+  async resolveDispute(
+    id: string,
+    payload: { resolution_notes: string; settlement_action: 'REFUND' | 'FARMER_PAYOUT' }
+  ): Promise<Dispute> {
+    return this.request<Dispute>(`/disputes/${id}/resolve`, { method: 'PUT', body: JSON.stringify(payload) }, 'farmer')
+  }
+
+  async createOperatorAuditLog(payload: {
+    farmer_user_id: string
+    action_type: string
+    entity_id?: string
+  }): Promise<OperatorAuditLog> {
+    return this.request<OperatorAuditLog>('/audit/operator-logs', { method: 'POST', body: JSON.stringify(payload) }, 'operator')
+  }
+
+  async getOperatorAuditLogs(): Promise<OperatorAuditLog[]> {
+    return this.request<OperatorAuditLog[]>('/audit/operator-logs', {}, 'operator')
   }
 
   // --- Farmer Operational API ---
@@ -317,10 +472,13 @@ class ApiClient {
       pickupDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
       pickupWindow: 'Morning · 7–10 AM',
       fulfillment: 'pickup',
-      status: item.status === 'ACTIVE' ? 'active' : item.status === 'SOLD' ? 'sold' : 'draft',
+      status: item.status === 'RESCUE_ACTIVE' ? 'active' : item.status === 'ACTIVE' ? 'active' : item.status === 'SOLD' ? 'sold' : 'draft',
       assisted: false,
       views: 24,
       inquiries: 4,
+      isUrgentRescue: Boolean(item.is_urgent_rescue),
+      rescueDiscountPricePerKg: item.rescue_discount_price_per_kg ? Number(item.rescue_discount_price_per_kg) : undefined,
+      rescueStatus: String(item.status || ''),
       createdAt: item.created_at ? String(item.created_at).slice(0, 10) : new Date().toISOString().slice(0, 10),
     }
   }
@@ -344,6 +502,8 @@ class ApiClient {
 
     return {
       id: ord.order_code || ord.id,
+      db_id: ord.id,
+      buyerUserId: ord.buyer_user_id || ord.buyer_id,
       buyerName: ord.buyer_name || 'Verified Buyer',
       buyerType: ord.cluster_id ? 'Bulk Buyer' : 'Consumer',
       crop: ord.crop_name || 'Produce',

@@ -96,11 +96,16 @@ export interface FarmerListing {
   assisted: boolean
   views: number
   inquiries: number
+  isUrgentRescue?: boolean
+  rescueDiscountPricePerKg?: number
+  rescueStatus?: string
   createdAt: string
 }
 
 export interface FarmerOrder {
   id: string
+  db_id?: string
+  buyerUserId?: string
   buyerName: string
   buyerType: 'Consumer' | 'Bulk Buyer'
   crop: string
@@ -210,3 +215,45 @@ export interface LogisticsRoute { id: string; name: string; nameHi: string; vehi
 export interface Vehicle { id: string; registration: string; type: string; typeHi: string; capacityKg: number; driver: string; currentAssignment?: string; status: VehicleStatus }
 export interface LogisticsProfileData { name: string; phone: string; hub: string; shift: string; language: Language; notifications: { pickups: boolean; deliveries: boolean; issues: boolean; delays: boolean } }
 export type DemoScenario = 'full' | 'empty' | 'consumer' | 'bulk' | 'issue'
+
+export interface PaymentsLedgerEntry {
+  id: string
+  order_id: string
+  beneficiary_user_id?: string | null
+  entry_type: 'ESCROW_LOCK' | 'FARMER_PAYOUT' | 'TRANSPORTER_FREIGHT' | 'PLATFORM_FEE' | 'REFUND' | string
+  amount_rupees: number
+  gateway_reference_id?: string | null
+  is_settled: boolean
+  settled_at?: string | null
+  created_at?: string
+}
+
+export interface Review {
+  id: string
+  order_id: string
+  author_id: string
+  target_id: string
+  rating_score: number
+  feedback_text?: string | null
+  created_at?: string
+}
+
+export interface Dispute {
+  id: string
+  order_id: string
+  raised_by: string
+  dispute_reason: string
+  withheld_amount_rupees: number
+  is_resolved: boolean
+  resolution_notes?: string | null
+  created_at?: string
+}
+
+export interface OperatorAuditLog {
+  id: string
+  operator_user_id: string
+  farmer_user_id: string
+  action_type: string
+  entity_id?: string | null
+  created_at?: string
+}

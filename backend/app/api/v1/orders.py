@@ -182,16 +182,20 @@ async def get_my_orders(
             output.append(format_order_out(ord_obj))
 
     elif current_user.farmer_profile:
+        # A subquery (rather than a join on OrderFarmerAllocation) so an order with more
+        # than one allocation for this farmer doesn't come back as duplicate rows.
+        subq = select(OrderFarmerAllocation.order_id).where(
+            OrderFarmerAllocation.farmer_id == current_user.farmer_profile.id
+        )
         stmt = (
             select(Order)
-            .join(OrderFarmerAllocation, Order.id == OrderFarmerAllocation.order_id)
             .options(
                 selectinload(Order.crop_type),
                 selectinload(Order.buyer),
                 selectinload(Order.allocations).selectinload(OrderFarmerAllocation.farmer),
                 selectinload(Order.allocations).selectinload(OrderFarmerAllocation.listing),
             )
-            .where(OrderFarmerAllocation.farmer_id == current_user.farmer_profile.id)
+            .where(Order.id.in_(subq))
             .order_by(Order.created_at.desc())
         )
         res = await db.execute(stmt)
@@ -410,7 +414,7 @@ async def update_order_status(
     stmt = (
         select(Order)
         .options(
-            selectinload(Order.allocations),
+            selectinload(Order.allocations).selectinload(OrderFarmerAllocation.farmer),
         )
         .where(Order.id == id)
     )
@@ -426,8 +430,92 @@ async def update_order_status(
             alloc.is_picked_up = True
             alloc.is_settled = (payload.status == OrderStatusEnum.SETTLED)
 
+        await _settle_order_ledger(db, order, current_user)
+
     await db.commit()
     return await get_order_by_id(id=order.id, current_user=current_user, db=db)
+
+
+async def _settle_order_ledger(db: AsyncSession, order: Order, current_user: User) -> None:
+    """
+    Splits an order's gross amount into FARMER_PAYOUT / TRANSPORTER_FREIGHT / PLATFORM_FEE
+    ledger entries. Idempotent: called on both the DELIVERED and SETTLED transitions, but
+    a second call for the same order is a no-op, so repeated status updates (e.g. a
+    retried delivery webhook, or DELIVERED followed later by SETTLED) never double-pay.
+
+    The split is guarded so amounts can never go to zero or negative — the
+    `payments_ledger.amount_rupees > 0` check constraint would otherwise reject the
+    whole transaction, e.g. for a direct/B2C order where the farmer payout is already
+    ~97% of gross and a fixed 5% platform-fee assumption would leave nothing (or a
+    negative amount) for freight.
+    """
+    stmt_existing = select(PaymentsLedger).where(
+        PaymentsLedger.order_id == order.id,
+        PaymentsLedger.entry_type.in_([
+            LedgerEntryTypeEnum.FARMER_PAYOUT,
+            LedgerEntryTypeEnum.TRANSPORTER_FREIGHT,
+            LedgerEntryTypeEnum.PLATFORM_FEE,
+        ]),
+    )
+    res_existing = await db.execute(stmt_existing)
+    if res_existing.scalars().first():
+        return
+
+    gross = float(order.gross_amount_rupees)
+    farmer_total = round(sum(float(a.farmer_payout_amount_rupees) for a in order.allocations), 2)
+    if farmer_total <= 0:
+        farmer_total = round(gross * 0.90, 2)
+
+    if order.allocations:
+        for alloc in order.allocations:
+            payout = float(alloc.farmer_payout_amount_rupees)
+            if payout <= 0:
+                continue
+            beneficiary_id = alloc.farmer.user_id if alloc.farmer else current_user.id
+            db.add(PaymentsLedger(
+                order_id=order.id,
+                beneficiary_user_id=beneficiary_id,
+                entry_type=LedgerEntryTypeEnum.FARMER_PAYOUT,
+                amount_rupees=payout,
+                gateway_reference_id=f"SIM_PAYOUT_{generate_order_code()}",
+                is_settled=True,
+            ))
+    elif farmer_total > 0:
+        db.add(PaymentsLedger(
+            order_id=order.id,
+            beneficiary_user_id=current_user.id,
+            entry_type=LedgerEntryTypeEnum.FARMER_PAYOUT,
+            amount_rupees=farmer_total,
+            gateway_reference_id=f"SIM_PAYOUT_{generate_order_code()}",
+            is_settled=True,
+        ))
+
+    # Whatever remains of gross after farmer payouts is split between platform fee and
+    # freight. If farmer payouts already consume all (or more than) gross, there is
+    # nothing left to split and no freight/fee entries are created.
+    remaining = round(gross - farmer_total, 2)
+    if remaining > 0:
+        platform_fee = round(min(remaining, gross * 0.05), 2)
+        freight_fee = round(remaining - platform_fee, 2)
+
+        if platform_fee > 0:
+            db.add(PaymentsLedger(
+                order_id=order.id,
+                beneficiary_user_id=None,
+                entry_type=LedgerEntryTypeEnum.PLATFORM_FEE,
+                amount_rupees=platform_fee,
+                gateway_reference_id=f"SIM_FEE_{generate_order_code()}",
+                is_settled=True,
+            ))
+        if freight_fee > 0:
+            db.add(PaymentsLedger(
+                order_id=order.id,
+                beneficiary_user_id=None,
+                entry_type=LedgerEntryTypeEnum.TRANSPORTER_FREIGHT,
+                amount_rupees=freight_fee,
+                gateway_reference_id=f"SIM_FREIGHT_{generate_order_code()}",
+                is_settled=True,
+            ))
 
 
 def format_order_out(order: Order, filter_farmer_id: Optional[UUID] = None) -> OrderOut:

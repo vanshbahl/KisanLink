@@ -1,18 +1,20 @@
 import { useEffect, useState, type CSSProperties, type FormEvent } from 'react'
-import { ArrowLeft, ArrowRight, BadgeIndianRupee, BarChart3, Building2, CalendarDays, Check, CheckCircle2, ChevronDown, ChevronRight, CircleHelp, ClipboardCheck, Clock3, Edit3, Eye, IndianRupee, Leaf, LogOut, MapPin, PackageCheck, Phone, Plus, Route, Save, ShoppingBasket, Sparkles, Sprout, Store, Trash2, TrendingUp, Truck, UserRound, WalletCards, XCircle } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, ArrowRight, BadgeIndianRupee, BarChart3, Building2, CalendarDays, Check, CheckCircle2, ChevronDown, ChevronRight, CircleHelp, ClipboardCheck, Clock3, Edit3, Eye, IndianRupee, Leaf, LogOut, MapPin, Mic, PackageCheck, Phone, Plus, Route, Save, ShoppingBasket, Sparkles, Sprout, Store, Trash2, TrendingUp, Truck, UserRound, WalletCards, XCircle } from 'lucide-react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { AiInsightCard } from '../components/ai/AiInsightCard'
 import { FarmerAiTrigger } from '../components/ai/FarmerAiTrigger'
 import { DashboardSkeleton } from '../components/LoadingSkeleton'
 import { ProductImage } from '../components/ProductImage'
 import { StatusBadge } from '../components/StatusBadge'
+import { VoiceInputModal } from '../components/voice/VoiceInputModal'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useToast } from '../contexts/ToastContext'
 import { useAuth } from '../contexts/AuthContext'
+import { apiClient } from '../services/apiClient'
 import { roleKey } from '../i18n'
 import { aiText } from '../i18n/farmerAi'
 import { farmerText, type FarmerFeatureKey } from '../i18n/farmerFeature'
-import { analyseMarket, buildEarningsStory, FARMER_CROPS, getCropIntel, getPriceOptions, rankOrders, type FarmerCrop } from '../services/farmerAiService'
+import { analyseMarket, buildEarningsStory, FARMER_CROPS, fetchLivePriceOptions, getCropIntel, rankOrders, type FarmerCrop } from '../services/farmerAiService'
 import { prototypeService } from '../services/prototypeService'
 import type { FarmerListing, FarmerOrder, FarmerProfileData, ListingStatus, OrderStatus, Pickup } from '../types'
 import { roleHome } from '../utils/routes'
@@ -55,12 +57,30 @@ export function SellProducePage() {
   const [assisted, setAssisted] = useState(params.get('assisted') === '1')
   const [search, setSearch] = useState('')
   const [saving, setSaving] = useState(false)
+  const [voiceOpen, setVoiceOpen] = useState(false)
   const [form, setForm] = useState<FarmerListing>(() => ({ id: `listing_${Date.now()}`, crop: params.get('crop') ?? 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', category: 'Vegetables', imageSrc: '/assets/produce/tomato.webp', visual: 'tomato', quantityKg: 100, remainingKg: 100, allocatedKg: 0, unit: 'kg', grade: 'Grade A', harvestDate: day(0), availableFrom: day(1), farmingMethod: '', notes: '', pricePerKg: 32, mandiPricePerKg: 24, farm: 'Green Field Farm', pickupDate: day(2), pickupWindow: 'Morning · 7–10 AM', fulfillment: 'pickup', status: 'draft', assisted: false, views: 0, inquiries: 0, createdAt: day(0) }))
 
   useEffect(() => { if (editId) prototypeService.getListing(editId).then((item) => item && setForm(item)) }, [editId])
   const selectedCrop = crops.find((item) => item.en === form.crop)
   const chooseCrop = (crop: typeof crops[number]) => setForm((current) => ({ ...current, crop: crop.en, cropHi: crop.hi, imageSrc: crop.image, visual: crop.visual, category: crop.category, mandiPricePerKg: crop.mandi, pricePerKg: crop.recommended }))
   const update = <K extends keyof FarmerListing>(key: K, value: FarmerListing[K]) => setForm((current) => ({ ...current, [key]: value }))
+  const applyVoiceFields = (fields: { crop: string; cropHi?: string; quantityKg: number; pricePerKg: number; harvestDate: string }) => {
+    const matched = crops.find((item) => item.en.toLowerCase().includes(fields.crop.toLowerCase()) || fields.crop.toLowerCase().includes(item.en.replace('Fresh ', '').replace('New ', '').replace('Sweet ', '').replace('Baby ', '').replace('Red ', '').replace('Sharbati ', '').toLowerCase()))
+    setForm((current) => ({
+      ...current,
+      crop: matched?.en ?? fields.crop,
+      cropHi: matched?.hi ?? fields.cropHi ?? fields.crop,
+      imageSrc: matched?.image ?? current.imageSrc,
+      visual: matched?.visual ?? current.visual,
+      category: matched?.category ?? current.category,
+      quantityKg: fields.quantityKg,
+      remainingKg: fields.quantityKg,
+      pricePerKg: fields.pricePerKg,
+      mandiPricePerKg: matched?.mandi ?? current.mandiPricePerKg,
+      harvestDate: fields.harvestDate,
+    }))
+    setStep(2)
+  }
   const validate = () => form.crop.trim() && form.quantityKg > 0 && form.pricePerKg > 0 && form.harvestDate && form.availableFrom
   const save = async (status: ListingStatus) => {
     if (!validate()) { showToast(f('requiredFields')); return }
@@ -75,7 +95,8 @@ export function SellProducePage() {
   const filtered = crops.filter((item) => `${item.en} ${item.hi}`.toLowerCase().includes(search.toLowerCase()))
 
   return <div className="page farmer-feature-page">
-    <div className="page-title-row"><div><span className="eyebrow"><Sprout size={15} /> {f('standardMode')}</span><h1>{f('sellTitle')}</h1></div><button className="btn btn-secondary" onClick={() => setAssisted(!assisted)}><CircleHelp size={18} />{assisted ? f('standardMode') : f('assisted')}</button></div>
+    <div className="page-title-row"><div><span className="eyebrow"><Sprout size={15} /> {f('standardMode')}</span><h1>{f('sellTitle')}</h1></div><div style={{ display: 'flex', gap: 8 }}><button className="btn btn-secondary" onClick={() => setVoiceOpen(true)}><Mic size={18} />{language === 'hi' ? 'आवाज़ से भरें' : 'Fill with voice'}</button><button className="btn btn-secondary" onClick={() => setAssisted(!assisted)}><CircleHelp size={18} />{assisted ? f('standardMode') : f('assisted')}</button></div></div>
+    <VoiceInputModal isOpen={voiceOpen} onClose={() => setVoiceOpen(false)} onConfirm={applyVoiceFields} />
     {!assisted && <div className="stepper" aria-label={f('sellTitle')}>{(['crop','details','price','pickup','review'] as FarmerFeatureKey[]).map((key, index) => <button key={key} className={step === index + 1 ? 'active' : step > index + 1 ? 'done' : ''} onClick={() => index + 1 < step && setStep(index + 1)}><span>{step > index + 1 ? <Check size={15} /> : index + 1}</span><small>{f(key)}</small></button>)}</div>}
     {assisted ? <section className="feature-card assisted-form"><div className="assisted-head"><span><Phone size={24} /></span><div><h2>{f('needHelpListing')}</h2><p>{f('assistedHint')}</p></div><StatusBadge tone="amber">{f('callCenterBadge')}</StatusBadge></div><ListingFields form={form} update={update} compact /><a className="btn btn-secondary" href="tel:18001234567"><Phone size={18} />{f('callSupport')}</a></section> :
       <section className="feature-card wizard-panel">
@@ -111,7 +132,7 @@ function PriceStep({ form, update }: { form: FarmerListing; update: <K extends k
       idleLabel={a('analyseBestPrice')}
       idleHint={a('priceSignal')}
       stages={[a('stagePriceDemand'), a('stageSimilarListings'), a('stageBuyerAcceptance')]}
-      run={() => getPriceOptions(form)}
+      run={() => fetchLivePriceOptions(form)}
       renderResult={(options, reset) => { const balanced = options.find((option) => option.id === 'balanced')!; return <AiInsightCard onClose={reset}>
         <h2 className="ai-headline">{a('priceAdvisorHeadline', { price: balanced.price })}</h2>
         <div className="ai-price-options">{options.map((option) => <div className={`ai-price-option${option.id === 'balanced' ? ' recommended' : ''}`} key={option.id}><strong>₹{option.price}{f('priceUnit')}</strong><small>{a(option.labelKey as Parameters<typeof aiText>[1])}</small><span className="ai-price-tag">{a(option.hintKey as Parameters<typeof aiText>[1])}</span></div>)}</div>
@@ -134,9 +155,36 @@ function ReviewStep({ form, assisted, onEdit }: { form: FarmerListing; assisted:
 }
 
 export function FarmerProduceDetailPage() {
-  const { id } = useParams(); const { language, f } = useFeatureText(); const [item, setItem] = useState<FarmerListing | null | undefined>(undefined)
+  const { id } = useParams(); const { language, f } = useFeatureText(); const { showToast } = useToast(); const [item, setItem] = useState<FarmerListing | null | undefined>(undefined); const [rescuing, setRescuing] = useState(false)
   useEffect(() => { if (id) prototypeService.getListing(id).then(setItem) }, [id]); if (item === undefined) return <LoadState />; if (!item) return <Empty message={f('noResults')} />
-  return <div className="page farmer-feature-page narrow-page"><Link className="back-link" to="/farmer/produce"><ArrowLeft size={17} />{f('allProduce')}</Link><div className="detail-title"><div><span className="eyebrow">{f('ref')} · {item.id}</span><h1>{f('produceDetail')}</h1></div><StatusBadge tone={tone(item.status)}>{f(listingKey[item.status])}</StatusBadge></div><section className="feature-card listing-detail-hero"><ProductImage imageSrc={item.imageSrc} visual={item.visual} alt={item.crop} size="hero" /><div><div className="status-line">{item.assisted && <StatusBadge tone="amber">{f('callCenterBadge')}</StatusBadge>}</div><h2>{language === 'hi' ? item.cropHi : item.crop}</h2><p>{item.grade} · {item.farmingMethod}</p><strong>₹{item.pricePerKg}{f('priceUnit')}</strong><div className="listing-facts"><span><small>{f('stock')}</small><b>{item.remainingKg} kg</b></span><span><small>{f('allocated')}</small><b>{item.allocatedKg} kg</b></span><span><small>{f('mandiBenchmark')}</small><b>₹{item.mandiPricePerKg}/kg</b></span></div><Link className="btn btn-primary" to={`/farmer/sell?edit=${item.id}`}><Edit3 size={17} />{f('edit')}</Link></div></section><section className="feature-card"><h2>{f('activityTimeline')}</h2><div className="activity-list"><div><span><Check size={15} /></span><div><strong>{f('publish')}</strong><small>{item.createdAt}</small></div></div>{item.views > 0 && <div><span><Eye size={15} /></span><div><strong>{item.views} {f('views')} · {item.inquiries} {f('inquiries')}</strong><small>{f('nearbyInterest')}</small></div></div>}{item.allocatedKg > 0 && <div><span><PackageCheck size={15} /></span><div><strong>{f('orderReceived')}</strong><small>{item.allocatedKg} kg</small></div></div>}<div><span><Edit3 size={15} /></span><div><strong>{f('quantityAdjusted')}</strong><small>{item.remainingKg} kg {f('remaining')}</small></div></div></div></section></div>
+  const isRescue = Boolean(item.isUrgentRescue || item.rescueStatus === 'RESCUE_ACTIVE')
+  const rescuePrice = item.rescueDiscountPricePerKg ?? Math.round(item.pricePerKg * 0.8)
+  const discountPct = Math.round(((item.pricePerKg - rescuePrice) / item.pricePerKg) * 100)
+  const handleTagRescue = async () => {
+    setRescuing(true)
+    try {
+      const res = await apiClient.tagUrgentRescue(item.id)
+      const updated = { ...item, isUrgentRescue: true, rescueDiscountPricePerKg: res.rescue_price_per_kg, rescueStatus: 'RESCUE_ACTIVE' }
+      await prototypeService.saveListing(updated)
+      setItem(updated)
+      showToast(f('urgentRescueActiveBadge'))
+    } catch {
+      // This listing isn't backed by a real Postgres record yet — apply the same
+      // deterministic discount locally so the demo flow still completes.
+      const updated = { ...item, isUrgentRescue: true, rescueDiscountPricePerKg: Math.round(item.pricePerKg * 0.75), rescueStatus: 'RESCUE_ACTIVE' }
+      await prototypeService.saveListing(updated)
+      setItem(updated)
+      showToast(f('urgentRescueActiveBadge'))
+    } finally {
+      setRescuing(false)
+    }
+  }
+  return <div className="page farmer-feature-page narrow-page"><Link className="back-link" to="/farmer/produce"><ArrowLeft size={17} />{f('allProduce')}</Link><div className="detail-title"><div><span className="eyebrow">{f('ref')} · {item.id}</span><h1>{f('produceDetail')}</h1></div><StatusBadge tone={isRescue ? 'red' : tone(item.status)}>{isRescue ? f('urgentRescueActiveBadge') : f(listingKey[item.status])}</StatusBadge></div><section className="feature-card listing-detail-hero"><ProductImage imageSrc={item.imageSrc} visual={item.visual} alt={item.crop} size="hero" /><div><div className="status-line">{item.assisted && <StatusBadge tone="amber">{f('callCenterBadge')}</StatusBadge>}</div><h2>{language === 'hi' ? item.cropHi : item.crop}</h2><p>{item.grade} · {item.farmingMethod}</p>
+    {isRescue ? <div className="rescue-price-block"><span className="rescue-strike">₹{item.pricePerKg}{f('priceUnit')}</span><strong>₹{rescuePrice}{f('priceUnit')}</strong><small className="rescue-discount-note">{discountPct}% {f('discountLabel')}</small></div> : <strong>₹{item.pricePerKg}{f('priceUnit')}</strong>}
+    <div className="listing-facts"><span><small>{f('stock')}</small><b>{item.remainingKg} kg</b></span><span><small>{f('allocated')}</small><b>{item.allocatedKg} kg</b></span><span><small>{f('mandiBenchmark')}</small><b>₹{item.mandiPricePerKg}/kg</b></span></div><Link className="btn btn-primary" to={`/farmer/sell?edit=${item.id}`}><Edit3 size={17} />{f('edit')}</Link>
+    {!isRescue && item.status === 'active' && <div className="rescue-prompt-card"><div><strong><AlertTriangle size={15} />{f('urgentRescueTitle')}</strong><p>{f('urgentRescueDesc')}</p></div><button type="button" className="btn btn-secondary" disabled={rescuing} onClick={handleTagRescue}>{rescuing ? f('loading') : f('tagUrgentRescueBtn')}</button></div>}
+    {isRescue && <div className="rescue-active-note"><span><Check size={15} /></span><div><strong>{f('urgentRescueActiveBadge')}</strong><small>{f('urgentRescueDesc')}</small></div></div>}
+  </div></section><section className="feature-card"><h2>{f('activityTimeline')}</h2><div className="activity-list"><div><span><Check size={15} /></span><div><strong>{f('publish')}</strong><small>{item.createdAt}</small></div></div>{item.views > 0 && <div><span><Eye size={15} /></span><div><strong>{item.views} {f('views')} · {item.inquiries} {f('inquiries')}</strong><small>{f('nearbyInterest')}</small></div></div>}{item.allocatedKg > 0 && <div><span><PackageCheck size={15} /></span><div><strong>{f('orderReceived')}</strong><small>{item.allocatedKg} kg</small></div></div>}<div><span><Edit3 size={15} /></span><div><strong>{f('quantityAdjusted')}</strong><small>{item.remainingKg} kg {f('remaining')}</small></div></div></div></section></div>
 }
 
 export function FarmerOrdersPage() {

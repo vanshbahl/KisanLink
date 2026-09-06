@@ -1,4 +1,5 @@
-from datetime import date
+import re
+from datetime import date, timedelta
 from typing import List, Optional
 from uuid import UUID
 
@@ -10,9 +11,161 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db, get_current_user, require_farmer
 from app.models import User, CropType, CropListing, FarmerProfile, QualityGradeEnum, ListingStatusEnum
-from app.schemas.crop import CropListingCreate, CropListingUpdate, CropListingOut
+from app.schemas.crop import (
+    CropListingCreate,
+    CropListingUpdate,
+    CropListingOut,
+    VoiceParseRequest,
+    VoiceParseResponse,
+)
 
 router = APIRouter(prefix="/listings", tags=["Listings"])
+
+CROP_SYNONYMS = [
+    {"en": "Tomato", "hi": "टमाटर", "category": "Vegetables", "aliases": ["tomato", "tomatoes", "tamatar", "टमाटर"]},
+    {"en": "Potato", "hi": "आलू", "category": "Staples", "aliases": ["potato", "potatoes", "aloo", "alu", "आलू"]},
+    {"en": "Onion", "hi": "प्याज़", "category": "Vegetables", "aliases": ["onion", "onions", "pyaz", "pyaj", "प्याज", "प्याज़"]},
+    {"en": "Spinach", "hi": "पालक", "category": "Vegetables", "aliases": ["spinach", "palak", "पालक"]},
+    {"en": "Wheat", "hi": "गेहूं", "category": "Grains", "aliases": ["wheat", "gehu", "gehum", "गेहूं"]},
+    {"en": "Carrot", "hi": "गाजर", "category": "Vegetables", "aliases": ["carrot", "carrots", "gajar", "गाजर"]},
+    {"en": "Capsicum", "hi": "शिमला मिर्च", "category": "Vegetables", "aliases": ["capsicum", "shimla mirch", "शिमला मिर्च"]},
+    {"en": "Cauliflower", "hi": "फूलगोभी", "category": "Vegetables", "aliases": ["cauliflower", "gobi", "phoolgobi", "फूलगोभी"]},
+    {"en": "Cucumber", "hi": "खीरा", "category": "Vegetables", "aliases": ["cucumber", "kheera", "khira", "खीरा"]},
+    {"en": "Apple", "hi": "सेब", "category": "Fruits", "aliases": ["apple", "apples", "seb", "सेब"]},
+    {"en": "Rice", "hi": "चावल", "category": "Grains", "aliases": ["rice", "chawal", "चावल"]},
+    {"en": "Mustard", "hi": "सरसों", "category": "Staples", "aliases": ["mustard", "sarson", "सरसों"]},
+]
+
+
+@router.post("/parse-voice", response_model=VoiceParseResponse)
+async def parse_voice_listing(
+    payload: VoiceParseRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Deterministic Voice NLP parser converting spoken Indic/English text into structured listing fields.
+    Extracts crop name, quantity (kg), price per kg, and harvest date.
+
+    Only assists the farmer's listing form: the caller is expected to let the user
+    review/edit every field before publishing, never to publish directly from this response.
+    """
+    raw_text = payload.transcript.strip()
+    if not raw_text:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Empty or invalid speech transcript.",
+        )
+
+    text_lower = raw_text.lower()
+
+    # 1. Resolve Crop Name using Database CropType records first
+    stmt_crops = select(CropType)
+    res_crops = await db.execute(stmt_crops)
+    db_crop_types = res_crops.scalars().all()
+
+    matched_crop_en: Optional[str] = None
+    matched_crop_hi: Optional[str] = None
+    matched_category: str = "Vegetables"
+
+    for ct in db_crop_types:
+        name_en_lower = ct.name_en.lower()
+        name_hi_lower = ct.name_hi.lower()
+        if (
+            name_en_lower in text_lower
+            or name_hi_lower in text_lower
+            or (name_en_lower + "es") in text_lower
+            or (name_en_lower + "s") in text_lower
+        ):
+            matched_crop_en = ct.name_en
+            matched_crop_hi = ct.name_hi
+            matched_category = ct.category
+            break
+
+    if not matched_crop_en:
+        for entry in CROP_SYNONYMS:
+            if any(alias in text_lower for alias in entry["aliases"]):
+                matched_crop_en = entry["en"]
+                matched_crop_hi = entry["hi"]
+                matched_category = entry["category"]
+                break
+
+    if not matched_crop_en:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Could not identify crop name from transcript. Please mention a crop (e.g., Tomato, Potato, Onion, Wheat).",
+        )
+
+    # 2. Extract Price (Explicit Match First)
+    price_match = re.search(
+        r"(?:₹\s*(\d+(?:\.\d+)?)|(\d+(?:\.\d+)?)\s*(?:rs|rupees|rupee|रुपये|रुपया|की दर|per kg|/kg|पर किलो))",
+        text_lower,
+    )
+    extracted_price: Optional[float] = None
+    price_num: Optional[float] = None
+    if price_match:
+        price_num = float(price_match.group(1) or price_match.group(2))
+        extracted_price = price_num
+
+    # 3. Extract Quantity
+    qty_match = re.search(
+        r"(\d+(?:\.\d+)?)\s*(?:kg|kilos|kilo|किलो|क्विंटल|quintal|tonne|ton|टन)",
+        text_lower,
+    )
+    extracted_qty: Optional[float] = None
+    qty_num: Optional[float] = None
+    if qty_match:
+        qty_num = float(qty_match.group(1))
+        val = qty_num
+        unit = qty_match.group(0).lower()
+        if "quintal" in unit or "क्विंट" in unit:
+            val *= 100.0
+        elif "tonne" in unit or "ton" in unit or "टन" in unit:
+            val *= 1000.0
+        extracted_qty = val
+    else:
+        # Fallback: select first number that isn't the explicit price number
+        all_numbers = [float(n) for n in re.findall(r"\b\d+(?:\.\d+)?\b", text_lower)]
+        for n in all_numbers:
+            if price_num is None or n != price_num:
+                extracted_qty = n
+                qty_num = n
+                break
+
+    if not extracted_qty or extracted_qty <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Could not identify quantity from transcript. Please specify quantity in kg (e.g., 500 kg).",
+        )
+
+    # 4. Fallback for Price (if no explicit price unit was specified)
+    if extracted_price is None:
+        all_numbers = [float(n) for n in re.findall(r"\b\d+(?:\.\d+)?\b", text_lower)]
+        for n in all_numbers:
+            if (qty_num is None or n != qty_num) and n > 0 and n < 5000:
+                extracted_price = n
+                break
+
+    if not extracted_price or extracted_price <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Could not identify price per kg from transcript. Please specify price in rupees (e.g., 25 rupees per kg).",
+        )
+
+    # 5. Extract Harvest Date
+    harvest_date_str = date.today().isoformat()
+    if "कल" in text_lower or "tomorrow" in text_lower:
+        harvest_date_str = (date.today() + timedelta(days=1)).isoformat()
+
+    return VoiceParseResponse(
+        crop_name=matched_crop_en,
+        crop_name_hi=matched_crop_hi or matched_crop_en,
+        category=matched_category,
+        quantity_kg=extracted_qty,
+        price_per_kg=extracted_price,
+        harvest_date=harvest_date_str,
+        confidence_score=0.95,
+    )
 
 
 @router.post("", response_model=CropListingOut, status_code=status.HTTP_201_CREATED)
@@ -94,6 +247,7 @@ async def create_listing(
         distance_km=0.0,
         photos=listing.photos,
         is_urgent_rescue=listing.is_urgent_rescue,
+        rescue_discount_price_per_kg=float(listing.rescue_discount_price_per_kg) if listing.rescue_discount_price_per_kg is not None else None,
         created_at=listing.created_at,
     )
 
@@ -133,7 +287,12 @@ async def list_listings(
     )
 
     if status:
-        stmt = stmt.where(CropListing.status == status)
+        if status == ListingStatusEnum.ACTIVE:
+            # Rescue-tagged listings are still on sale (at a discount), so an "active"
+            # browse should surface them alongside ordinary active listings.
+            stmt = stmt.where(CropListing.status.in_([ListingStatusEnum.ACTIVE, ListingStatusEnum.RESCUE_ACTIVE]))
+        else:
+            stmt = stmt.where(CropListing.status == status)
     if crop:
         stmt = stmt.where(CropType.name_en.ilike(f"%{crop}%"))
     if quality_grade:
@@ -185,6 +344,7 @@ async def list_listings(
                 distance_km=round(float(dist_km), 2) if dist_km is not None else None,
                 photos=listing.photos,
                 is_urgent_rescue=listing.is_urgent_rescue,
+                rescue_discount_price_per_kg=float(listing.rescue_discount_price_per_kg) if listing.rescue_discount_price_per_kg is not None else None,
                 created_at=listing.created_at,
             )
         )
@@ -241,6 +401,7 @@ async def get_listing(id: UUID, db: AsyncSession = Depends(get_db)):
         longitude=float(item_lon),
         photos=listing.photos,
         is_urgent_rescue=listing.is_urgent_rescue,
+        rescue_discount_price_per_kg=float(listing.rescue_discount_price_per_kg) if listing.rescue_discount_price_per_kg is not None else None,
         created_at=listing.created_at,
     )
 

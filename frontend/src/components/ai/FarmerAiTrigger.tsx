@@ -16,7 +16,7 @@ export function FarmerAiTrigger<T>({ idleLabel, idleHint, stages, run, renderRes
   idleLabel: string
   idleHint?: string
   stages: string[]
-  run: () => T
+  run: () => T | Promise<T>
   renderResult: (result: T, reset: () => void) => ReactNode
   className?: string
   variant?: 'card' | 'inline'
@@ -29,10 +29,11 @@ export function FarmerAiTrigger<T>({ idleLabel, idleHint, stages, run, renderRes
 
   useEffect(() => () => { if (timer.current) window.clearTimeout(timer.current) }, [])
 
-  const start = () => {
+  const start = async () => {
     setState('thinking')
     const duration = reduced ? 120 : 1250
-    timer.current = window.setTimeout(() => { setResult(run()); setState('result') }, duration)
+    const computed = await Promise.resolve(run())
+    timer.current = window.setTimeout(() => { setResult(computed); setState('result') }, duration)
   }
   const reset = () => { if (timer.current) window.clearTimeout(timer.current); setState('idle'); setResult(null) }
 

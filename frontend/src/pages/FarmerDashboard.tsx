@@ -7,16 +7,61 @@ import { MetricCard } from '../components/MetricCard'
 import { SupportCard } from '../components/SupportCard'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useAsyncData } from '../hooks/useAsyncData'
+import { apiClient } from '../services/apiClient'
 import { prototypeService } from '../services/prototypeService'
 import type { FarmerListing } from '../types'
 
 export function FarmerDashboard() {
   const { t } = useLanguage()
   const { data, loading, error } = useAsyncData(async () => {
+    // Prefer real listings/earnings/orders from the canonical backend; fall back to
+    // the shared prototype state wherever the live call fails or returns nothing.
+    let listings: FarmerListing[] = []
+    try {
+      const liveListings = await apiClient.getListings()
+      if (liveListings.length > 0) listings = liveListings
+    } catch {
+      // fall through to prototype state below
+    }
+
     const state = await prototypeService.getState()
-    const earnings = state.earnings.reduce((sum, item) => sum + item.net, 0)
-    const pending = state.earnings.filter((item) => item.status === 'pending').reduce((sum, item) => sum + item.net, 0)
-    return { earnings, pending, activeListings: state.listings.filter((item) => item.status === 'active').length, newOrders: state.orders.filter((item) => item.status === 'new').length, upcomingPickup: state.pickups.find((item) => item.status !== 'completed'), listings: state.listings as FarmerListing[] }
+    if (listings.length === 0) listings = state.listings as FarmerListing[]
+
+    let earnings = 0
+    let pending = 0
+    let activeListings = listings.filter((item) => item.status === 'active').length
+    let newOrders = 0
+    let upcomingPickup: { date?: string; quantityKg?: number; crop?: string; id?: string } | undefined = state.pickups.find((item) => item.status !== 'completed')
+
+    try {
+      const liveDash = await apiClient.getFarmerDashboard()
+      if (liveDash) {
+        earnings = liveDash.earnings
+        pending = liveDash.pending
+        if (liveDash.active_listings) activeListings = liveDash.active_listings
+        if (liveDash.new_orders) newOrders = liveDash.new_orders
+        if (liveDash.upcoming_pickup) {
+          upcomingPickup = {
+            date: liveDash.upcoming_pickup.date,
+            quantityKg: liveDash.upcoming_pickup.quantity_kg,
+            crop: liveDash.upcoming_pickup.crop,
+            id: liveDash.upcoming_pickup.id || liveDash.upcoming_pickup.order_id,
+          }
+        }
+      }
+    } catch {
+      // fall through to prototype earnings/order counts below
+    }
+
+    if (earnings === 0 && pending === 0) {
+      earnings = state.earnings.reduce((sum, item) => sum + item.net, 0)
+      pending = state.earnings.filter((item) => item.status === 'pending').reduce((sum, item) => sum + item.net, 0)
+    }
+    if (newOrders === 0) {
+      newOrders = state.orders.filter((item) => item.status === 'new').length
+    }
+
+    return { earnings, pending, activeListings, newOrders, upcomingPickup, listings }
   })
   if (loading) return <DashboardSkeleton />
   if (error || !data) return <div className="error-panel"><h2>{t('farmLoadError')}</h2><p>{error}</p><button className="btn btn-primary" onClick={() => window.location.reload()}>{t('tryAgain')}</button></div>
