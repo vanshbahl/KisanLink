@@ -217,14 +217,19 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .farmer-greeting h1 { font-size: 29px; letter-spacing: -.045em; margin: 5px 0 1px; }.farmer-greeting p { color: var(--muted); font-size: 13px; }
 .weather-pill { background: white; border: 1px solid var(--border); border-radius: 16px; padding: 8px 11px; display: grid; grid-template-columns: auto auto; align-items: center; gap: 1px 6px; }
 .weather-pill > svg { grid-row: span 2; color: #c88914; }.weather-pill strong { font-size: 14px; }.weather-pill small { color: var(--muted); font-size: 9px; }
-.farmer-hero-card { min-height: 230px; padding: 26px; background: var(--green); color: white; border-radius: 24px; position: relative; overflow: hidden; display: flex; align-items: center; }
+.farmer-hero-card { min-height: 230px; padding: 28px; background: linear-gradient(118deg,var(--green-dark),var(--green) 68%,#3d7653); color: white; border-radius: 24px; position: relative; overflow: hidden; display: flex; align-items: center; isolation:isolate; box-shadow:0 16px 38px rgba(24,70,47,.15); }
 .farmer-hero-card::after { content: ''; width: 230px; height: 230px; border-radius: 50%; background: rgba(255,255,255,.06); position: absolute; right: -70px; top: -55px; }
-.farmer-hero-copy { width: 72%; position: relative; z-index: 2; }
+.farmer-hero-copy { width: 64%; max-width:560px; position: relative; z-index: 2; }
 .farmer-hero-kicker { display: flex; align-items: center; gap: 7px; color: #cce4d4; font-size: 12px; font-weight: 700; }
 .farmer-hero-copy h2 { font-size: 30px; letter-spacing: -.045em; margin: 10px 0 6px; }
 .farmer-hero-copy p { color: #d8e5dc; line-height: 1.55; font-size: 13px; margin-bottom: 20px; }
-.farmer-hero-illustration { position: absolute; right: 1%; bottom: -4px; width: 34%; height: 96%; display: flex; align-items: flex-end; justify-content: center; }
-.farmer-hero-illustration img { position: absolute; object-fit: contain; filter: drop-shadow(0 12px 12px rgba(0,0,0,.16)); }.farmer-hero-illustration img:nth-child(1) { width: 132px; bottom: -28px; right: -4px; opacity: .72; }.farmer-hero-illustration img:nth-child(2) { width: 150px; bottom: 22px; right: 38px; transform: rotate(7deg); }.farmer-hero-illustration img:nth-child(3) { width: 120px; bottom: -4px; right: -8px; transform: rotate(-10deg); }
+.farmer-hero-illustration { position:absolute; z-index:1; right:-2%; bottom:-15%; width:42%; height:112%; display:grid; place-items:end center; }
+.farmer-hero-illustration::before { content:''; position:absolute; inset:26% 0 3%; border-radius:55% 45% 0 0; background:linear-gradient(145deg,rgba(255,255,255,.13),rgba(255,255,255,.02)); transform:rotate(-7deg); }
+.farmer-hero-illustration::after { content:''; position:absolute; left:4%; right:2%; bottom:10%; height:24px; border-radius:50%; background:rgba(5,33,20,.28); filter:blur(13px); }
+.hero-produce-frame { position:relative; z-index:1; width:min(270px,100%); aspect-ratio:1; display:grid; place-items:end center; transform:rotate(3deg) translateY(5%); }
+.hero-produce-frame::before,.hero-produce-frame::after { content:''; position:absolute; z-index:-1; width:42%; height:66%; top:13%; border-radius:100% 0 100% 0; background:linear-gradient(145deg,#8cb56c,#4c814f); opacity:.9; }
+.hero-produce-frame::before { left:9%; transform:rotate(-24deg); }.hero-produce-frame::after { right:3%; transform:scaleX(-1) rotate(-17deg); }
+.hero-produce-frame img { width:100%; max-height:245px; object-fit:contain; filter:drop-shadow(0 18px 14px rgba(5,34,20,.28)); }
 .farmer-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .metric-card { background: white; border: 1px solid var(--border); border-radius: 19px; padding: 16px; display: flex; gap: 12px; min-width: 0; box-shadow: var(--shadow); }
 .metric-icon { width: 40px; height: 40px; min-width: 40px; border-radius: 13px; display: grid; place-items: center; }.metric-green { background: var(--green-soft); color: var(--green); }.metric-amber { background: var(--harvest-soft); color: #89610c; }.metric-soil { background: var(--soil-soft); color: var(--soil); }
@@ -905,6 +910,48 @@ html[lang="hi"] .status-badge { white-space: normal; text-align: center; line-he
 .voice-mic-row small { font-size: 11px; font-weight: 700; color: var(--green); }
 .voice-mic-row.is-listening small { color: var(--urgency); }
 .voice-modal-dialog textarea { width: 100%; padding: 10px; border-radius: 12px; border: 1px solid var(--border); font: inherit; font-size: 13px; resize: vertical; }
+
+/* Shared Farmer AI focus treatment */
+.ai-analysis-overlay { position:fixed; z-index:90; inset:0; background:rgba(9,28,19,.52); backdrop-filter:blur(2px); animation:aiOverlayIn .2s ease both; }
+.ai-surface { position:relative; }
+.ai-surface-focused { z-index:91; overflow:visible; transform:translateY(-3px) scale(1.006); filter:drop-shadow(0 24px 38px rgba(8,31,19,.26)); transition:transform .24s ease,filter .24s ease; }
+.ai-surface-focused .ai-trigger-icon,.ai-surface-focused .ai-result-head > svg { animation:aiFocusIcon 1.05s ease-in-out infinite; }
+.ai-error-state { min-height:120px; display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:12px; align-items:center; padding:18px; border:1px solid #e5c9a0; border-radius:18px; background:#fffaf0; color:var(--text); }
+.ai-error-state > svg { color:#9a6613; }.ai-error-state strong { font-size:13px; }.ai-error-state p { margin-top:3px; color:var(--muted); font-size:10px; line-height:1.5; }
+@keyframes aiOverlayIn { from { opacity:0; } }
+@keyframes aiFocusIcon { 50% { transform:rotate(7deg) scale(1.08); } }
+
+/* Farmer order detail scan hierarchy */
+.farmer-order-detail { display:grid; gap:12px; }
+.farmer-order-detail .back-link { margin-bottom:2px; }
+.order-detail-heading { margin:0 0 4px; align-items:center; }
+.order-detail-heading h1 { font-size:clamp(27px,5vw,38px); margin:6px 0 3px; }
+.order-detail-heading p { color:var(--muted); font-size:11px; }
+.farmer-order-detail .feature-card { padding:18px; box-shadow:0 8px 24px rgba(31,62,44,.045); }
+.order-produce-summary { min-height:92px; display:flex; align-items:center; justify-content:space-between; gap:16px; background:linear-gradient(105deg,#fff,#f2f7ef); }
+.order-produce-summary h2 { margin:5px 0 0; font-size:16px; }.order-produce-summary > strong { display:flex; flex-direction:column; align-items:flex-end; color:var(--green-dark); font-size:25px; }.order-produce-summary > strong small { color:var(--muted); font-size:8px; text-transform:uppercase; letter-spacing:.08em; }
+.order-section-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:8px; }.order-section-heading h2 { margin:4px 0 0; font-size:18px; }
+.payout-card .breakdown { margin-top:4px; }.payout-card .breakdown > div { padding:8px 0; }.payout-card .breakdown .total { margin-top:3px; padding:13px 12px; border:0; border-radius:13px; background:var(--green-soft); color:var(--green-dark); }
+.order-timeline-card .timeline { margin-top:15px; grid-template-columns:repeat(6,minmax(72px,1fr)); }
+.timeline > div.current { color:var(--green-dark); font-weight:800; }.timeline > div.current > span { width:34px; height:34px; margin-top:-2px; color:#fff; background:var(--green-dark); box-shadow:0 0 0 5px var(--green-soft),0 6px 14px rgba(35,103,71,.22); }.timeline > div.current small { min-height:18px; padding:3px 7px; border-radius:999px; color:var(--green); background:var(--green-soft); font-size:7px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; }.timeline > div.upcoming { color:#98a19b; }
+.order-support-action { margin-top:2px; }
+
+.voice-ai-meta { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 10px; border-radius:10px; color:var(--green-dark); background:var(--green-soft); font-size:10px; font-weight:800; }.voice-ai-meta small { color:var(--green); }.voice-fallback-warning,.voice-missing-note { padding:8px 10px; border-radius:10px; background:#fff7e6; color:#765716; font-size:9px; line-height:1.5; }
+
+@media (max-width:699px) {
+  .farmer-hero-card { min-height:248px; padding:24px 22px; align-items:flex-start; }.farmer-hero-copy { width:72%; }.farmer-hero-copy h2 { font-size:28px; }.farmer-hero-copy p { max-width:230px; }.farmer-hero-illustration { width:46%; right:-9%; bottom:-12%; opacity:.9; }
+  .farmer-order-detail { gap:10px; }.order-detail-heading { align-items:flex-start; }.order-detail-heading .status-badge { margin-top:5px; }.farmer-order-detail .feature-card { padding:15px; }.order-produce-summary { min-height:82px; }.order-produce-summary > strong { font-size:21px; }
+  .order-timeline-card { overflow:hidden; }.order-timeline-card .timeline { display:grid; grid-template-columns:1fr; gap:0; overflow:visible; padding:0 0 0 2px; }.order-timeline-card .timeline::before { left:16px; right:auto; top:15px; bottom:15px; width:2px; height:auto; }.order-timeline-card .timeline > div { min-height:48px; display:grid; grid-template-columns:34px minmax(0,1fr) auto; align-items:center; justify-items:start; text-align:left; gap:12px; }.order-timeline-card .timeline > div > span { margin:0; }.order-timeline-card .timeline > div.current > span { margin-left:-2px; }.order-timeline-card .timeline strong { font-size:10px; }.order-timeline-card .timeline > div.current small { margin-left:auto; }
+  .ai-error-state { grid-template-columns:auto 1fr; }.ai-error-state .btn { grid-column:1/-1; width:100%; }
+}
+
+@media (max-width:390px) {
+  .farmer-hero-copy { width:78%; }.farmer-hero-illustration { width:48%; opacity:.75; }.farmer-hero-card .btn { min-height:44px; padding:0 14px; }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  .ai-analysis-overlay,.ai-surface-focused,.ai-surface-focused .ai-trigger-icon,.ai-surface-focused .ai-result-head > svg { animation:none!important; transition:none!important; transform:none!important; }
+}
 .voice-sample-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .voice-sample-row small { width: 100%; color: var(--muted); font-size: 10px; }
 .voice-sample-chip { font-size: 10.5px; padding: 5px 10px; border-radius: 999px; background: var(--green-soft); border: 1px solid transparent; cursor: pointer; color: var(--green-dark); font-weight: 600; }

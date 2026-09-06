@@ -12,7 +12,7 @@ interface SpeechRecognitionLike {
   interimResults: boolean
   lang: string
   onstart: (() => void) | null
-  onresult: ((event: { resultIndex: number; results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null
+  onresult: ((event: { resultIndex: number; results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal?: boolean }> }) => void) | null
   onerror: ((event: { error: string }) => void) | null
   onend: (() => void) | null
   start: () => void
@@ -20,12 +20,19 @@ interface SpeechRecognitionLike {
 }
 
 interface VoiceParsedResult {
-  crop_name: string
+  crop_name?: string | null
   crop_name_hi?: string
   category?: string
-  quantity_kg: number
-  price_per_kg: number
-  harvest_date: string
+  quantity_kg?: number | null
+  price_per_kg?: number | null
+  pickup_location?: string | null
+  availability_date?: string | null
+  harvest_date?: string | null
+  notes?: string | null
+  confidence_score?: number
+  missing_fields?: string[]
+  ai_used?: boolean
+  warning?: string | null
 }
 
 interface VoiceInputModalProps {
@@ -37,6 +44,9 @@ interface VoiceInputModalProps {
     quantityKg: number
     pricePerKg: number
     harvestDate: string
+    availableFrom?: string
+    pickupDate?: string
+    notes?: string
   }) => void
 }
 
@@ -68,8 +78,11 @@ export function VoiceInputModal({ isOpen, onClose, onConfirm }: VoiceInputModalP
   const [editQty, setEditQty] = useState<number>(0)
   const [editPrice, setEditPrice] = useState<number>(0)
   const [editDate, setEditDate] = useState<string>('')
+  const [editLocation, setEditLocation] = useState('')
+  const [editNotes, setEditNotes] = useState('')
 
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
+  const finalTranscriptRef = useRef('')
 
   useEffect(() => {
     if (!isOpen) resetState()
@@ -87,6 +100,7 @@ export function VoiceInputModal({ isOpen, onClose, onConfirm }: VoiceInputModalP
     setParsing(false)
     setError(null)
     setParsedData(null)
+    finalTranscriptRef.current = ''
     if (recognitionRef.current) {
       try { recognitionRef.current.stop() } catch { /* already stopped */ }
     }
@@ -113,17 +127,19 @@ export function VoiceInputModal({ isOpen, onClose, onConfirm }: VoiceInputModalP
     try {
       const recognition = new SpeechRecognition()
       recognitionRef.current = recognition
-      recognition.continuous = false
+      recognition.continuous = true
       recognition.interimResults = true
       recognition.lang = language === 'hi' ? 'hi-IN' : 'en-IN'
 
       recognition.onstart = () => setIsListening(true)
       recognition.onresult = (event) => {
-        let currentTranscript = ''
+        let interim = ''
         for (let i = event.resultIndex; i < event.results.length; i++) {
-          currentTranscript += event.results[i][0].transcript
+          const chunk = event.results[i][0].transcript.trim()
+          if (event.results[i].isFinal) finalTranscriptRef.current = `${finalTranscriptRef.current} ${chunk}`.trim()
+          else interim = `${interim} ${chunk}`.trim()
         }
-        setTranscript(currentTranscript)
+        setTranscript(`${finalTranscriptRef.current} ${interim}`.trim())
       }
       recognition.onerror = (event) => {
         setIsListening(false)
@@ -141,7 +157,11 @@ export function VoiceInputModal({ isOpen, onClose, onConfirm }: VoiceInputModalP
           )
         }
       }
-      recognition.onend = () => setIsListening(false)
+      recognition.onend = () => {
+        setIsListening(false)
+        const completed = finalTranscriptRef.current.trim()
+        if (completed) void handleParse(completed)
+      }
       recognition.start()
     } catch {
       setIsListening(false)
@@ -168,10 +188,12 @@ export function VoiceInputModal({ isOpen, onClose, onConfirm }: VoiceInputModalP
     try {
       const res = await apiClient.parseVoiceListing(text, language)
       setParsedData(res)
-      setEditCrop(res.crop_name)
-      setEditQty(res.quantity_kg)
-      setEditPrice(res.price_per_kg)
-      setEditDate(res.harvest_date || new Date().toISOString().slice(0, 10))
+      setEditCrop(res.crop_name || '')
+      setEditQty(res.quantity_kg || 0)
+      setEditPrice(res.price_per_kg || 0)
+      setEditDate(res.availability_date || res.harvest_date || '')
+      setEditLocation(res.pickup_location || '')
+      setEditNotes(res.notes || '')
     } catch (err) {
       const msg = err instanceof Error ? err.message : (language === 'hi' ? 'फ़ील्ड नहीं निकाल सके। कृपया मैन्युअल रूप से भरें।' : 'Could not parse listing details. Please fill the form manually.')
       setError(msg)
@@ -191,6 +213,9 @@ export function VoiceInputModal({ isOpen, onClose, onConfirm }: VoiceInputModalP
       quantityKg: editQty,
       pricePerKg: editPrice,
       harvestDate: editDate || new Date().toISOString().slice(0, 10),
+      availableFrom: editDate || undefined,
+      pickupDate: editDate || undefined,
+      notes: [editLocation ? `Pickup: ${editLocation}` : '', editNotes].filter(Boolean).join(' · '),
     })
     showToast(language === 'hi' ? 'फ़ॉर्म में भर दिया गया — जांच लें।' : 'Applied to the form — review before publishing.')
     onClose()
@@ -250,11 +275,19 @@ export function VoiceInputModal({ isOpen, onClose, onConfirm }: VoiceInputModalP
         {parsedData && (
           <div className="voice-parsed-result">
             <strong><Check size={16} />{language === 'hi' ? 'निकाली गई जानकारी (जांचें/बदलें)' : 'Extracted fields — review & edit'}</strong>
+            <div className="voice-ai-meta">
+              <span>{parsedData.ai_used ? (language === 'hi' ? 'Gemini द्वारा समझा गया' : 'Understood by Gemini') : (language === 'hi' ? 'बेसिक बैकअप विश्लेषण' : 'Basic fallback analysis')}</span>
+              {parsedData.confidence_score !== undefined && <small>{Math.round(parsedData.confidence_score * 100)}% {language === 'hi' ? 'विश्वास' : 'confidence'}</small>}
+            </div>
+            {parsedData.warning && <p className="voice-fallback-warning">{language === 'hi' ? 'Gemini अभी उपलब्ध नहीं है। बेसिक जानकारी निकाली गई है—हर फ़ील्ड जाँचें या मैन्युअल रूप से टाइप करें।' : parsedData.warning}</p>}
+            {!!parsedData.missing_fields?.length && <p className="voice-missing-note">{language === 'hi' ? 'कृपया भरें' : 'Please complete'}: {parsedData.missing_fields.join(', ')}</p>}
             <div className="voice-parsed-fields">
               <label>{language === 'hi' ? 'फसल' : 'Crop'}<input type="text" value={editCrop} onChange={(e) => setEditCrop(e.target.value)} /></label>
               <label>{language === 'hi' ? 'मात्रा (kg)' : 'Quantity (kg)'}<input type="number" min="1" value={editQty} onChange={(e) => setEditQty(Number(e.target.value))} /></label>
               <label>{language === 'hi' ? 'कीमत (₹/kg)' : 'Price (₹/kg)'}<input type="number" min="1" value={editPrice} onChange={(e) => setEditPrice(Number(e.target.value))} /></label>
-              <label>{language === 'hi' ? 'कटाई तारीख' : 'Harvest date'}<input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} /></label>
+              <label>{language === 'hi' ? 'उपलब्ध / पिकअप तारीख' : 'Available / pickup date'}<input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} /></label>
+              <label>{language === 'hi' ? 'पिकअप स्थान' : 'Pickup location'}<input type="text" value={editLocation} onChange={(e) => setEditLocation(e.target.value)} placeholder={language === 'hi' ? 'जैसे सोनीपत' : 'e.g. Sonipat'} /></label>
+              <label>{language === 'hi' ? 'नोट्स' : 'Notes'}<input type="text" value={editNotes} onChange={(e) => setEditNotes(e.target.value)} /></label>
             </div>
             <button type="button" className="btn btn-primary" onClick={handleApply}>
               <Check size={16} />{language === 'hi' ? 'फ़ॉर्म में भरें' : 'Apply to form'}

@@ -181,7 +181,16 @@ export const prototypeService = {
     }
     return (await readState()).orders
   },
-  async getOrder(id: string) { return (await readState()).orders.find((item) => item.id === id) },
+  async getOrder(id: string) {
+    try {
+      const canonical = await apiClient.getMyOrders('farmer')
+      const live = canonical.find((item) => item.id === id || item.db_id === id)
+      if (live) return live
+    } catch (e) {
+      console.warn('Backend order detail fallback:', e)
+    }
+    return (await readState()).orders.find((item) => item.id === id)
+  },
   async updateOrder(id: string, status: OrderStatus) {
     try {
       await apiClient.updateOrderStatus(id, status)

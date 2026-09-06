@@ -29,6 +29,7 @@ const crops = [
 ]
 const day = (offset: number) => { const date = new Date(); date.setDate(date.getDate() + offset); return date.toISOString().slice(0, 10) }
 const money = (value: number) => `₹${Math.round(value).toLocaleString('en-IN')}`
+const deduction = (value: number) => value > 0 ? `−${money(value)}` : money(0)
 
 function useFeatureText() {
   const { language } = useLanguage()
@@ -64,7 +65,7 @@ export function SellProducePage() {
   const selectedCrop = crops.find((item) => item.en === form.crop)
   const chooseCrop = (crop: typeof crops[number]) => setForm((current) => ({ ...current, crop: crop.en, cropHi: crop.hi, imageSrc: crop.image, visual: crop.visual, category: crop.category, mandiPricePerKg: crop.mandi, pricePerKg: crop.recommended }))
   const update = <K extends keyof FarmerListing>(key: K, value: FarmerListing[K]) => setForm((current) => ({ ...current, [key]: value }))
-  const applyVoiceFields = (fields: { crop: string; cropHi?: string; quantityKg: number; pricePerKg: number; harvestDate: string }) => {
+  const applyVoiceFields = (fields: { crop: string; cropHi?: string; quantityKg: number; pricePerKg: number; harvestDate: string; availableFrom?: string; pickupDate?: string; notes?: string }) => {
     const matched = crops.find((item) => item.en.toLowerCase().includes(fields.crop.toLowerCase()) || fields.crop.toLowerCase().includes(item.en.replace('Fresh ', '').replace('New ', '').replace('Sweet ', '').replace('Baby ', '').replace('Red ', '').replace('Sharbati ', '').toLowerCase()))
     setForm((current) => ({
       ...current,
@@ -78,6 +79,9 @@ export function SellProducePage() {
       pricePerKg: fields.pricePerKg,
       mandiPricePerKg: matched?.mandi ?? current.mandiPricePerKg,
       harvestDate: fields.harvestDate,
+      availableFrom: fields.availableFrom ?? current.availableFrom,
+      pickupDate: fields.pickupDate ?? current.pickupDate,
+      notes: fields.notes || current.notes,
     }))
     setStep(2)
   }
@@ -215,7 +219,7 @@ export function FarmerOrderDetailPage() {
   const { id } = useParams(); const { language, f } = useFeatureText(); const [order, setOrder] = useState<FarmerOrder | null | undefined>(undefined)
   useEffect(() => { if (id) prototypeService.getOrder(id).then(setOrder) }, [id]); if (order === undefined) return <LoadState />; if (!order) return <Empty message={f('noResults')} />
   const stages: OrderStatus[] = ['new','accepted','preparing','pickup_scheduled','in_transit','delivered']; const current = stages.indexOf(order.status)
-  return <div className="page farmer-feature-page narrow-page"><Link className="back-link" to="/farmer/orders"><ArrowLeft size={17} />{f('ordersTitle')}</Link><div className="detail-title"><div><span className="eyebrow">{f('ref')} · {order.id}</span><h1>{f('orderDetail')}</h1><p>{order.buyerName} · {order.buyerType}</p></div><StatusBadge tone={tone(order.status)}>{f(statusKey[order.status])}</StatusBadge></div><section className="feature-card detail-product"><div><h2>{language === 'hi' ? order.cropHi : order.crop}</h2><p>{order.quantityKg} kg × ₹{order.ratePerKg}/kg</p></div><strong>{money(order.total)}</strong></section><section className="feature-card"><h2>{f('logisticsBreakdown')}</h2><div className="breakdown"><div><span>{f('gross')}</span><strong>{money(order.total)}</strong></div><div><span>{f('logisticsFee')}</span><strong>−{money(order.logisticsFee)}</strong></div><div><span>{f('platformFee')}</span><strong>−{money(order.platformFee)}</strong></div><div className="total"><span>{f('farmerPayout')}</span><strong>{money(order.farmerPayout)}</strong></div></div></section><section className="feature-card"><h2>{f('timeline')}</h2><div className="timeline">{stages.map((status, index) => <div className={index <= current ? 'complete' : ''} key={status}><span>{index <= current ? <Check size={14} /> : index + 1}</span><strong>{f(statusKey[status])}</strong></div>)}</div></section><a className="btn btn-secondary btn-full" href="tel:18001234567"><Phone size={17} />{f('contactSupport')}</a></div>
+  return <div className="page farmer-feature-page narrow-page farmer-order-detail"><Link className="back-link" to="/farmer/orders"><ArrowLeft size={17} />{f('ordersTitle')}</Link><div className="detail-title order-detail-heading"><div><span className="eyebrow">{f('ref')} · {order.id}</span><h1>{language === 'hi' ? order.cropHi : order.crop}</h1><p>{f('buyer')}: {order.buyerName} · {buyerTypeLabel(language, order.buyerType)}</p></div><StatusBadge tone={tone(order.status)}>{f(statusKey[order.status])}</StatusBadge></div><section className="feature-card detail-product order-produce-summary"><div><span className="eyebrow">{f('orderDetail')}</span><h2>{order.quantityKg} kg × ₹{order.ratePerKg}/kg</h2></div><strong>{money(order.total)}<small>{f('gross')}</small></strong></section><section className="feature-card payout-card"><div className="order-section-heading"><div><span className="eyebrow">{f('payment')}</span><h2>{f('logisticsBreakdown')}</h2></div><StatusBadge tone={order.paymentStatus === 'paid' ? 'green' : 'amber'}>{f(order.paymentStatus as 'pending' | 'paid' | 'processing')}</StatusBadge></div><div className="breakdown"><div><span>{f('gross')}</span><strong>{money(order.total)}</strong></div><div><span>{f('logisticsFee')}</span><strong>{deduction(order.logisticsFee)}</strong></div><div><span>{f('platformFee')}</span><strong>{deduction(order.platformFee)}</strong></div><div className="total"><span>{f('farmerPayout')}</span><strong>{money(order.farmerPayout)}</strong></div></div></section><section className="feature-card order-timeline-card"><div className="order-section-heading"><div><span className="eyebrow">{f('timeline')}</span><h2>{f(statusKey[order.status])}</h2></div></div><div className="timeline">{stages.map((status, index) => <div className={index < current ? 'complete' : index === current ? 'current' : 'upcoming'} key={status}><span>{index < current ? <Check size={14} /> : index + 1}</span><strong>{f(statusKey[status])}</strong>{index === current && <small>{language === 'hi' ? 'अभी' : 'Current'}</small>}</div>)}</div></section><a className="btn btn-secondary btn-full order-support-action" href="tel:18001234567"><Phone size={17} />{f('contactSupport')}</a></div>
 }
 
 export function FarmerEarningsPage() {

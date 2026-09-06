@@ -79,10 +79,17 @@ class VoiceParseRequest(BaseModel):
 
 
 class VoiceParseResponse(BaseModel):
-    crop_name: str
+    crop_name: Optional[str] = None
     crop_name_hi: Optional[str] = None
     category: Optional[str] = "Vegetables"
-    quantity_kg: float
-    price_per_kg: float
-    harvest_date: str
-    confidence_score: float = 0.95
+    quantity_kg: Optional[float] = None
+    unit: str = "kg"
+    price_per_kg: Optional[float] = None
+    pickup_location: Optional[str] = None
+    availability_date: Optional[str] = None
+    harvest_date: Optional[str] = None
+    notes: Optional[str] = None
+    confidence_score: float = 0.0
+    missing_fields: List[str] = Field(default_factory=list)
+    ai_used: bool = False
+    warning: Optional[str] = None

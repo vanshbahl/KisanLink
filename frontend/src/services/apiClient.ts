@@ -191,19 +191,31 @@ class ApiClient {
     transcript: string,
     language: string = 'hi'
   ): Promise<{
-    crop_name: string
+    crop_name?: string | null
     crop_name_hi?: string
     category?: string
-    quantity_kg: number
-    price_per_kg: number
-    harvest_date: string
+    quantity_kg?: number | null
+    unit?: string
+    price_per_kg?: number | null
+    pickup_location?: string | null
+    availability_date?: string | null
+    harvest_date?: string | null
+    notes?: string | null
     confidence_score?: number
+    missing_fields?: string[]
+    ai_used?: boolean
+    warning?: string | null
   }> {
-    return this.request(
-      '/listings/parse-voice',
-      { method: 'POST', body: JSON.stringify({ transcript, language }) },
-      'farmer'
-    )
+    const response = await fetch(`${API_BASE}/listings/parse-voice`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ transcript, language }),
+    })
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}))
+      throw new Error(payload.detail || `Voice analysis failed: ${response.status}`)
+    }
+    return response.json()
   }
 
   // --- Logistics & Route Optimization API ---
@@ -489,6 +501,7 @@ class ApiClient {
     const rate = alloc?.unit_price ? Number(alloc.unit_price) : roundRate(Number(ord.gross_amount_rupees), Number(ord.total_quantity_kg))
     const gross = Math.round(qty * rate)
     const payout = alloc ? Number(alloc.farmer_payout_amount_rupees) : Math.round(gross * 0.95)
+    const deductions = Math.max(0, gross - payout)
 
     const statusMap: Record<string, OrderStatus> = {
       CONFIRMED: 'new',
@@ -513,8 +526,8 @@ class ApiClient {
       ratePerKg: rate,
       total: gross,
       farmerPayout: payout,
-      platformFee: Math.round(gross * 0.03),
-      logisticsFee: Math.round(gross * 0.04),
+      platformFee: Math.round(deductions * 0.3),
+      logisticsFee: deductions - Math.round(deductions * 0.3),
       orderedAt: ord.created_at ? String(ord.created_at).slice(0, 10) : new Date().toISOString().slice(0, 10),
       status: statusMap[ord.status] || 'new',
       paymentStatus: ord.status === 'DELIVERED' || ord.status === 'SETTLED' ? 'paid' : 'processing',

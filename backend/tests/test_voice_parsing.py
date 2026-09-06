@@ -50,14 +50,14 @@ async def test_parse_voice_hinglish(client: AsyncClient, farmer_token: str):
 
 @pytest.mark.asyncio
 async def test_parse_voice_missing_crop(client: AsyncClient, farmer_token: str):
-    """Test validation when no crop name can be identified."""
+    """Missing values remain editable instead of blocking the draft."""
     response = await client.post(
         "/api/v1/listings/parse-voice",
         json={"transcript": "I want to sell 500 kg at 25 rupees per kg", "language": "en"},
         headers={"Authorization": f"Bearer {farmer_token}"},
     )
-    assert response.status_code == 422
-    assert "Could not identify crop name" in response.json()["detail"]
+    assert response.status_code == 200
+    assert "crop" in response.json()["missing_fields"]
 
 
 @pytest.mark.asyncio
@@ -68,8 +68,8 @@ async def test_parse_voice_missing_quantity(client: AsyncClient, farmer_token: s
         json={"transcript": "I want to sell fresh tomatoes at 25 rupees per kg", "language": "en"},
         headers={"Authorization": f"Bearer {farmer_token}"},
     )
-    assert response.status_code == 422
-    assert "Could not identify quantity" in response.json()["detail"]
+    assert response.status_code == 200
+    assert "quantity" in response.json()["missing_fields"]
 
 
 @pytest.mark.asyncio
@@ -80,8 +80,8 @@ async def test_parse_voice_missing_price(client: AsyncClient, farmer_token: str)
         json={"transcript": "I have 500 kg tomatoes for sale", "language": "en"},
         headers={"Authorization": f"Bearer {farmer_token}"},
     )
-    assert response.status_code == 422
-    assert "Could not identify price" in response.json()["detail"]
+    assert response.status_code == 200
+    assert "price" in response.json()["missing_fields"]
 
 
 @pytest.mark.asyncio

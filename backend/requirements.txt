@@ -12,6 +12,7 @@ pyjwt>=2.9.0
 structlog>=24.4.0
 python-multipart>=0.0.20
 httpx>=0.28.1
+google-genai>=1.0.0,<2.0.0
 ortools>=9.10
 pytest>=8.0.0
 pytest-asyncio>=0.24.0

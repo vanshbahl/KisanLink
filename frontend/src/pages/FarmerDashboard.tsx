@@ -75,7 +75,7 @@ export function FarmerDashboard() {
 
       <section className="farmer-hero-card">
         <div className="farmer-hero-copy"><span className="farmer-hero-kicker"><Sprout size={17} /> {t('reachBuyers')}</span><h2>{t('sellProduce')}</h2><p>{t('fairPricePickup')}</p><Link to="/farmer/sell" className="btn btn-light btn-large"><Plus size={21} />{t('sellProduce')}</Link></div>
-        <div className="farmer-hero-illustration" aria-hidden="true"><img src="/assets/produce/spinach.webp" alt="" /><img src="/assets/produce/tomato.webp" alt="" /><img src="/assets/produce/carrot.webp" alt="" /></div>
+        <div className="farmer-hero-illustration" aria-hidden="true"><span className="hero-produce-frame"><img src="/assets/produce/tomato.webp" alt="" /></span></div>
       </section>
 
       <section className="section-block">
