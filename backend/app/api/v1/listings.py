@@ -16,10 +16,14 @@ from app.schemas.crop import (
     VoiceParseRequest,
     VoiceParseResponse,
 )
-from app.services.gemini_listing import extract_listing
+import logging
+from app.services.gemini_listing import extract_listing, _basic_extract
 from fastapi.concurrency import run_in_threadpool
 
+logger = logging.getLogger("VoiceParse")
+
 router = APIRouter(prefix="/listings", tags=["Listings"])
+
 
 @router.post("/parse-voice", response_model=VoiceParseResponse)
 async def parse_voice_listing(
@@ -36,7 +40,15 @@ async def parse_voice_listing(
             detail="Empty or invalid speech transcript.",
         )
 
-    return VoiceParseResponse(**await run_in_threadpool(extract_listing, raw_text, payload.language or "hi"))
+    try:
+        data = await run_in_threadpool(extract_listing, raw_text, payload.language or "hi")
+        return VoiceParseResponse(**data)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error(f"[VoiceParse] ERROR {type(exc).__name__}: {exc}")
+        return VoiceParseResponse(**_basic_extract(raw_text))
+
 
 
 @router.post("", response_model=CropListingOut, status_code=status.HTTP_201_CREATED)

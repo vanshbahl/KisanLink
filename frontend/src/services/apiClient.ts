@@ -200,12 +200,16 @@ class ApiClient {
     pickup_location?: string | null
     availability_date?: string | null
     harvest_date?: string | null
+    pickup_date?: string | null
+    pickup_window?: string | null
+    fulfillment?: 'pickup' | 'self_delivery' | string | null
     notes?: string | null
     confidence_score?: number
     missing_fields?: string[]
     ai_used?: boolean
     warning?: string | null
   }> {
+
     const response = await fetch(`${API_BASE}/listings/parse-voice`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -213,9 +217,15 @@ class ApiClient {
     })
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}))
-      throw new Error(payload.detail || `Voice analysis failed: ${response.status}`)
+      const detail =
+        payload.detail ||
+        (response.status === 500
+          ? 'Server parsing error. Please check backend connection or type details manually.'
+          : `Voice analysis failed: ${response.status}`)
+      throw new Error(detail)
     }
     return response.json()
+
   }
 
   // --- Logistics & Route Optimization API ---

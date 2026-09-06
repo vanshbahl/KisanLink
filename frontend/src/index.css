@@ -902,14 +902,17 @@ html[lang="hi"] .status-badge { white-space: normal; text-align: center; line-he
 .voice-modal-dialog header { display: flex; justify-content: space-between; align-items: center; }
 .voice-modal-dialog header h2 { font-size: 16px; display: flex; align-items: center; gap: 8px; }
 .voice-modal-dialog > p.voice-modal-hint { color: var(--muted); font-size: 11px; line-height: 1.6; }
-.voice-mic-row { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 10px 0; }
-.voice-mic-btn { width: 68px; height: 68px; border-radius: 50%; border: 0; cursor: pointer; display: grid; place-items: center; color: white; background: var(--green); box-shadow: 0 10px 24px rgba(35,103,71,.3); transition: transform .16s ease; }
-.voice-mic-btn:hover { transform: scale(1.04); }
-.voice-mic-btn.listening { background: var(--urgency); box-shadow: 0 0 0 8px rgba(217,97,60,.2); animation: voicePulse 1.4s ease-in-out infinite; }
-@keyframes voicePulse { 0%, 100% { box-shadow: 0 0 0 6px rgba(217,97,60,.18); } 50% { box-shadow: 0 0 0 12px rgba(217,97,60,.1); } }
-.voice-mic-row small { font-size: 11px; font-weight: 700; color: var(--green); }
-.voice-mic-row.is-listening small { color: var(--urgency); }
+.voice-control-row { width: 100%; display: flex; flex-direction: column; gap: 8px; }
+.voice-primary-cta { min-height: 50px; font-size: 14px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 10px; border-radius: 14px; background: var(--green); color: white; border: 0; cursor: pointer; box-shadow: 0 8px 20px rgba(35,103,71,.22); transition: transform .18s ease, background .18s ease; }
+.voice-primary-cta:hover:not(:disabled) { transform: scale(1.015); box-shadow: 0 10px 24px rgba(35,103,71,.3); }
+.voice-primary-cta.listening { background: var(--urgency); box-shadow: 0 0 0 6px rgba(217,97,60,.2); animation: voicePulse 1.4s ease-in-out infinite; }
+.voice-primary-cta:disabled { opacity: 0.75; cursor: not-allowed; }
+.field-head-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
+.voice-re-mic-btn { background: transparent; border: 0; color: var(--green); font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; padding: 3px 7px; border-radius: 6px; }
+.voice-re-mic-btn:hover { background: var(--green-soft); }
 .voice-modal-dialog textarea { width: 100%; padding: 10px; border-radius: 12px; border: 1px solid var(--border); font: inherit; font-size: 13px; resize: vertical; }
+.voice-parsed-fields select { width: 100%; padding: 7px 9px; border: 1px solid var(--border); border-radius: 8px; font: inherit; font-size: 12px; background: white; }
+
 
 /* Shared Farmer AI focus treatment */
 .ai-analysis-overlay { position:fixed; z-index:90; inset:0; background:rgba(9,28,19,.52); backdrop-filter:blur(2px); animation:aiOverlayIn .2s ease both; }

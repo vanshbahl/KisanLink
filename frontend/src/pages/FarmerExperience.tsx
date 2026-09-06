@@ -65,7 +65,20 @@ export function SellProducePage() {
   const selectedCrop = crops.find((item) => item.en === form.crop)
   const chooseCrop = (crop: typeof crops[number]) => setForm((current) => ({ ...current, crop: crop.en, cropHi: crop.hi, imageSrc: crop.image, visual: crop.visual, category: crop.category, mandiPricePerKg: crop.mandi, pricePerKg: crop.recommended }))
   const update = <K extends keyof FarmerListing>(key: K, value: FarmerListing[K]) => setForm((current) => ({ ...current, [key]: value }))
-  const applyVoiceFields = (fields: { crop: string; cropHi?: string; quantityKg: number; pricePerKg: number; harvestDate: string; availableFrom?: string; pickupDate?: string; notes?: string }) => {
+  const applyVoiceFields = (fields: {
+    crop: string
+    cropHi?: string
+    quantityKg: number
+    pricePerKg: number
+    unit?: 'kg' | 'quintal' | 'tonne'
+    harvestDate: string
+    availableFrom?: string
+    pickupDate?: string
+    pickupWindow?: string
+    fulfillment?: 'pickup' | 'self_delivery'
+    farm?: string
+    notes?: string
+  }) => {
     const matched = crops.find((item) => item.en.toLowerCase().includes(fields.crop.toLowerCase()) || fields.crop.toLowerCase().includes(item.en.replace('Fresh ', '').replace('New ', '').replace('Sweet ', '').replace('Baby ', '').replace('Red ', '').replace('Sharbati ', '').toLowerCase()))
     setForm((current) => ({
       ...current,
@@ -76,15 +89,20 @@ export function SellProducePage() {
       category: matched?.category ?? current.category,
       quantityKg: fields.quantityKg,
       remainingKg: fields.quantityKg,
+      unit: fields.unit ?? current.unit,
       pricePerKg: fields.pricePerKg,
       mandiPricePerKg: matched?.mandi ?? current.mandiPricePerKg,
       harvestDate: fields.harvestDate,
-      availableFrom: fields.availableFrom ?? current.availableFrom,
-      pickupDate: fields.pickupDate ?? current.pickupDate,
+      availableFrom: fields.availableFrom ?? fields.harvestDate ?? current.availableFrom,
+      pickupDate: fields.pickupDate ?? fields.harvestDate ?? current.pickupDate,
+      pickupWindow: fields.pickupWindow ?? current.pickupWindow,
+      fulfillment: fields.fulfillment ?? current.fulfillment,
+      farm: fields.farm || current.farm,
       notes: fields.notes || current.notes,
     }))
     setStep(2)
   }
+
   const validate = () => form.crop.trim() && form.quantityKg > 0 && form.pricePerKg > 0 && form.harvestDate && form.availableFrom
   const save = async (status: ListingStatus) => {
     if (!validate()) { showToast(f('requiredFields')); return }

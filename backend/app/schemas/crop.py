@@ -88,8 +88,12 @@ class VoiceParseResponse(BaseModel):
     pickup_location: Optional[str] = None
     availability_date: Optional[str] = None
     harvest_date: Optional[str] = None
+    pickup_date: Optional[str] = None
+    pickup_window: Optional[str] = None
+    fulfillment: Optional[str] = "pickup"
     notes: Optional[str] = None
     confidence_score: float = 0.0
     missing_fields: List[str] = Field(default_factory=list)
     ai_used: bool = False
     warning: Optional[str] = None
+

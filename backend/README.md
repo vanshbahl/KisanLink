@@ -163,7 +163,7 @@ python seed_demo_data.py
 
 ### 4. Run Backend API Server
 ```bash
-uvicorn app.main:app --reload --port 8001
+uvicorn app.main:app --reload --port 8000
 ```
 
 ### 5. Run Frontend Development Server

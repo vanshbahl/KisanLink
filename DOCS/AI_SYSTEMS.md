@@ -149,19 +149,27 @@
 - **Classification:** Speech-to-Text (ASR) + Structured Entity Extraction (NLP/LLM).
 - **Problem Statement:** Rural farmers struggle with complex digital form fields and smartphone keyboards.
 - **Pipeline:**
-  1. Audio stream recorded in browser via HTML5 MediaRecorder.
-  2. ASR Transcription via **BHASHINI ASR API** (Hindi / Indian regional dialects).
-  3. Structured Entity Parser: Regex + lightweight transformer/LLM parsing intent and slots:
+  1. Audio speech-to-text recorded in browser via Web Speech API (`webkitSpeechRecognition` / `SpeechRecognition`) in Hindi (`hi-IN`) and English (`en-IN`), with auto-parse on utterance finish.
+  2. Structured Entity Parser: Hybrid pipeline with deterministic regex & natural-language date/semantics extractor, complemented by Google Gemini (`gemini-1.5-flash`) for nuanced multilingual Hinglish intent:
      ```json
      {
-       "intent": "CREATE_LISTING",
-       "crop": "Tomato",
-       "quantity_kg": 800.0,
-       "harvest_date_relative": "NEXT_WEEK"
+       "crop_name": "Tomato",
+       "crop_name_hi": "टमाटर",
+       "category": "Vegetables",
+       "quantity_kg": 725.0,
+       "unit": "kg",
+       "price_per_kg": 2.0,
+       "pickup_date": "2026-09-18",
+       "pickup_location": "Green Field Farm",
+       "pickup_window": "Morning · 7–10 AM",
+       "fulfillment": "pickup",
+       "notes": "Farm pickup (buyer to collect from farm)",
+       "confidence_score": 0.95,
+       "ai_used": false
      }
      ```
-- **Safety Boundary:** AI-extracted values are presented on an interactive confirmation card for the farmer to tap and approve. **Zero unchecked direct database writes.**
-- **Fallback:** If audio is noisy or API fails, UI displays: *"आवाज़ साफ नहीं आई"* and opens the 1-question-per-screen touch wizard.
+- **Safety Boundary:** AI-extracted values are presented on an interactive editable confirmation card for the farmer to review, adjust, and tap "Apply to form". **Zero unchecked direct database writes.**
+- **Fallback:** Deterministic parser executes first with zero network latency. If Gemini fails or API keys are unconfigured, deterministic parser serves extracted crop, quantities, dates, and locations without HTTP 500 crashes. Farmer can always type transcript or manually fill wizard fields.
 
 ---
 
