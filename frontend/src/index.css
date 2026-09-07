@@ -20,8 +20,11 @@
   --muted: #68736d;
   --border: #dde3dd;
   --shadow: 0 2px 10px rgba(31, 41, 36, 0.05);
-  --bottom-nav-height: calc(72px + env(safe-area-inset-bottom));
-  --bottom-nav-clearance: calc(var(--bottom-nav-height) + 16px);
+  --bottom-nav-height: calc(76px + env(safe-area-inset-bottom));
+  --bottom-nav-clearance: calc(var(--bottom-nav-height) + 18px);
+  --nav-icon-box: 34px;
+  --nav-bubble: 46px;
+  --nav-bubble-lift: -10px;
 }
 
 * { box-sizing: border-box; }
@@ -178,12 +181,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .mobile-header > div { display: flex; align-items: center; gap: 8px; }
 .desktop-topbar { display: none; }
 .app-main { padding-bottom: var(--bottom-nav-clearance); }
-.bottom-nav { position: fixed; z-index: 40; left: 0; right: 0; bottom: 0; height: var(--bottom-nav-height); padding: 7px 8px env(safe-area-inset-bottom); background: rgba(255,255,255,.97); backdrop-filter: blur(14px); border-top: 1px solid var(--border); display: grid; grid-template-columns: repeat(5, 1fr); }
-.bottom-nav a { min-width: 0; min-height: 56px; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 4px; border-radius: 13px; color: #7a847e; font-size: 10px; font-weight: 700; }
-.bottom-nav a.active { color: var(--green); }
-.bottom-nav a.nav-primary { margin-top: -21px; }
-.nav-primary-icon { width: 52px; height: 52px; border-radius: 18px; background: var(--green); color: white; display: grid; place-items: center; box-shadow: 0 8px 22px rgba(35,103,71,.25); border: 4px solid white; }
-.bottom-nav a.nav-primary.active .nav-primary-icon { background: var(--green-dark); }
+/* Bottom navigation is defined once, in the production IA block near the end of this file. */
 .language-switcher { min-height: 40px; padding: 0 10px; border-radius: 13px; background: white; border: 1px solid var(--border); display: flex; align-items: center; gap: 7px; color: var(--muted); }
 .language-switcher button { border: 0; background: transparent; font-size: 11px; font-weight: 800; color: var(--muted); padding: 5px; cursor: pointer; }
 .language-switcher button.active { color: var(--green); }.language-switcher > span { height: 15px; width: 1px; background: var(--border); }
@@ -566,7 +564,6 @@ html[lang="hi"] .status-badge { white-space: normal; text-align: center; line-he
 .demo-role-icon.role-logistics { background: #e5eadc; color: var(--green-dark); }
 .avatar-logistics { background: #e5eadc; color: var(--green-dark); }
 .shell-logistics .desktop-sidebar { background: #203f35; }
-.shell-logistics .bottom-nav { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .logistics-welcome { background: var(--green-dark); color: white; border-radius: 25px; padding: clamp(22px, 3vw, 34px); display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; margin-bottom: 18px; }
 .logistics-welcome h1 { font-size: clamp(30px, 4vw, 45px); letter-spacing: -.05em; margin: 9px 0 6px; }
 .logistics-welcome p { color: #c5d4ca; max-width: 650px; line-height: 1.6; }
@@ -1031,8 +1028,22 @@ body.ai-analysis-active { overflow:hidden; }
 .corridor-legend { display: flex; align-items: center; gap: 12px; font-size: 10px; background: white; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); }
 .corridor-legend span { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); }
 .corridor-legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
-.corridor-map-canvas { position: relative; }
-.corridor-map-fallback { background: #f7f9f6; padding: 20px; display: flex; flex-direction: column; justify-content: center; gap: 12px; height: 100%; }
+.corridor-map-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+/* A real, non-zero computed height at every breakpoint — the map is a primary
+   operations surface, not a strip. */
+.corridor-map-canvas { position: relative; height: clamp(300px, 52vh, 420px); min-height: 300px; }
+.corridor-map-surface { position: absolute; inset: 0; width: 100%; height: 100%; }
+.corridor-map-surface .maplibregl-map { width: 100%; height: 100%; }
+.corridor-marker { width: 18px; height: 18px; padding: 0; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.28); cursor: pointer; display: block; }
+.corridor-marker-hub { border-radius: 5px; transform: rotate(45deg); }
+.corridor-map-fallback { position: absolute; inset: 0; background: #f7f9f6; padding: 16px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+.corridor-fallback-head { display: flex; align-items: center; gap: 11px; color: var(--green-dark); }
+.corridor-fallback-head strong { display: block; font-size: 13px; }
+.corridor-fallback-head small { color: var(--muted); font-size: 10.5px; }
+.corridor-fallback-head > div { flex: 1 1 auto; min-width: 0; }
+.corridor-fallback-head .btn { flex: 0 0 auto; }
+.corridor-fallback-list { display: grid; gap: 9px; }
+.corridor-fallback-list .corridor-node-card { text-align: left; width: 100%; font: inherit; }
 .corridor-node-card { padding: 13px; border-radius: 14px; border: 1px solid var(--border); background: white; cursor: pointer; transition: transform .15s ease; }
 .corridor-node-card:hover { transform: translateY(-2px); }
 .corridor-node-card.farmer { border-color: #c9dcc9; }
@@ -1053,12 +1064,6 @@ body.ai-analysis-active { overflow:hidden; }
  * desktop one, and all motion is purely about explaining a state change.
  * ========================================================================= */
 
-/* The bottom nav now sizes itself to whatever each role's nav contains, so adding a
-   destination can never overflow or clip a tab. */
-.bottom-nav { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
-.shell-logistics .bottom-nav { grid-template-columns: none; }
-.bottom-nav a > span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 2px; }
-@media (max-width: 400px) { .bottom-nav a { font-size: 9px; } .bottom-nav { padding-left: 4px; padding-right: 4px; } }
 
 /* --- Shared market tokens --- */
 .mm-page, .mm-pulse, .mm-reveal { --mm-bulk: #2f7d57; --mm-consumer: #d9a03c; --mm-freight: #6b8fa8; --mm-platform: #a48a6a; --mm-spread: #c9705a; --mm-saved: #9fbfa9; }
@@ -1382,44 +1387,82 @@ body.mm-reveal-open { overflow: hidden; }
 
 /* Production IA and responsive pass */
 :root {
-  --bottom-nav-height: calc(78px + env(safe-area-inset-bottom));
+  --bottom-nav-height: calc(76px + env(safe-area-inset-bottom));
   --bottom-nav-clearance: calc(var(--bottom-nav-height) + 18px);
+  --nav-icon-box: 34px;
+  --nav-bubble: 46px;
+  --nav-bubble-lift: -10px;
 }
 
-.bottom-nav,
-.shell-logistics .bottom-nav {
+/* --- Bottom navigation (single source of truth) ---------------------------
+ * Five equal slots. Every slot is the same grid: a fixed 34px icon box on row 1
+ * and the label on row 2, so labels share one baseline and nothing shifts when
+ * the active tab changes. The elevated centre action keeps that same 34px
+ * footprint and nests a larger bubble inside it, centred by `place-items`, so
+ * it is mathematically centred in its slot and lifted by a known amount rather
+ * than by a negative margin that drags the label with it.
+ * ------------------------------------------------------------------------- */
+.bottom-nav {
+  position: fixed;
+  z-index: 40;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--bottom-nav-height);
+  display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  grid-auto-flow: initial;
-  grid-auto-columns: initial;
-  padding: 7px max(6px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(6px, env(safe-area-inset-left));
+  align-items: stretch;
+  padding: 8px max(6px, env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
+  background: rgba(255, 255, 255, .97);
+  backdrop-filter: blur(14px);
+  border-top: 1px solid var(--border);
+  overflow: visible;
 }
 .bottom-nav a {
-  min-height: 64px;
+  min-width: 0;
   display: grid;
-  grid-template-rows: 36px 14px;
+  grid-template-rows: var(--nav-icon-box) auto;
   justify-items: center;
-  align-content: end;
-  gap: 2px;
-  padding: 0 2px 5px;
-  position: relative;
+  align-content: center;
+  gap: 3px;
+  padding: 0 2px;
   border-radius: 12px;
-  line-height: 1;
+  color: #7a847e;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.15;
+  overflow: visible;
 }
-.bottom-nav a > span:first-child {
-  width: 36px;
-  height: 36px;
+.bottom-nav a.active { color: var(--green); }
+.bottom-nav .nav-icon {
+  width: var(--nav-icon-box);
+  height: var(--nav-icon-box);
   display: grid;
   place-items: center;
+  overflow: visible;
 }
-.bottom-nav a.nav-primary { margin-top: 0; }
-.bottom-nav .nav-primary-icon {
-  width: 48px;
-  height: 48px;
+.bottom-nav .nav-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+.bottom-nav .nav-bubble {
+  width: var(--nav-bubble);
+  height: var(--nav-bubble);
   border-radius: 16px;
-  transform: translateY(-10px);
-  box-shadow: 0 7px 20px rgba(35,103,71,.22);
+  background: var(--green);
+  color: white;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 7px 20px rgba(35, 103, 71, .24);
+  border: 3px solid white;
+  transform: translateY(var(--nav-bubble-lift));
+  transition: background .16s ease;
 }
-.bottom-nav a > span:last-child { align-self: end; padding: 0 1px; }
+.bottom-nav a.nav-primary { color: var(--green-dark); }
+.bottom-nav a.nav-primary.active .nav-bubble { background: var(--green-dark); }
 
 .consumer-page > .mm-pulse,
 .farmer-page > .mm-pulse { margin-top: 0; }
@@ -1599,9 +1642,234 @@ body.mm-reveal-open { overflow: hidden; }
   .page { padding-left: 13px; padding-right: 13px; }
   .mobile-header { padding-left: 13px; padding-right: 13px; }
   .bottom-nav { padding-left: 2px; padding-right: 2px; }
-  .bottom-nav a { font-size: 8.5px; }
-  .bottom-nav .nav-primary-icon { width: 46px; height: 46px; }
+  .bottom-nav a { font-size: 9px; }
   .mm-pulse-economics strong { font-size: 14px; }
   .mm-outcome-summary { padding: 11px; }
   .mm-outcome-state { padding: 9px 7px; }
 }
+
+/* --- Mobile header profile access (roles without Profile in the bottom bar) --- */
+.header-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 13px;
+  border: 1px solid var(--border);
+  background: var(--green-soft);
+  color: var(--green-dark);
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 800;
+  flex: 0 0 auto;
+  transition: border-color .16s ease, background .16s ease;
+}
+.header-avatar:hover { border-color: #aab8af; }
+.header-avatar.active { background: var(--green); color: #fff; border-color: var(--green); }
+.mobile-header > div { gap: 8px; }
+
+/* Narrow phones: scale the whole nav from its tokens rather than per-element hacks. */
+@media (max-width: 360px) {
+  :root { --nav-icon-box: 30px; --nav-bubble: 42px; --nav-bubble-lift: -9px; --bottom-nav-height: calc(72px + env(safe-area-inset-bottom)); }
+  .bottom-nav a { font-size: 8.5px; }
+  .header-avatar { width: 38px; height: 38px; }
+}
+
+/* =========================================================================
+ * Logistics operations console
+ * One vertical rhythm for the whole module: a section is a heading plus its
+ * content, sections are separated by a single token, and cards inside a
+ * section share one padding scale. Nothing here sets a fixed width.
+ * ========================================================================= */
+.logistics-console {
+  --logi-gap: 26px;
+  --logi-card-pad: 16px;
+  --logi-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--logi-gap);
+}
+.logistics-console > .logi-section { margin: 0; }
+
+.logi-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  background: var(--green-dark);
+  color: #fff;
+  border-radius: 22px;
+  padding: clamp(18px, 3vw, 28px);
+}
+.logi-header .eyebrow { color: #cfe3d6; }
+.logi-header h1 { font-size: clamp(26px, 4.5vw, 38px); letter-spacing: -.045em; margin: 8px 0 6px; line-height: 1.1; }
+.logi-header p { color: #c5d4ca; font-size: 12.5px; line-height: 1.55; max-width: 52ch; }
+.logi-header > .status-badge { flex: 0 0 auto; }
+
+.logi-section { display: flex; flex-direction: column; gap: 13px; }
+.logi-section-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; }
+.logi-section-head h2 { font-size: 17px; letter-spacing: -.03em; }
+.logi-section-head p { color: var(--muted); font-size: 11.5px; line-height: 1.5; margin-top: 3px; max-width: 56ch; }
+.logi-section-link { color: var(--green); display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 800; white-space: nowrap; }
+
+.logi-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.logi-kpis article {
+  min-width: 0;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--logi-radius);
+  padding: var(--logi-card-pad);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.logi-kpi-icon { width: 30px; height: 30px; border-radius: 10px; background: var(--green-soft); color: var(--green); display: grid; place-items: center; margin-bottom: 5px; }
+.logi-kpis strong { font-size: 24px; line-height: 1.05; letter-spacing: -.03em; color: var(--green-dark); }
+.logi-kpi-label { color: var(--text); font-size: 11.5px; font-weight: 700; }
+.logi-kpis small { color: var(--muted); font-size: 10px; line-height: 1.45; }
+
+.logi-jobs { display: grid; gap: 11px; }
+.logi-job {
+  min-width: 0;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--logi-radius);
+  padding: var(--logi-card-pad);
+  display: grid;
+  gap: 12px;
+}
+.logi-job-main { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: start; gap: 12px; }
+.logi-job-icon { width: 34px; height: 34px; border-radius: 11px; background: var(--green-soft); color: var(--green); display: grid; place-items: center; }
+.logi-job.is-delivery .logi-job-icon { background: #e8eff5; color: #3d6688; }
+.logi-job-body { min-width: 0; display: grid; gap: 4px; }
+.logi-job-route { display: flex; align-items: center; gap: 6px; min-width: 0; flex-wrap: wrap; }
+.logi-job-route strong { font-size: 14px; letter-spacing: -.01em; overflow-wrap: anywhere; }
+.logi-job-route svg { color: var(--muted); flex: 0 0 auto; }
+.logi-job-body p { font-size: 12px; color: var(--text); font-weight: 700; }
+.logi-job-body small { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: 10.5px; }
+.logi-job-main > .status-badge { justify-self: end; }
+.logi-job-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.logi-job-actions .btn { min-height: 40px; font-size: 12.5px; }
+.btn-small-ghost { min-height: 40px; padding: 0 12px; background: transparent; color: var(--muted); border: 0; font-size: 12.5px; font-weight: 700; cursor: pointer; border-radius: 12px; }
+.btn-small-ghost:hover { color: var(--green); }
+.logi-job-details { display: grid; gap: 1px; margin: 0; background: var(--border); border: 1px solid var(--border); border-radius: 13px; overflow: hidden; }
+.logi-job-details > div { background: #fbfcfa; padding: 10px 12px; display: flex; justify-content: space-between; gap: 12px; }
+.logi-job-details dt { color: var(--muted); font-size: 10.5px; font-weight: 700; }
+.logi-job-details dd { margin: 0; font-size: 11.5px; font-weight: 700; text-align: right; overflow-wrap: anywhere; }
+
+.logi-secondary > .impact-analytics-card,
+.logi-secondary .dispatch-pulse { border-radius: var(--logi-radius); }
+.corridor-map-placeholder { height: clamp(300px, 52vh, 420px); border-radius: 20px; border: 1px solid var(--border); background: linear-gradient(100deg, #f2f5f1 30%, #e9efe9 50%, #f2f5f1 70%); }
+
+@media (min-width: 600px) {
+  .logi-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .logi-job-main { grid-template-columns: 38px minmax(0, 1fr) auto; }
+}
+@media (min-width: 1024px) {
+  .logistics-console { --logi-gap: 32px; --logi-card-pad: 20px; }
+  .logi-section-head h2 { font-size: 19px; }
+  .logi-job { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+  .logi-job-actions { justify-content: flex-end; }
+  .logi-job-details { grid-column: 1 / -1; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .logi-header { flex-direction: column; }
+  .logi-header > .status-badge { align-self: flex-start; }
+  .logi-section-head { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .logi-job-main { grid-template-columns: 32px minmax(0, 1fr); }
+  .logi-job-main > .status-badge { grid-column: 2; justify-self: start; }
+  .logi-job-actions { justify-content: stretch; }
+  .logi-job-actions .btn { flex: 1 1 auto; justify-content: center; }
+  .logi-job-details > div { flex-direction: column; gap: 3px; }
+  .logi-job-details dd { text-align: left; }
+}
+
+/* =========================================================================
+ * Market Maker — shared presentation
+ * Infographic blocks and the "how it works" rail are role-agnostic; only the
+ * content adapters differ, so every role reads identically.
+ * ========================================================================= */
+.mm-infographics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 26px; }
+.mm-infographics article { min-width: 0; background: #fff; border: 1px solid var(--border); border-radius: 18px; padding: 15px; display: flex; flex-direction: column; gap: 3px; }
+.mm-info-icon { width: 30px; height: 30px; border-radius: 10px; background: var(--green-soft); color: var(--green); display: grid; place-items: center; margin-bottom: 6px; }
+.mm-infographics strong { font-size: 22px; letter-spacing: -.03em; line-height: 1.05; color: var(--green-dark); }
+.mm-info-label { font-size: 11.5px; font-weight: 700; }
+.mm-infographics small { color: var(--muted); font-size: 10.5px; line-height: 1.45; }
+
+.mm-how-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; }
+.mm-how-steps li { display: grid; grid-template-columns: 22px 32px minmax(0, 1fr) auto; align-items: center; gap: 11px; background: #fff; border: 1px solid var(--border); border-radius: 16px; padding: 13px 15px; }
+.mm-how-index { color: var(--muted); font-size: 11px; font-weight: 800; }
+.mm-how-icon { width: 32px; height: 32px; border-radius: 11px; background: var(--green-soft); color: var(--green); display: grid; place-items: center; }
+.mm-how-steps strong { display: block; font-size: 13px; line-height: 1.3; }
+.mm-how-steps small { color: var(--muted); font-size: 10.5px; line-height: 1.45; }
+.mm-how-steps b { font-size: 13px; color: var(--green-dark); white-space: nowrap; }
+
+@media (min-width: 700px) { .mm-infographics { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 420px) {
+  .mm-how-steps li { grid-template-columns: 20px 28px minmax(0, 1fr); row-gap: 6px; }
+  .mm-how-steps b { grid-column: 2 / -1; }
+}
+
+/* =========================================================================
+ * Market Maker — farmer surface
+ * Bigger type, fewer words, one action. Sized for a phone first; the desktop
+ * form is the same layout in a narrower measure, not a denser one.
+ * ========================================================================= */
+.mm-page-farmer { display: flex; flex-direction: column; gap: 18px; }
+.mm-farmer { display: flex; flex-direction: column; gap: 14px; max-width: 640px; }
+.mm-farmer-hero { background: var(--green-dark); color: #fff; border-radius: 22px; padding: 22px; display: grid; gap: 9px; justify-items: start; }
+.mm-farmer-hero.is-blocked { background: #8a4331; }
+.mm-farmer-flag { width: 44px; height: 44px; border-radius: 15px; background: rgba(255,255,255,.16); display: grid; place-items: center; }
+.mm-farmer-hero h1 { font-size: clamp(26px, 7vw, 34px); letter-spacing: -.04em; line-height: 1.12; }
+.mm-farmer-hero p { color: #d3e3d8; font-size: 15px; line-height: 1.5; }
+
+.mm-farmer-price { position: relative; background: #fff; border: 1px solid var(--border); border-radius: 20px; padding: 18px 16px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; }
+.mm-farmer-price > div { display: grid; justify-items: center; gap: 2px; text-align: center; }
+.mm-farmer-price span { color: var(--muted); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+.mm-farmer-price strong { font-size: clamp(28px, 8vw, 36px); letter-spacing: -.04em; }
+.mm-farmer-price small { color: var(--muted); font-size: 11px; }
+.mm-farmer-price .is-better strong { color: var(--green); }
+.mm-farmer-price > svg { color: var(--muted); }
+.mm-farmer-gain { position: absolute; top: -11px; right: 14px; display: inline-flex; align-items: center; gap: 2px; background: var(--green); color: #fff; border-radius: 999px; padding: 5px 11px; font-size: 12px; }
+
+.mm-farmer-gauge { background: #fff; border: 1px solid var(--border); border-radius: 20px; padding: 18px; display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 14px; text-align: center; }
+.mm-farmer-gauge > div { display: grid; gap: 4px; }
+.mm-farmer-gauge strong { font-size: 26px; letter-spacing: -.03em; color: var(--green-dark); }
+.mm-farmer-gauge span { font-size: 14px; font-weight: 700; }
+.mm-farmer-gauge small { color: var(--muted); font-size: 12px; }
+
+.mm-farmer-stages { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.mm-farmer-stages li { display: grid; justify-items: center; gap: 6px; background: #fff; border: 1px solid var(--border); border-radius: 16px; padding: 13px 8px; opacity: .55; text-align: center; }
+.mm-farmer-stages li > span { width: 30px; height: 30px; border-radius: 50%; background: #eef1ed; color: var(--muted); display: grid; place-items: center; font-size: 12px; font-weight: 800; }
+.mm-farmer-stages small { font-size: 11px; font-weight: 700; line-height: 1.3; }
+.mm-farmer-stages li.is-done, .mm-farmer-stages li.is-active { opacity: 1; }
+.mm-farmer-stages li.is-done > span { background: var(--green-soft); color: var(--green); }
+.mm-farmer-stages li.is-active { border-color: var(--green); }
+.mm-farmer-stages li.is-active > span { background: var(--green); color: #fff; }
+
+.mm-farmer-action { display: grid; gap: 8px; justify-items: center; }
+.mm-farmer-action small { color: var(--muted); font-size: 12px; text-align: center; }
+
+@media (min-width: 700px) {
+  .mm-farmer-gauge { grid-template-columns: auto minmax(0, 1fr); justify-items: start; text-align: left; padding: 22px; }
+}
+
+/* --- Consumer marketplace (now a section of Home, not its own page) --- */
+.marketplace-section { scroll-margin-top: 84px; }
+.marketplace-section .section-heading { align-items: flex-start; }
+.section-support { color: var(--muted); font-size: 12px; line-height: 1.5; margin-top: 5px; }
+.marketplace-section .category-row { margin-top: 12px; }
+.marketplace-more { display: flex; justify-content: center; margin-top: 18px; }
+.marketplace-more .btn { min-width: 220px; }
+@media (min-width: 768px) { .marketplace-section { scroll-margin-top: 96px; } }
+
+/* The bottom bar is defined late in this file, so the desktop hide has to come after it
+   rather than relying on the earlier breakpoint block. */
+@media (min-width: 900px) {
+  .mobile-header,
+  .bottom-nav { display: none; }
+  .app-main { padding-bottom: 0; }
+  .corridor-map-canvas { height: clamp(360px, 46vh, 470px); }
+}
+.corridor-map-loading { position: absolute; inset: 0; background: linear-gradient(100deg, #f2f5f1 30%, #e9efe9 50%, #f2f5f1 70%); background-size: 220% 100%; animation: corridorShimmer 1.4s linear infinite; pointer-events: none; }
+@keyframes corridorShimmer { to { background-position: -220% 0; } }
+@media (prefers-reduced-motion: reduce) { .corridor-map-loading { animation: none; } }

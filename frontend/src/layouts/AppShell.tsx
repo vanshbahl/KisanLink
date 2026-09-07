@@ -1,6 +1,6 @@
 import {
   BarChart3, Boxes, ClipboardList, Heart, HelpCircle, Home,
-  LayoutDashboard, ListChecks, MapPinned, PackageCheck, Radar, Search, ShoppingBag, Sprout, Truck, UserRound,
+  LayoutDashboard, ListChecks, MapPinned, PackageCheck, Radar, ShoppingBag, Sprout, Truck, UserRound,
 } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { LanguageSwitcher } from '../components/LanguageSwitcher'
@@ -17,47 +17,98 @@ interface NavItemConfig {
   to: string
   icon: LucideIcon
   end?: boolean
+  /** Renders as the elevated centre action. Exactly one per mobile list, always slot 3. */
   primary?: boolean
-  desktopOnly?: boolean
 }
 
-const navByRole: Record<Role, NavItemConfig[]> = {
-  farmer: [
-    { labelKey: 'home', to: '/farmer', icon: Home, end: true },
-    { labelKey: 'orders', to: '/farmer/orders', icon: PackageCheck },
-    { labelKey: 'produce', to: '/farmer/produce', icon: Sprout, primary: true },
-    { labelKey: 'marketMakerNav', to: '/farmer/market', icon: Radar },
-    { labelKey: 'earnings', to: '/farmer/earnings', icon: BarChart3, desktopOnly: true },
-    { labelKey: 'demandInsights', to: '/farmer/insights', icon: BarChart3, desktopOnly: true },
-    { labelKey: 'pickupSupport', to: '/farmer/pickups', icon: Boxes, desktopOnly: true },
-    { labelKey: 'profile', to: '/farmer/profile', icon: UserRound },
-  ],
-  consumer: [
-    { labelKey: 'home', to: '/consumer', icon: Home, end: true },
-    { labelKey: 'explore', to: '/consumer/explore', icon: Search },
-    { labelKey: 'cart', to: '/consumer/cart', icon: ShoppingBag, primary: true },
-    { labelKey: 'orders', to: '/consumer/orders', icon: PackageCheck },
-    { labelKey: 'marketMakerNav', to: '/consumer/market', icon: Radar, desktopOnly: true },
-    { labelKey: 'saved', to: '/consumer/saved', icon: Heart, desktopOnly: true },
-    { labelKey: 'profile', to: '/consumer/profile', icon: UserRound },
-  ],
-  bulk: [
-    { labelKey: 'overview', to: '/bulk', icon: LayoutDashboard, end: true },
-    { labelKey: 'supply', to: '/bulk/supply', icon: Boxes },
-    { labelKey: 'requests', to: '/bulk/requests', icon: ClipboardList },
-    { labelKey: 'orders', to: '/bulk/orders', icon: ListChecks },
-    { labelKey: 'marketMakerNav', to: '/bulk/market', icon: Radar },
-    { labelKey: 'profile', to: '/bulk/profile', icon: UserRound },
-  ],
-  logistics: [
-    { labelKey: 'overview', to: '/logistics', icon: LayoutDashboard, end: true },
-    { labelKey: 'pickups', to: '/logistics/pickups', icon: Boxes },
-    { labelKey: 'routes', to: '/logistics/routes', icon: MapPinned, primary: true },
-    { labelKey: 'deliveries', to: '/logistics/deliveries', icon: PackageCheck },
-    { labelKey: 'marketMakerNav', to: '/logistics/market', icon: Radar, desktopOnly: true },
-    { labelKey: 'vehicles', to: '/logistics/vehicles', icon: Truck, desktopOnly: true },
-    { labelKey: 'profile', to: '/logistics/profile', icon: UserRound },
-  ],
+interface RoleNav {
+  /** Exactly five entries, in display order, with the primary one in the middle slot. */
+  mobile: NavItemConfig[]
+  /** Sidebar destinations — the mobile five plus anything that only fits on a large screen. */
+  desktop: NavItemConfig[]
+  /**
+   * True when Profile is not reachable from the mobile bar, so the mobile header owns the
+   * avatar instead. Keeps profile access role-aware in one place rather than per page.
+   */
+  headerProfile: boolean
+}
+
+const navByRole: Record<Role, RoleNav> = {
+  farmer: {
+    mobile: [
+      { labelKey: 'home', to: '/farmer', icon: Home, end: true },
+      { labelKey: 'orders', to: '/farmer/orders', icon: PackageCheck },
+      { labelKey: 'produce', to: '/farmer/produce', icon: Sprout, primary: true },
+      { labelKey: 'marketMakerNav', to: '/farmer/market', icon: Radar },
+      { labelKey: 'profile', to: '/farmer/profile', icon: UserRound },
+    ],
+    desktop: [
+      { labelKey: 'home', to: '/farmer', icon: Home, end: true },
+      { labelKey: 'orders', to: '/farmer/orders', icon: PackageCheck },
+      { labelKey: 'produce', to: '/farmer/produce', icon: Sprout, primary: true },
+      { labelKey: 'marketMakerNav', to: '/farmer/market', icon: Radar },
+      { labelKey: 'earnings', to: '/farmer/earnings', icon: BarChart3 },
+      { labelKey: 'demandInsights', to: '/farmer/insights', icon: BarChart3 },
+      { labelKey: 'pickupSupport', to: '/farmer/pickups', icon: Boxes },
+      { labelKey: 'profile', to: '/farmer/profile', icon: UserRound },
+    ],
+    headerProfile: false,
+  },
+  consumer: {
+    mobile: [
+      { labelKey: 'home', to: '/consumer', icon: Home, end: true },
+      { labelKey: 'orders', to: '/consumer/orders', icon: PackageCheck },
+      { labelKey: 'cart', to: '/consumer/cart', icon: ShoppingBag, primary: true },
+      { labelKey: 'marketMakerNav', to: '/consumer/market', icon: Radar },
+      { labelKey: 'profile', to: '/consumer/profile', icon: UserRound },
+    ],
+    desktop: [
+      { labelKey: 'home', to: '/consumer', icon: Home, end: true },
+      { labelKey: 'orders', to: '/consumer/orders', icon: PackageCheck },
+      { labelKey: 'cart', to: '/consumer/cart', icon: ShoppingBag, primary: true },
+      { labelKey: 'marketMakerNav', to: '/consumer/market', icon: Radar },
+      { labelKey: 'saved', to: '/consumer/saved', icon: Heart },
+      { labelKey: 'profile', to: '/consumer/profile', icon: UserRound },
+    ],
+    headerProfile: false,
+  },
+  bulk: {
+    mobile: [
+      { labelKey: 'overview', to: '/bulk', icon: LayoutDashboard, end: true },
+      { labelKey: 'supply', to: '/bulk/supply', icon: Boxes },
+      { labelKey: 'requests', to: '/bulk/requests', icon: ClipboardList, primary: true },
+      { labelKey: 'orders', to: '/bulk/orders', icon: ListChecks },
+      { labelKey: 'marketMakerNav', to: '/bulk/market', icon: Radar },
+    ],
+    desktop: [
+      { labelKey: 'overview', to: '/bulk', icon: LayoutDashboard, end: true },
+      { labelKey: 'supply', to: '/bulk/supply', icon: Boxes },
+      { labelKey: 'requests', to: '/bulk/requests', icon: ClipboardList, primary: true },
+      { labelKey: 'orders', to: '/bulk/orders', icon: ListChecks },
+      { labelKey: 'marketMakerNav', to: '/bulk/market', icon: Radar },
+      { labelKey: 'profile', to: '/bulk/profile', icon: UserRound },
+    ],
+    headerProfile: true,
+  },
+  logistics: {
+    mobile: [
+      { labelKey: 'overview', to: '/logistics', icon: LayoutDashboard, end: true },
+      { labelKey: 'pickups', to: '/logistics/pickups', icon: Boxes },
+      { labelKey: 'routes', to: '/logistics/routes', icon: MapPinned, primary: true },
+      { labelKey: 'deliveries', to: '/logistics/deliveries', icon: PackageCheck },
+      { labelKey: 'marketMakerNav', to: '/logistics/market', icon: Radar },
+    ],
+    desktop: [
+      { labelKey: 'overview', to: '/logistics', icon: LayoutDashboard, end: true },
+      { labelKey: 'pickups', to: '/logistics/pickups', icon: Boxes },
+      { labelKey: 'routes', to: '/logistics/routes', icon: MapPinned, primary: true },
+      { labelKey: 'deliveries', to: '/logistics/deliveries', icon: PackageCheck },
+      { labelKey: 'marketMakerNav', to: '/logistics/market', icon: Radar },
+      { labelKey: 'vehicles', to: '/logistics/vehicles', icon: Truck },
+      { labelKey: 'profile', to: '/logistics/profile', icon: UserRound },
+    ],
+    headerProfile: true,
+  },
 }
 
 export function AppShell() {
@@ -72,7 +123,7 @@ export function AppShell() {
         <Logo light />
         <div className="sidebar-role"><span>{t(roleKey[session.role])}</span><strong>{user.name}</strong><small>{session.role === 'farmer' ? t('location') : user.location}</small></div>
         <nav aria-label={`${t(roleKey[session.role])} ${t('overview')}`}>
-          {nav.map((item) => <NavItem key={item.to} item={item} />)}
+          {nav.desktop.map((item) => <NavItem key={item.to} item={item} />)}
         </nav>
         <div className="sidebar-footer">
           {session.role === 'farmer' ? <a href="tel:18001234567"><HelpCircle size={19} /><span>{t('callSupport')}<small>1800 123 4567</small></span></a> : <div className="impact-mini"><BarChart3 size={20} /><span>{t('transparentPricing')}<strong>{t('farmerReceivesMore')}</strong></span></div>}
@@ -82,7 +133,15 @@ export function AppShell() {
       <div className="shell-main">
         <header className="mobile-header">
           <Logo />
-          <div>{session.role === 'farmer' && <LanguageSwitcher compact />}<NotificationCenter /></div>
+          <div>
+            {session.role === 'farmer' && <LanguageSwitcher compact />}
+            <NotificationCenter />
+            {nav.headerProfile && (
+              <NavLink to={`/${session.role}/profile`} className="header-avatar" aria-label={t('profile')} title={t('profile')}>
+                <span>{user.avatarInitials}</span>
+              </NavLink>
+            )}
+          </div>
         </header>
         <header className="desktop-topbar">
           <div><span>{t('deliveringTo')}</span><strong>{session.role === 'farmer' ? t('location') : user.location}</strong></div>
@@ -92,7 +151,7 @@ export function AppShell() {
       </div>
 
       <nav className="bottom-nav" aria-label={`${t(roleKey[session.role])} ${t('overview')}`}>
-        {nav.filter((item) => !item.desktopOnly).map((item) => <NavItem key={item.to} item={item} mobile />)}
+        {nav.mobile.map((item) => <NavItem key={item.to} item={item} mobile />)}
       </nav>
     </div>
   )
@@ -101,10 +160,15 @@ export function AppShell() {
 function NavItem({ item, mobile = false }: { item: NavItemConfig; mobile?: boolean }) {
   const { t } = useLanguage()
   const Icon = item.icon
+  const elevated = mobile && item.primary
   return (
     <NavLink to={item.to} end={item.end} className={({ isActive }) => `${isActive ? 'active' : ''} ${item.primary ? 'nav-primary' : ''}`}>
-      <span className={mobile && item.primary ? 'nav-primary-icon' : ''}><Icon size={mobile ? 21 : 20} /></span>
-      <span>{t(item.labelKey)}</span>
+      {/* Every slot gets the same fixed icon box; the elevated action nests a larger bubble
+          inside it so its layout footprint — and therefore the label baseline — is identical. */}
+      <span className="nav-icon">
+        {elevated ? <span className="nav-bubble"><Icon size={22} /></span> : <Icon size={mobile ? 21 : 20} />}
+      </span>
+      <span className="nav-label">{t(item.labelKey)}</span>
     </NavLink>
   )
 }

@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowLeft, Boxes, Building2, CalendarClock, Check, ChevronRight, CircleGauge, Clock3, LogOut, MapPin, MapPinned, PackageCheck, RefreshCw, Route, Save, ShieldCheck, ShoppingBasket, Sprout, Truck, UserRound, Warehouse } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Boxes, Building2, Check, ChevronRight, CircleGauge, Clock3, LogOut, MapPinned, PackageCheck, RefreshCw, Route, Save, ShieldCheck, ShoppingBasket, Sprout, Truck, UserRound, Warehouse } from 'lucide-react'
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { DemoControlCenter } from '../components/DemoControlCenter'
@@ -41,24 +41,159 @@ export function LogisticsDashboard() {
       .then((res) => { setImpact(res); setImpactFallback(false) })
       .catch(() => { setImpact({ farmer_net_gain_percentage: 28.5, buyer_savings_percentage: 14.2, total_distance_saved_km: 64.0, wastage_prevented_kg: 1250.0 }); setImpactFallback(true) })
   }, [])
-  if (loading) return <DashboardSkeleton />; if (!data || error) return <ErrorState />
-  const activePickups = data.logisticsPickups.filter((item) => !['completed'].includes(item.status)); const activeDeliveries = data.deliveries.filter((item) => item.status !== 'delivered'); const next = activePickups[0]; const priority = activeDeliveries.find((item) => item.status === 'issue') ?? activeDeliveries[0]; const pooled = data.logisticsRoutes.find((item) => item.pooled)
-  const metrics = [[activePickups.length, l('Pickups today', 'आज के पिकअप')], [activeDeliveries.length, l('Deliveries today', 'आज की डिलीवरी')], [activePickups.filter((item) => item.status === 'unassigned').length, l('Unassigned pickups', 'बिना वाहन पिकअप')], [data.vehicles.filter((item) => item.status !== 'maintenance').length, l('Active vehicles', 'सक्रिय वाहन')], [`${activePickups.reduce((sum, item) => sum + item.quantityKg, 0).toLocaleString('en-IN')} kg`, l('Produce in transit', 'रास्ते में फसल')], [data.logisticsPickups.filter((item) => item.status === 'issue').length + data.deliveries.filter((item) => item.status === 'issue').length, l('Issues / delays', 'समस्या / देरी')]]
-  return <div className="page logistics-page"><div className="logistics-welcome"><div><span className="eyebrow light"><CircleGauge size={15} /> {l('Live prototype operations', 'लाइव प्रोटोटाइप संचालन')}</span><h1>{l('Good morning, Kavita', 'सुप्रभात, कविता')}</h1><p>{l('One shared view of farm pickups, pooled routes and buyer deliveries.', 'खेत पिकअप, साझा रूट और खरीदार डिलीवरी की एक साझा जानकारी।')}</p></div><StatusBadge tone="green">{l('Sonipat Hub · On shift', 'सोनीपत हब · ड्यूटी पर')}</StatusBadge></div>
-    <section className="impact-analytics-card">
-      <div className="impact-analytics-head">
-        <div><h2><ShieldCheck size={16} /> {l('Ecosystem impact', 'पारिस्थितिकी तंत्र प्रभाव')}</h2><p>{l('Live metrics computed from platform orders and rescue listings', 'प्लेटफ़ॉर्म ऑर्डर व बचाव लिस्टिंग से लाइव आँकड़े')}</p></div>
-        {impactFallback && <span className="impact-fallback-pill">{l('Fallback metrics', 'बैकअप आँकड़े')}</span>}
+  if (loading) return <DashboardSkeleton />
+  if (!data || error) return <ErrorState />
+
+  const activePickups = data.logisticsPickups.filter((item) => item.status !== 'completed')
+  const activeDeliveries = data.deliveries.filter((item) => item.status !== 'delivered')
+  const freeVehicles = data.vehicles.filter((item) => item.status === 'available')
+  const fleetCapacity = data.vehicles.filter((item) => item.status !== 'maintenance').reduce((sum, item) => sum + item.capacityKg, 0)
+  const loadKg = activePickups.reduce((sum, item) => sum + item.quantityKg, 0)
+  const issues = data.logisticsPickups.filter((item) => item.status === 'issue').length + data.deliveries.filter((item) => item.status === 'issue').length
+  const pooled = data.logisticsRoutes.find((item) => item.pooled)
+
+  // Four numbers an operator acts on, in the order they act on them. Everything else is
+  // secondary and lives further down the page.
+  const kpis = [
+    { icon: Boxes, value: activePickups.length, label: l('Active pickups', 'सक्रिय पिकअप'), note: l(`${activePickups.filter((item) => item.status === 'unassigned').length} unassigned`, `${activePickups.filter((item) => item.status === 'unassigned').length} बिना वाहन`) },
+    { icon: PackageCheck, value: activeDeliveries.length, label: l('Active deliveries', 'सक्रिय डिलीवरी'), note: issues ? l(`${issues} need attention`, `${issues} पर ध्यान दें`) : l('All on schedule', 'सब समय पर') },
+    { icon: Truck, value: `${freeVehicles.length}/${data.vehicles.length}`, label: l('Available capacity', 'उपलब्ध क्षमता'), note: l(`${fleetCapacity.toLocaleString('en-IN')} kg fleet`, `${fleetCapacity.toLocaleString('en-IN')} किलो बेड़ा`) },
+    { icon: Warehouse, value: `${loadKg.toLocaleString('en-IN')} kg`, label: l('Produce in transit', 'रास्ते में फसल'), note: pooled ? l(`${pooled.distanceKm} km pooled route`, `${pooled.distanceKm} किमी साझा रूट`) : l('No pooled route yet', 'अभी साझा रूट नहीं') },
+  ]
+
+  // Jobs an operator can act on now, exceptions first, then unassigned work, then the rest.
+  const jobs: JobCardData[] = [
+    ...activePickups.map((item) => ({
+      kind: 'pickup' as const,
+      id: item.id,
+      from: item.farmLocation,
+      to: item.routeId ? l('Sonipat hub', 'सोनीपत हब') : l('Assigned route', 'तय रूट'),
+      load: `${language === 'hi' ? item.cropHi : item.crop} · ${item.quantityKg} kg`,
+      timing: item.pickupWindow,
+      status: item.status as string,
+      statusLabel: labels.pickup[item.status][language === 'hi' ? 1 : 0],
+      action: l('Open pickup', 'पिकअप खोलें'),
+      to_: `/logistics/pickups/${item.id}`,
+      details: [[l('Farmer', 'किसान'), `${item.farmer} · ${item.farm}`], [l('Vehicle', 'वाहन'), item.vehicleId ?? l('Unassigned', 'तय नहीं')], [l('Orders', 'ऑर्डर'), item.orderRefs.join(', ') || '—']] as string[][],
+    })),
+    ...activeDeliveries.map((item) => ({
+      kind: 'delivery' as const,
+      id: item.id,
+      from: item.origin,
+      to: item.destination,
+      load: `${language === 'hi' ? item.produceHi : item.produce} · ${item.quantityKg} kg`,
+      timing: `ETA ${item.eta}`,
+      status: item.status as string,
+      statusLabel: labels.delivery[item.status][language === 'hi' ? 1 : 0],
+      action: l('Open delivery', 'डिलीवरी खोलें'),
+      to_: `/logistics/deliveries/${item.id}`,
+      details: [[l('Buyer', 'खरीदार'), `${item.buyer} · ${item.buyerType}`], [l('Vehicle', 'वाहन'), item.vehicleId ?? l('Unassigned', 'तय नहीं')], [l('Shipment', 'शिपमेंट'), item.shipment]] as string[][],
+    })),
+  ].sort((a, b) => rank(a) - rank(b))
+
+  return (
+    <div className="page logistics-page logistics-console">
+      <header className="logi-header">
+        <div>
+          <span className="eyebrow"><CircleGauge size={15} /> {l('Live operations', 'लाइव संचालन')}</span>
+          <h1>{l('Good morning, Kavita', 'सुप्रभात, कविता')}</h1>
+          <p>{l('Sonipat Hub · farm pickups, pooled routes and buyer deliveries.', 'सोनीपत हब · खेत पिकअप, साझा रूट और खरीदार डिलीवरी।')}</p>
+        </div>
+        <StatusBadge tone={issues ? 'amber' : 'green'}>{issues ? l(`${issues} exceptions`, `${issues} समस्याएं`) : l('On shift · clear', 'ड्यूटी पर · सब ठीक')}</StatusBadge>
+      </header>
+
+      <section className="logi-section">
+        <div className="logi-kpis">
+          {kpis.map((kpi) => (
+            <article key={String(kpi.label)}>
+              <span className="logi-kpi-icon"><kpi.icon size={16} /></span>
+              <strong>{kpi.value}</strong>
+              <span className="logi-kpi-label">{kpi.label}</span>
+              <small>{kpi.note}</small>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="logi-section">
+        <div className="logi-section-head"><div><h2>{l('Corridor map', 'कॉरिडोर मैप')}</h2><p>{l('Pickup points, hub and buyer drops on the active corridor.', 'सक्रिय कॉरिडोर पर पिकअप, हब और खरीदार डिलीवरी।')}</p></div></div>
+        <Suspense fallback={<div className="corridor-map-placeholder" />}><DigitalTwinCorridorMap /></Suspense>
+      </section>
+
+      <section className="logi-section">
+        <div className="logi-section-head">
+          <div><h2>{l('Active jobs', 'सक्रिय काम')}</h2><p>{l('Exceptions and unassigned work first.', 'पहले समस्या और बिना वाहन काम।')}</p></div>
+          <Link className="logi-section-link" to="/logistics/pickups">{l('All operations', 'सभी संचालन')} <ChevronRight size={15} /></Link>
+        </div>
+        {jobs.length ? <div className="logi-jobs">{jobs.slice(0, 5).map((job) => <JobCard key={`${job.kind}-${job.id}`} job={job} l={l} />)}</div>
+          : <EmptyState icon={Boxes} title={l('Nothing active', 'कुछ सक्रिय नहीं')} copy={l('No open pickups or deliveries in this state.', 'इस स्थिति में कोई खुला पिकअप या डिलीवरी नहीं।')} />}
+      </section>
+
+      <section className="logi-section">
+        <div className="logi-section-head"><div><h2>{l('Market Maker', 'मार्केट मेकर')}</h2><p>{l('Where the next viable trip is coming from.', 'अगली संभव यात्रा कहां से आ रही है।')}</p></div></div>
+        <MarketPulseCard role="logistics" />
+      </section>
+
+      <section className="logi-section logi-secondary">
+        <div className="logi-section-head"><div><h2>{l('Analytics & planning', 'विश्लेषण और योजना')}</h2><p>{l('Background numbers — no action needed right now.', 'पृष्ठभूमि आंकड़े — अभी कोई कार्रवाई नहीं।')}</p></div></div>
+        <DispatchPulseCard pickups={data.logisticsPickups} deliveries={data.deliveries} vehicles={data.vehicles} />
+        <section className="impact-analytics-card">
+          <div className="impact-analytics-head">
+            <div><h2><ShieldCheck size={16} /> {l('Ecosystem impact', 'पारिस्थितिकी तंत्र प्रभाव')}</h2><p>{l('Live metrics computed from platform orders and rescue listings', 'प्लेटफ़ॉर्म ऑर्डर व बचाव लिस्टिंग से लाइव आँकड़े')}</p></div>
+            {impactFallback && <span className="impact-fallback-pill">{l('Fallback metrics', 'बैकअप आँकड़े')}</span>}
+          </div>
+          <div className="impact-metric-grid">
+            <div><span>{l('Farmer net gain', 'किसान शुद्ध लाभ')}</span><strong>+{impact?.farmer_net_gain_percentage ?? 28.5}%</strong><small>{l('vs local mandi price', 'मंडी भाव की तुलना में')}</small></div>
+            <div><span>{l('Buyer savings', 'खरीदार बचत')}</span><strong>{impact?.buyer_savings_percentage ?? 14.2}%</strong><small>{l('vs benchmark retail', 'रिटेल बेंचमार्क की तुलना में')}</small></div>
+            <div><span>{l('Distance saved', 'बचत ढुलाई दूरी')}</span><strong>{impact?.total_distance_saved_km ?? 64.0} km</strong><small>{l('route pooling', 'रूट साझाकरण')}</small></div>
+            <div><span>{l('Wastage prevented', 'बचाई गई फसल')}</span><strong>{(impact?.wastage_prevented_kg ?? 1250).toLocaleString()} kg</strong><small>{l('urgent rescue listings', 'आपातकालीन बचाव लिस्टिंग')}</small></div>
+          </div>
+        </section>
+      </section>
+    </div>
+  )
+}
+
+interface JobCardData {
+  kind: 'pickup' | 'delivery'
+  id: string
+  from: string
+  to: string
+  load: string
+  timing: string
+  status: string
+  statusLabel: string
+  action: string
+  to_: string
+  details: string[][]
+}
+
+const rank = (job: JobCardData) => job.status === 'issue' ? 0 : job.status === 'unassigned' ? 1 : job.status === 'scheduled' ? 2 : 3
+
+/**
+ * One operational job in the form an operator scans it: route, load, when, state, and the
+ * single action that moves it forward. Everything else is one tap away.
+ */
+function JobCard({ job, l }: { job: JobCardData; l: (en: string, hi: string) => string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <article className={`logi-job is-${job.kind}`}>
+      <div className="logi-job-main">
+        <span className="logi-job-icon">{job.kind === 'pickup' ? <Boxes size={16} /> : <PackageCheck size={16} />}</span>
+        <div className="logi-job-body">
+          <div className="logi-job-route"><strong>{job.from}</strong><ChevronRight size={14} aria-hidden="true" /><strong>{job.to}</strong></div>
+          <p>{job.load}</p>
+          <small><Clock3 size={12} /> {job.timing} · {job.id}</small>
+        </div>
+        <StatusBadge tone={tone(job.status)}>{job.statusLabel}</StatusBadge>
       </div>
-      <div className="impact-metric-grid">
-        <div><span>{l('Farmer net gain', 'किसान शुद्ध लाभ')}</span><strong>+{impact?.farmer_net_gain_percentage ?? 28.5}%</strong><small>{l('vs local mandi price', 'मंडी भाव की तुलना में')}</small></div>
-        <div><span>{l('Buyer savings', 'खरीदार बचत')}</span><strong>{impact?.buyer_savings_percentage ?? 14.2}%</strong><small>{l('vs benchmark retail', 'रिटेल बेंचमार्क की तुलना में')}</small></div>
-        <div><span>{l('Distance saved', 'बचत ढुलाई दूरी')}</span><strong>{impact?.total_distance_saved_km ?? 64.0} km</strong><small>{l('route pooling', 'रूट साझाकरण')}</small></div>
-        <div><span>{l('Wastage prevented', 'बचाई गई फसल')}</span><strong>{(impact?.wastage_prevented_kg ?? 1250).toLocaleString()} kg</strong><small>{l('urgent rescue listings', 'आपातकालीन बचाव लिस्टिंग')}</small></div>
+      <div className="logi-job-actions">
+        <button type="button" className="btn btn-ghost btn-small-ghost" aria-expanded={open} onClick={() => setOpen(!open)}>{open ? l('Hide details', 'विवरण छुपाएं') : l('Details', 'विवरण')}</button>
+        <Link className="btn btn-secondary" to={job.to_}>{job.action} <ChevronRight size={15} /></Link>
       </div>
-    </section>
-    <Suspense fallback={null}><DigitalTwinCorridorMap /></Suspense>
-    <MarketPulseCard role="logistics" /><div className="logistics-metrics">{metrics.map(([value, label]) => <article key={String(label)}><strong>{value}</strong><span>{label}</span></article>)}</div><DispatchPulseCard pickups={data.logisticsPickups} deliveries={data.deliveries} vehicles={data.vehicles} /><div className="operations-grid"><section className="feature-card operation-card"><header><span className="op-icon"><Boxes /></span><div><small>{l('Next pickup', 'अगला पिकअप')}</small><h2>{next?.id ?? '—'}</h2></div></header>{next ? <><p><strong>{language === 'hi' ? next.cropHi : next.crop}</strong> · {next.quantityKg} kg</p><span><MapPin size={16} /> {next.farmLocation}</span><span><CalendarClock size={16} /> {next.pickupWindow}</span><Link className="btn btn-secondary btn-full" to={`/logistics/pickups/${next.id}`}>{l('Open pickup', 'पिकअप खोलें')} <ChevronRight size={16} /></Link></> : <p>{l('No active pickups.', 'कोई सक्रिय पिकअप नहीं।')}</p>}</section><section className="feature-card operation-card"><header><span className="op-icon"><PackageCheck /></span><div><small>{l('Priority delivery', 'प्राथमिक डिलीवरी')}</small><h2>{priority?.id ?? '—'}</h2></div></header>{priority ? <><p><strong>{language === 'hi' ? priority.produceHi : priority.produce}</strong> · {priority.quantityKg} kg</p><span><MapPin size={16} /> {priority.destination}</span><span><Clock3 size={16} /> ETA {priority.eta}</span><Link className="btn btn-secondary btn-full" to={`/logistics/deliveries/${priority.id}`}>{l('Open delivery', 'डिलीवरी खोलें')} <ChevronRight size={16} /></Link></> : <p>{l('No active deliveries.', 'कोई सक्रिय डिलीवरी नहीं।')}</p>}</section><section className="feature-card operation-card"><header><span className="op-icon"><Route /></span><div><small>{l('Route summary', 'रूट सारांश')}</small><h2>{pooled ? language === 'hi' ? pooled.nameHi : pooled.name : '—'}</h2></div></header>{pooled && <><p><strong>{pooled.stops.length} {l('stops', 'स्टॉप')}</strong> · {pooled.distanceKm} km · {formatTime(pooled.durationMinutes)}</p><span><Truck size={16} /> {Math.round(pooled.loadKg / pooled.capacityKg * 100)}% {l('utilization', 'उपयोग')}</span><Link className="btn btn-secondary btn-full" to="/logistics/routes">{l('View routes', 'रूट देखें')} <ChevronRight size={16} /></Link><Link className="operation-secondary-link" to="/logistics/vehicles"><Truck size={15} /> {l('Manage fleet', 'वाहन संभालें')}</Link></>}</section><section className="feature-card operation-card exception-card"><header><span className="op-icon"><AlertTriangle /></span><div><small>{l('Exceptions', 'अपवाद')}</small><h2>{l('Operational attention', 'संचालन पर ध्यान')}</h2></div></header><p>{data.logisticsPickups.some((item) => item.status === 'issue') || data.deliveries.some((item) => item.status === 'issue') ? l('An issue requires review now.', 'एक समस्या की अभी समीक्षा चाहिए।') : l('No active exceptions. Seed one from Demo Controls.', 'कोई सक्रिय समस्या नहीं। डेमो नियंत्रण से बनाएं।')}</p><Link className="btn btn-secondary btn-full" to="/logistics/pickups">{l('Review operations', 'संचालन देखें')}</Link></section></div></div>
+      {open && <dl className="logi-job-details">{job.details.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>}
+    </article>
+  )
 }
 
 export function LogisticsPickupsPage() {

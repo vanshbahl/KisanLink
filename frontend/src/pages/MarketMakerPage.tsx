@@ -4,7 +4,10 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { FarmerMarketMaker } from '../components/market/FarmerMarketMaker'
 import { MarketCommitPanel } from '../components/market/MarketCommitPanel'
+import { MarketHowItWorks } from '../components/market/MarketHowItWorks'
+import { MarketInfographics } from '../components/market/MarketInfographics'
 import { MarketConvergence } from '../components/market/MarketConvergence'
 import { MarketDemandRing } from '../components/market/MarketDemandRing'
 import { MarketFreightCurve } from '../components/market/MarketFreightCurve'
@@ -29,23 +32,31 @@ const roleFrame: Record<Role, { eyebrow: string; title: string; copy: string }> 
   farmer: {
     eyebrow: 'Your produce, pooled into a market',
     title: 'A buyer big enough for your lot',
-    copy: 'No single household or company nearby wants your whole harvest. KisanLink combines them until a direct trip becomes worth running — while your minimum price stays exactly where you set it.',
+    copy: 'Small lots are combined until a direct trip is worth running. Your minimum price never moves.',
   },
   consumer: {
     eyebrow: 'Buying together, straight from the farm',
     title: 'Farm-direct opens at a certain size',
-    copy: 'A van from Sonipat costs the same whether it carries 15 kg or 300 kg. Once enough neighbours and one bulk buyer are in, that cost splits far enough for farm-direct to beat the shop.',
+    copy: 'One van costs the same at 15 kg or 300 kg. Enough neighbours, and farm-direct beats the shop.',
   },
   bulk: {
     eyebrow: 'Pooled procurement corridors',
     title: 'Requirements that are too small, made viable',
-    copy: 'Your requirement alone cannot justify a dedicated run to this corridor. Pooled with household demand on the same route, it clears the break-even volume and lands below your current cost.',
+    copy: 'Your requirement alone cannot justify this corridor. Pooled with household demand, it clears break-even.',
   },
   logistics: {
     eyebrow: 'Corridor feasibility',
     title: 'Trips that only exist once the load does',
-    copy: 'Market Maker holds a vehicle against a corridor and states the load it needs to pay for itself. Nothing is dispatched until demand, supply and this fleet all line up.',
+    copy: 'A vehicle is held against a corridor with the load it needs to pay for itself. Nothing dispatches before that.',
   },
+}
+
+/** One deep visualisation per role — the question that role actually asks of the market. */
+const roleDeepView: Record<Role, { eyebrow: string; title: string }> = {
+  farmer: { eyebrow: 'Why volume matters', title: 'Delivered price against committed volume' },
+  consumer: { eyebrow: 'Who benefits', title: 'Where the price actually goes' },
+  bulk: { eyebrow: 'What is being combined', title: 'Where the supply is coming from' },
+  logistics: { eyebrow: 'Why volume matters', title: 'Delivered price against committed volume' },
 }
 
 export function MarketMakerPage() {
@@ -113,13 +124,26 @@ export function MarketMakerPage() {
     finally { setBusy(false); refresh() }
   }
 
+  if (role === 'farmer') {
+    return (
+      <div className="page mm-page mm-page-farmer">
+        <FarmerMarketMaker
+          board={board} math={math} busy={busy} available={own?.availableKg ?? 0}
+          onOffer={(extra) => own && guard(() => marketMakerService.offerMore(board.id, own.lot.id, extra), `${extra} kg more released to ${board.corridor}`)}
+        />
+        <MarketHowItWorks board={board} math={math} />
+        {reveal && <MarketUnlockReveal board={board} math={math} result={reveal} role={role} onClose={() => { setReveal(null); refresh() }} />}
+      </div>
+    )
+  }
+
   return (
     <div className={`page mm-page mm-page-${role}`}>
       <div className="page-title-row mm-head">
         <div>
-          <span className="eyebrow"><Radar size={15} /> {l('KisanLink Market Maker', 'किसानलिंक मार्केट मेकर')} · {l(frame.eyebrow, role === 'farmer' ? 'आपकी फसल, सीधे बाज़ार में' : frame.eyebrow)}</span>
+          <span className="eyebrow"><Radar size={15} /> {l('KisanLink Market Maker', 'किसानलिंक मार्केट मेकर')} · {l(frame.eyebrow, 'साझा मांग से सीधा बाज़ार')}</span>
           <h1>{l(frame.title, 'सीधा बाज़ार बनाना')}</h1>
-          <p>{l(frame.copy, 'बिखरी हुई मांग और सप्लाई को जोड़कर सीधा व्यापार संभव बनाया जाता है, और आपका न्यूनतम भाव सुरक्षित रहता है।')}</p>
+          <p>{l(frame.copy, 'बिखरी हुई मांग और सप्लाई को जोड़कर सीधा व्यापार संभव बनाया जाता है, और किसान का न्यूनतम भाव सुरक्षित रहता है।')}</p>
         </div>
         <StatusBadge tone={created ? 'green' : math.viable ? 'green' : structural ? 'red' : 'amber'}>
           {created ? l('Market created', 'बाज़ार बन गया') : math.viable ? l('Ready to create', 'बनाने के लिए तैयार') : structural ? l('Blocked', 'रुका हुआ') : l('Forming', 'बन रहा है')}
@@ -192,10 +216,6 @@ export function MarketMakerPage() {
             />
           )}
 
-          {!created && role === 'farmer' && own && (
-            <FarmerLever board={board} lotId={own.lot.id} available={own.availableKg} busy={busy} onOffer={(extra) => guard(() => marketMakerService.offerMore(board.id, own.lot.id, extra), `${extra} kg more released to ${board.corridor}`)} l={l} />
-          )}
-
           {!created && role === 'logistics' && (
             <LogisticsLever
               vehicleId={board.vehicleId} corridorVehicle={data.view.corridorVehicle} math={math} busy={busy}
@@ -208,20 +228,21 @@ export function MarketMakerPage() {
         </div>
       </section>
 
-      <section className="section-block">
-        <div className="section-heading"><div><span className="eyebrow">{l('Why volume matters', 'मात्रा क्यों ज़रूरी है')}</span><h2>{l('Delivered price against committed volume', 'पक्की मांग के अनुसार डिलीवरी कीमत')}</h2></div></div>
-        <MarketFreightCurve board={board} math={math} />
-      </section>
+      <MarketInfographics role={role} board={board} math={math} />
 
       <section className="section-block">
-        <div className="section-heading"><div><span className="eyebrow">{l('What is being combined', 'क्या जोड़ा जा रहा है')}</span><h2>{l('Small needs become one market', 'छोटी ज़रूरतें मिलकर एक बाज़ार बनाती हैं')}</h2></div></div>
-        <MarketConvergence board={board} math={math} />
+        <div className="section-heading">
+          <div>
+            <span className="eyebrow">{roleDeepView[role].eyebrow}</span>
+            <h2>{roleDeepView[role].title}</h2>
+          </div>
+        </div>
+        {role === 'consumer' ? <MarketValueSplit board={board} math={math} />
+          : role === 'bulk' ? <MarketConvergence board={board} math={math} />
+            : <MarketFreightCurve board={board} math={math} />}
       </section>
 
-      <section className="section-block">
-        <div className="section-heading"><div><span className="eyebrow">{l('Who benefits', 'किसे लाभ मिलता है')}</span><h2>{l('Where the price actually goes', 'कीमत का पैसा कहां जाता है')}</h2></div></div>
-        <MarketValueSplit board={board} math={math} />
-      </section>
+      <MarketHowItWorks board={board} math={math} />
 
       <MarketWhyPanel board={board} math={math} defaultOpen={Boolean(structural)} />
 
@@ -283,26 +304,6 @@ function MarketStateRail({ status, viable, blocked, l }: { status: string; viabl
         </li>
       ))}
     </ol>
-  )
-}
-
-function FarmerLever({ board, available, busy, onOffer, l }: {
-  board: { lots: Array<{ id: string; listingId?: string; offeredKg: number }>; corridor: string; corridorHi: string }
-  lotId: string; available: number; busy?: boolean; onOffer: (extraKg: number) => void; l: (en: string, hi: string) => string
-}) {
-  return (
-    <div className="mm-lever">
-      <div>
-        <span className="eyebrow">{l('Your lever', 'आपका विकल्प')}</span>
-        <h3>{l(`${available} kg of your lot is held for this corridor`, `इस कॉरिडोर के लिए आपकी ${available} किलो फसल रखी है`)}</h3>
-        <p>{l('Releasing more stock raises the supply this corridor can draw on. Your minimum price is unchanged either way.', 'और स्टॉक देने से कॉरिडोर की सप्लाई बढ़ती है। आपका न्यूनतम भाव वही रहता है।')}</p>
-      </div>
-      <div className="mm-lever-actions">
-        <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => onOffer(40)}><Sprout size={16} /> {l('Release 40 kg more', '40 किलो और दें')}</button>
-        <Link className="btn btn-ghost" to="/farmer/produce">{l('My produce', 'मेरी फसल')} <ArrowRight size={15} /></Link>
-      </div>
-      <small>{l(board.corridor, board.corridorHi)}</small>
-    </div>
   )
 }
 
