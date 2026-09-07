@@ -1,5 +1,6 @@
 import type { MarketMakerBoard } from '../../types'
 import type { MarketMath } from '../../services/marketMakerEngine'
+import { useLanguage } from '../../contexts/LanguageContext'
 
 /**
  * Horizontal threshold bar — the compact form of the demand ring, used wherever a card is
@@ -9,6 +10,8 @@ import type { MarketMath } from '../../services/marketMakerEngine'
 export function MarketThresholdMeter({ board, math, tone = 'light', showLabels = true }: {
   board: MarketMakerBoard; math: MarketMath; tone?: 'light' | 'dark'; showLabels?: boolean
 }) {
+  const { language } = useLanguage()
+  const l = (en: string, hi: string) => language === 'hi' ? hi : en
   const threshold = Number.isFinite(math.thresholdKg) && math.thresholdKg > 0 ? math.thresholdKg : Math.max(1, math.committedKg)
   // Leave visible room past break-even so the notch never sits on the very edge.
   const scale = Math.max(threshold * 1.12, math.committedKg * 1.02, 1)
@@ -16,7 +19,7 @@ export function MarketThresholdMeter({ board, math, tone = 'light', showLabels =
 
   return (
     <div className={`mm-meter mm-meter-${tone} ${math.viable ? 'is-viable' : ''}`}>
-      <div className="mm-meter-track" role="img" aria-label={`${math.committedKg} kg committed, ${threshold} kg needed`}>
+      <div className="mm-meter-track" role="img" aria-label={l(`${math.committedKg} kg committed, ${threshold} kg needed`, `${math.committedKg} किलो पक्का, ${threshold} किलो चाहिए`)}>
         {board.commitments.map((commitment, index) => (
           <i
             key={commitment.id}
@@ -29,9 +32,9 @@ export function MarketThresholdMeter({ board, math, tone = 'light', showLabels =
       </div>
       {showLabels && (
         <div className="mm-meter-labels">
-          <span><i className="key-bulk" /> Bulk {math.bulkKg} kg</span>
-          <span><i className="key-consumer" /> Households {math.consumerKg} kg</span>
-          <span className="mm-meter-gap">{math.viable ? 'Break-even reached' : math.gapKg > 0 ? `${math.gapKg} kg to go` : 'Blocked'}</span>
+          <span><i className="key-bulk" /> {l('Business', 'व्यवसाय')} {math.bulkKg} kg</span>
+          <span><i className="key-consumer" /> {l('Households', 'परिवार')} {math.consumerKg} kg</span>
+          <span className="mm-meter-gap">{math.viable ? l('Threshold reached', 'ज़रूरी मात्रा पूरी') : math.gapKg > 0 ? l(`${math.gapKg} kg to go`, `${math.gapKg} किलो बाकी`) : l('Blocked', 'रुका हुआ')}</span>
         </div>
       )}
     </div>

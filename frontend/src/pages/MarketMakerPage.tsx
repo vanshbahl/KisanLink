@@ -71,10 +71,24 @@ export function MarketMakerPage() {
 
   const { board, math } = data.view
   const frame = roleFrame[role]
+  const deliveryWindow = language === 'hi'
+    ? board.deliveryWindow.replace('Tomorrow', 'कल').replace(' AM', ' बजे').replace(' PM', ' बजे')
+    : board.deliveryWindow
   const own = math.allocations.find((entry) => entry.lot.own)
   const blocker = math.blockers[0]
   const structural = math.blockers.find((item) => item.kind !== 'demand')
   const created = board.status === 'created'
+  const blockerTitle = language === 'hi' && blocker
+    ? blocker.kind === 'demand' ? `सीधा बाज़ार बनने के लिए ${math.gapKg} किलो और चाहिए`
+      : blocker.kind === 'vehicle' ? 'इस कॉरिडोर के लिए वाहन उपलब्ध नहीं है'
+        : blocker.kind === 'supply' ? 'ज़रूरी मात्रा के लिए फसल कम है'
+          : 'उपलब्ध वाहन में ज़रूरी मात्रा नहीं आ सकती'
+    : blocker?.title
+  const blockerDetail = language === 'hi' && blocker
+    ? blocker.kind === 'demand'
+      ? `${math.committedKg} किलो मांग पक्की है। ${math.thresholdKg} किलो पर तय ढुलाई लागत बंटने से डिलीवरी कीमत खरीदार की सीमा में आ जाएगी।`
+      : 'मांग मौजूद है, लेकिन बाज़ार बनाने से पहले पर्याप्त फसल और सही वाहन दोनों उपलब्ध होने चाहिए।'
+    : blocker?.detail
 
   const guard = async (action: () => Promise<unknown>, success: string) => {
     setBusy(true)
@@ -103,7 +117,7 @@ export function MarketMakerPage() {
     <div className={`page mm-page mm-page-${role}`}>
       <div className="page-title-row mm-head">
         <div>
-          <span className="eyebrow"><Radar size={15} /> {l('KisanLink Market Maker', 'किसानलिंक मार्केट मेकर')} · {frame.eyebrow}</span>
+          <span className="eyebrow"><Radar size={15} /> {l('KisanLink Market Maker', 'किसानलिंक मार्केट मेकर')} · {l(frame.eyebrow, role === 'farmer' ? 'आपकी फसल, सीधे बाज़ार में' : frame.eyebrow)}</span>
           <h1>{l(frame.title, 'सीधा बाज़ार बनाना')}</h1>
           <p>{l(frame.copy, 'बिखरी हुई मांग और सप्लाई को जोड़कर सीधा व्यापार संभव बनाया जाता है, और आपका न्यूनतम भाव सुरक्षित रहता है।')}</p>
         </div>
@@ -112,7 +126,9 @@ export function MarketMakerPage() {
         </StatusBadge>
       </div>
 
-      <MarketStateRail status={board.status} viable={math.viable} blocked={Boolean(structural)} />
+      <MarketStateRail status={board.status} viable={math.viable} blocked={Boolean(structural)} l={l} />
+
+      <MarketOutcomeSummary board={board} math={math} l={l} />
 
       <section className="mm-hero">
         <div className="mm-hero-ring">
@@ -120,7 +136,7 @@ export function MarketMakerPage() {
           <div className="mm-hero-corridor">
             <strong>{language === 'hi' ? board.cropHi : board.crop} · {board.grade}</strong>
             <span><MapPinned size={13} /> {language === 'hi' ? board.corridorHi : board.corridor} · {board.routeDistanceKm} km</span>
-            <span><CalendarClock size={13} /> {board.deliveryWindow}</span>
+            <span><CalendarClock size={13} /> {deliveryWindow}</span>
           </div>
         </div>
 
@@ -130,7 +146,7 @@ export function MarketMakerPage() {
               <span className="mm-verdict-icon"><Sparkles size={18} /></span>
               <div>
                 <h2>{l('Direct Market Created', 'सीधा बाज़ार बन गया')}</h2>
-                <p>{math.committedKg} kg moves on {board.routeId} in one pooled trip. {money(math.farmerGainTotal)} more reached the farms and {money(Math.max(0, math.buyerSavingTotal))} stayed with the buyers.</p>
+                <p>{l(`${math.committedKg} kg moves on ${board.routeId} in one pooled trip. ${money(math.farmerGainTotal)} more reached the farms and ${money(Math.max(0, math.buyerSavingTotal))} stayed with the buyers.`, `${math.committedKg} किलो एक साझा यात्रा में ${board.routeId} पर जाएगा। किसानों को ${money(math.farmerGainTotal)} अधिक मिला और खरीदारों ने ${money(Math.max(0, math.buyerSavingTotal))} बचाए।`)}</p>
               </div>
             </div>
           ) : math.viable ? (
@@ -138,24 +154,30 @@ export function MarketMakerPage() {
               <span className="mm-verdict-icon"><Check size={18} /></span>
               <div>
                 <h2>{l('Enough demand, supply and logistics have aligned', 'मांग, सप्लाई और परिवहन तैयार हैं')}</h2>
-                <p>{math.committedKg} kg against a {math.thresholdKg} kg break-even. Delivered price settles at ₹{math.deliveredPerKg.toFixed(2)}/kg, under the ₹{board.buyerCeilingPerKg.toFixed(2)}/kg buyers switch at.</p>
+                <p>{l(`${math.committedKg} kg against a ${math.thresholdKg} kg break-even. Delivered price settles at ₹${math.deliveredPerKg.toFixed(2)}/kg.`, `${math.thresholdKg} किलो की ज़रूरत के मुकाबले ${math.committedKg} किलो मांग पक्की है। डिलीवरी कीमत ₹${math.deliveredPerKg.toFixed(2)}/किलो है।`)}</p>
               </div>
             </div>
           ) : (
             <div className={`mm-verdict ${structural ? 'is-blocked' : 'is-forming'}`}>
               <span className="mm-verdict-icon">{structural ? <CircleAlert size={18} /> : <Radar size={18} />}</span>
               <div>
-                <h2>{blocker?.title ?? l('Direct trade is not viable yet', 'सीधा व्यापार अभी संभव नहीं है')}</h2>
-                <p>{blocker?.detail}</p>
+                <h2>{blockerTitle ?? l('Direct trade is not viable yet', 'सीधा व्यापार अभी संभव नहीं है')}</h2>
+                <p>{blockerDetail}</p>
               </div>
             </div>
           )}
 
+          {!created && math.viable && (
+            <button type="button" className="btn btn-primary btn-large btn-full mm-create" disabled={busy} onClick={create}>
+              <Zap size={18} /> {l('Create the direct market', 'सीधा बाज़ार बनाएं')}
+            </button>
+          )}
+
           <div className="mm-hero-stats">
-            <article><span>Delivered price</span><strong>{math.committedKg ? `₹${math.deliveredPerKg.toFixed(2)}` : '—'}</strong><small>ceiling ₹{board.buyerCeilingPerKg.toFixed(2)} · today ₹{board.buyerCurrentPerKg.toFixed(2)}</small></article>
-            <article><span>Farm-gate, protected</span><strong>₹{math.farmerGatePerKg.toFixed(2)}</strong><small>mandi pays ₹{board.mandiPricePerKg.toFixed(2)}</small></article>
-            <article><span>Freight per kg</span><strong>{math.committedKg ? `₹${math.freightPerKg.toFixed(2)}` : '—'}</strong><small>₹{math.freightTotal.toLocaleString('en-IN')} trip ÷ {math.committedKg} kg</small></article>
-            <article><span>Vehicle load</span><strong>{math.utilisationPct}%</strong><small>{math.vehicle ? `${math.vehicle.registration} · ${math.capacityKg} kg` : 'none held'}</small></article>
+            <article><span>{l('Delivered price', 'डिलीवरी कीमत')}</span><strong>{math.committedKg ? `₹${math.deliveredPerKg.toFixed(2)}` : '—'}</strong><small>{l(`limit ₹${board.buyerCeilingPerKg.toFixed(2)} · today ₹${board.buyerCurrentPerKg.toFixed(2)}`, `सीमा ₹${board.buyerCeilingPerKg.toFixed(2)} · आज ₹${board.buyerCurrentPerKg.toFixed(2)}`)}</small></article>
+            <article><span>{l('Farmer price protected', 'किसान की सुरक्षित कीमत')}</span><strong>₹{math.farmerGatePerKg.toFixed(2)}</strong><small>{l(`mandi pays ₹${board.mandiPricePerKg.toFixed(2)}`, `मंडी में ₹${board.mandiPricePerKg.toFixed(2)} मिलते हैं`)}</small></article>
+            <article><span>{l('Freight per kg', 'प्रति किलो ढुलाई')}</span><strong>{math.committedKg ? `₹${math.freightPerKg.toFixed(2)}` : '—'}</strong><small>₹{math.freightTotal.toLocaleString('en-IN')} ÷ {math.committedKg} kg</small></article>
+            <article><span>{l('Vehicle load', 'वाहन में भार')}</span><strong>{math.utilisationPct}%</strong><small>{math.vehicle ? `${math.vehicle.registration} · ${math.capacityKg} kg` : l('none held', 'कोई वाहन नहीं')}</small></article>
           </div>
 
           {!created && (role === 'consumer' || role === 'bulk') && (
@@ -182,37 +204,31 @@ export function MarketMakerPage() {
             />
           )}
 
-          {!created && math.viable && (
-            <button type="button" className="btn btn-primary btn-large btn-full mm-create" disabled={busy} onClick={create}>
-              <Zap size={18} /> {l('Create the direct market', 'सीधा बाज़ार बनाएं')}
-            </button>
-          )}
-
-          {created && <CreatedLinks board={board} role={role} />}
+          {created && <CreatedLinks board={board} role={role} l={l} />}
         </div>
       </section>
 
       <section className="section-block">
-        <div className="section-heading"><div><span className="eyebrow">Why volume is the constraint</span><h2>Delivered price against committed volume</h2></div></div>
+        <div className="section-heading"><div><span className="eyebrow">{l('Why volume matters', 'मात्रा क्यों ज़रूरी है')}</span><h2>{l('Delivered price against committed volume', 'पक्की मांग के अनुसार डिलीवरी कीमत')}</h2></div></div>
         <MarketFreightCurve board={board} math={math} />
       </section>
 
       <section className="section-block">
-        <div className="section-heading"><div><span className="eyebrow">What is being combined</span><h2>Fragments into one market</h2></div></div>
+        <div className="section-heading"><div><span className="eyebrow">{l('What is being combined', 'क्या जोड़ा जा रहा है')}</span><h2>{l('Small needs become one market', 'छोटी ज़रूरतें मिलकर एक बाज़ार बनाती हैं')}</h2></div></div>
         <MarketConvergence board={board} math={math} />
       </section>
 
       <section className="section-block">
-        <div className="section-heading"><div><span className="eyebrow">Who benefits</span><h2>Where the price actually goes</h2></div></div>
+        <div className="section-heading"><div><span className="eyebrow">{l('Who benefits', 'किसे लाभ मिलता है')}</span><h2>{l('Where the price actually goes', 'कीमत का पैसा कहां जाता है')}</h2></div></div>
         <MarketValueSplit board={board} math={math} />
       </section>
 
       <MarketWhyPanel board={board} math={math} defaultOpen={Boolean(structural)} />
 
       <section className="mm-footer-note">
-        <p>Market Maker is a deterministic prototype: the break-even volume, freight, delivered price and every payout above are computed from the listings, fleet and commitments in shared state and can be re-derived by hand.</p>
-        <button type="button" className="mm-reset" disabled={busy} onClick={() => guard(() => prototypeService.seedScenario('market'), 'Corridor reset to the forming state')}>
-          <RotateCcw size={14} /> Reset this corridor
+        <p>{l('Market Maker is deterministic: break-even volume, freight, delivered price and payouts are computed from listings, fleet and commitments in shared prototype state.', 'मार्केट मेकर की गणना तय है: ज़रूरी मात्रा, ढुलाई, डिलीवरी कीमत और भुगतान साझा प्रोटोटाइप की लिस्टिंग, वाहन और पक्की मांग से निकाले जाते हैं।')}</p>
+        <button type="button" className="mm-reset" disabled={busy} onClick={() => guard(() => prototypeService.seedScenario('market'), l('Corridor reset to the forming state', 'कॉरिडोर फिर से बनती हुई स्थिति में है'))}>
+          <RotateCcw size={14} /> {l('Reset corridor', 'कॉरिडोर रीसेट करें')}
         </button>
       </section>
 
@@ -221,12 +237,42 @@ export function MarketMakerPage() {
   )
 }
 
-function MarketStateRail({ status, viable, blocked }: { status: string; viable: boolean; blocked: boolean }) {
+function MarketOutcomeSummary({ board, math, l }: {
+  board: { mandiPricePerKg: number; buyerCurrentPerKg: number }
+  math: { farmerGatePerKg: number; deliveredPerKg: number; deliveredAtThresholdPerKg: number; viable: boolean }
+  l: (en: string, hi: string) => string
+}) {
+  const directPrice = math.viable ? math.deliveredPerKg : math.deliveredAtThresholdPerKg
+  return (
+    <section className="mm-outcome-summary">
+      <div className="mm-outcome-label">
+        <span className="eyebrow">{l('The idea in one glance', 'एक नज़र में पूरी बात')}</span>
+        <h2>{l('A better price on both sides', 'दोनों तरफ बेहतर कीमत')}</h2>
+        <p>{l('Pooled demand shares one fixed logistics cost across more kilograms.', 'साझा मांग से एक तय ढुलाई लागत अधिक किलो में बंट जाती है।')}</p>
+      </div>
+      <div className="mm-outcome-state is-before">
+        <span>{l('Without Market Maker', 'मार्केट मेकर के बिना')}</span>
+        <p>{l('Farmer gets', 'किसान को मिलता है')} <strong>₹{board.mandiPricePerKg}/kg</strong></p>
+        <p>{l('Buyer pays', 'खरीदार देता है')} <strong>₹{board.buyerCurrentPerKg}/kg</strong></p>
+        <small>{l('Existing retail / traditional-chain price', 'मौजूदा खुदरा / पारंपरिक श्रृंखला की कीमत')}</small>
+      </div>
+      <ArrowRight className="mm-outcome-arrow" aria-hidden="true" />
+      <div className="mm-outcome-state is-after">
+        <span>{l('With Market Maker', 'मार्केट मेकर के साथ')}</span>
+        <p>{l('Farmer gets', 'किसान को मिलता है')} <strong>₹{math.farmerGatePerKg}/kg</strong></p>
+        <p>{l('Buyer pays', 'खरीदार देता है')} <strong>₹{directPrice.toFixed(2)}/kg</strong></p>
+        <small>{l('At the pooled market threshold', 'साझा बाज़ार की ज़रूरी मात्रा पर')}</small>
+      </div>
+    </section>
+  )
+}
+
+function MarketStateRail({ status, viable, blocked, l }: { status: string; viable: boolean; blocked: boolean; l: (en: string, hi: string) => string }) {
   const stage = status === 'created' ? 2 : viable ? 1 : 0
   const steps = [
-    { label: blocked ? 'Blocked upstream' : 'Direct trade is not viable yet', detail: 'Fragments too small to move alone' },
-    { label: 'Enough demand + supply + logistics have aligned', detail: 'Break-even volume reached' },
-    { label: 'Direct Market Created', detail: 'Orders, pickups and a route exist' },
+    { label: blocked ? l('Needs attention', 'ध्यान देना ज़रूरी') : l('Market is forming', 'बाज़ार बन रहा है'), detail: l('Small needs are being pooled', 'छोटी ज़रूरतें जोड़ी जा रही हैं') },
+    { label: l('Ready to create', 'बनाने के लिए तैयार'), detail: l('Demand threshold reached', 'मांग की सीमा पूरी') },
+    { label: l('Direct market created', 'सीधा बाज़ार बन गया'), detail: l('Orders, pickups and a route exist', 'ऑर्डर, पिकअप और रूट बन गए हैं') },
   ]
   return (
     <ol className={`mm-rail stage-${stage} ${blocked ? 'is-blocked' : ''}`}>
@@ -241,7 +287,7 @@ function MarketStateRail({ status, viable, blocked }: { status: string; viable: 
 }
 
 function FarmerLever({ board, available, busy, onOffer, l }: {
-  board: { lots: Array<{ id: string; listingId?: string; offeredKg: number }>; corridor: string }
+  board: { lots: Array<{ id: string; listingId?: string; offeredKg: number }>; corridor: string; corridorHi: string }
   lotId: string; available: number; busy?: boolean; onOffer: (extraKg: number) => void; l: (en: string, hi: string) => string
 }) {
   return (
@@ -255,7 +301,7 @@ function FarmerLever({ board, available, busy, onOffer, l }: {
         <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => onOffer(40)}><Sprout size={16} /> {l('Release 40 kg more', '40 किलो और दें')}</button>
         <Link className="btn btn-ghost" to="/farmer/produce">{l('My produce', 'मेरी फसल')} <ArrowRight size={15} /></Link>
       </div>
-      <small>{board.corridor}</small>
+      <small>{l(board.corridor, board.corridorHi)}</small>
     </div>
   )
 }
@@ -295,19 +341,19 @@ function LogisticsLever({ vehicleId, corridorVehicle, math, busy, onHold, onWith
   )
 }
 
-function CreatedLinks({ board, role }: { board: { routeId?: string; farmerOrderIds?: string[]; bulkOrderId?: string; consumerOrderId?: string; pickupIds?: string[] }; role: Role }) {
+function CreatedLinks({ board, role, l }: { board: { routeId?: string; farmerOrderIds?: string[]; bulkOrderId?: string; consumerOrderId?: string; pickupIds?: string[] }; role: Role; l: (en: string, hi: string) => string }) {
   const links: Array<{ icon: typeof Sprout; label: string; to: string }> = []
-  if (board.farmerOrderIds?.[0]) links.push({ icon: Sprout, label: `Farmer order ${board.farmerOrderIds[0]}`, to: `/farmer/orders/${board.farmerOrderIds[0]}` })
-  if (board.farmerOrderIds?.[0]) links.push({ icon: IndianRupee, label: 'Farmer earnings', to: '/farmer/earnings' })
-  if (board.bulkOrderId) links.push({ icon: Building2, label: `Procurement ${board.bulkOrderId}`, to: `/bulk/orders/${board.bulkOrderId}` })
-  if (board.consumerOrderId) links.push({ icon: Home, label: 'Consumer order', to: `/consumer/orders/${board.consumerOrderId}` })
-  if (board.pickupIds?.length) links.push({ icon: Boxes, label: `${board.pickupIds.length} farm pickups`, to: '/logistics/pickups' })
-  if (board.routeId) links.push({ icon: MapPinned, label: `Route ${board.routeId}`, to: '/logistics/routes' })
-  links.push({ icon: PackageCheck, label: 'Deliveries', to: '/logistics/deliveries' })
+  if (board.farmerOrderIds?.[0]) links.push({ icon: Sprout, label: l(`Farmer order ${board.farmerOrderIds[0]}`, `किसान ऑर्डर ${board.farmerOrderIds[0]}`), to: `/farmer/orders/${board.farmerOrderIds[0]}` })
+  if (board.farmerOrderIds?.[0]) links.push({ icon: IndianRupee, label: l('Farmer earnings', 'किसान की कमाई'), to: '/farmer/earnings' })
+  if (board.bulkOrderId) links.push({ icon: Building2, label: l(`Procurement ${board.bulkOrderId}`, `खरीद ${board.bulkOrderId}`), to: `/bulk/orders/${board.bulkOrderId}` })
+  if (board.consumerOrderId) links.push({ icon: Home, label: l('Consumer order', 'ग्राहक ऑर्डर'), to: `/consumer/orders/${board.consumerOrderId}` })
+  if (board.pickupIds?.length) links.push({ icon: Boxes, label: l(`${board.pickupIds.length} farm pickups`, `${board.pickupIds.length} खेत पिकअप`), to: '/logistics/pickups' })
+  if (board.routeId) links.push({ icon: MapPinned, label: l(`Route ${board.routeId}`, `रूट ${board.routeId}`), to: '/logistics/routes' })
+  links.push({ icon: PackageCheck, label: l('Deliveries', 'डिलीवरी'), to: '/logistics/deliveries' })
 
   return (
     <div className="mm-created-links">
-      <h3>This market created</h3>
+      <h3>{l('This market created', 'इस बाज़ार ने ये बनाए')}</h3>
       <div>
         {links.map((link) => (
           <Link key={link.to + link.label} to={link.to} className={link.to.startsWith(`/${role}`) ? 'is-mine' : ''}>
@@ -315,7 +361,7 @@ function CreatedLinks({ board, role }: { board: { routeId?: string; farmerOrderI
           </Link>
         ))}
       </div>
-      <small>Each link opens the record this market wrote into shared prototype state. Roles other than yours will ask you to switch accounts.</small>
+      <small>{l('Each link opens a record written into shared prototype state. Other roles require switching accounts.', 'हर लिंक साझा प्रोटोटाइप में बना रिकॉर्ड खोलता है। दूसरी भूमिका के लिए खाता बदलना होगा।')}</small>
     </div>
   )
 }

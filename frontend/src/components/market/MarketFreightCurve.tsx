@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { MarketMakerBoard } from '../../types'
 import type { MarketMath } from '../../services/marketMakerEngine'
+import { useLanguage } from '../../contexts/LanguageContext'
 
 /**
  * The single graphic that explains the whole feature: delivered price per kilogram against
@@ -12,6 +13,8 @@ import type { MarketMath } from '../../services/marketMakerEngine'
  * keeps every label readable instead of shrinking a laptop chart into illegibility.
  */
 export function MarketFreightCurve({ board, math }: { board: MarketMakerBoard; math: MarketMath }) {
+  const { language } = useLanguage()
+  const l = (en: string, hi: string) => language === 'hi' ? hi : en
   const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.innerWidth < 640)
   useEffect(() => {
     const query = window.matchMedia('(max-width: 639px)')
@@ -49,21 +52,21 @@ export function MarketFreightCurve({ board, math }: { board: MarketMakerBoard; m
 
   return (
     <figure className={`mm-curve ${math.viable ? 'is-viable' : ''} ${narrow ? 'is-narrow' : ''}`}>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Delivered price falls as committed volume rises, crossing the price buyers switch at around ${math.thresholdKg} kg`}>
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={l(`Delivered price falls as committed volume rises, crossing the buyer switching price at around ${math.thresholdKg} kg`, `पक्की मात्रा बढ़ने पर डिलीवरी कीमत घटती है और लगभग ${math.thresholdKg} किलो पर खरीदार की सीमा तक आती है`)}>
         <path className="mm-curve-region" d={viableRegion} />
         <line className="mm-curve-axis" x1={PAD.left} y1={sy(yMin)} x2={W - PAD.right} y2={sy(yMin)} />
 
         <g className="mm-curve-ref">
           <line x1={PAD.left} y1={sy(board.buyerCurrentPerKg)} x2={W - PAD.right} y2={sy(board.buyerCurrentPerKg)} strokeDasharray="2 5" />
-          <text x={W - PAD.right} y={sy(board.buyerCurrentPerKg) - 7} textAnchor="end">Paid today ₹{board.buyerCurrentPerKg}</text>
+          <text x={W - PAD.right} y={sy(board.buyerCurrentPerKg) - 7} textAnchor="end">{l('Today', 'आज')} ₹{board.buyerCurrentPerKg}</text>
         </g>
         <g className="mm-curve-ceiling">
           <line x1={PAD.left} y1={ceilingY} x2={W - PAD.right} y2={ceilingY} strokeDasharray="7 6" />
-          <text x={PAD.left + 2} y={ceilingY + 16}>Buyers switch at ₹{board.buyerCeilingPerKg}</text>
+          <text x={PAD.left + 2} y={ceilingY + 16}>{l('Buyer limit', 'खरीदार सीमा')} ₹{board.buyerCeilingPerKg}</text>
         </g>
         <g className="mm-curve-floor">
           <line x1={PAD.left} y1={sy(board.farmerFloorPerKg)} x2={W - PAD.right} y2={sy(board.farmerFloorPerKg)} />
-          <text x={PAD.left + 2} y={sy(board.farmerFloorPerKg) - 7}>Farmer floor ₹{board.farmerFloorPerKg}</text>
+          <text x={PAD.left + 2} y={sy(board.farmerFloorPerKg) - 7}>{l('Farmer price', 'किसान कीमत')} ₹{board.farmerFloorPerKg}</text>
         </g>
 
         <path className="mm-curve-line" d={path} fill="none" />
@@ -77,7 +80,7 @@ export function MarketFreightCurve({ board, math }: { board: MarketMakerBoard; m
           <line x1={sx(liveX)} y1={sy(liveY)} x2={sx(liveX)} y2={sy(yMin)} />
           <circle cx={sx(liveX)} cy={sy(liveY)} r={narrow ? 5.5 : 7} />
           <text x={sx(liveX)} y={Math.max(PAD.top + 11, sy(liveY) - 15)} textAnchor={sx(liveX) > W * 0.68 ? 'end' : 'middle'}>
-            ₹{math.deliveredPerKg.toFixed(2)} at {math.committedKg} kg
+            ₹{math.deliveredPerKg.toFixed(2)} · {math.committedKg} kg
           </text>
         </g>
 
@@ -90,8 +93,7 @@ export function MarketFreightCurve({ board, math }: { board: MarketMakerBoard; m
         </g>
       </svg>
       <figcaption>
-        The <strong>₹{math.freightTotal.toLocaleString('en-IN')}</strong> trip cost does not shrink with the load — it only splits further.
-        Break-even is <strong>{Number.isFinite(math.thresholdKg) ? `${math.thresholdKg.toLocaleString('en-IN')} kg` : 'out of reach'}</strong>.
+        {l('The', '')} <strong>₹{math.freightTotal.toLocaleString('en-IN')}</strong> {l('trip cost stays fixed and is shared across every kilogram. Break-even is', 'की यात्रा लागत तय रहती है और हर किलो में बंटती है। ज़रूरी मात्रा')} <strong>{Number.isFinite(math.thresholdKg) ? `${math.thresholdKg.toLocaleString('en-IN')} kg` : l('out of reach', 'अभी संभव नहीं')}</strong>.
       </figcaption>
     </figure>
   )

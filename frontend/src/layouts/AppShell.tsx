@@ -24,9 +24,8 @@ interface NavItemConfig {
 const navByRole: Record<Role, NavItemConfig[]> = {
   farmer: [
     { labelKey: 'home', to: '/farmer', icon: Home, end: true },
-    { labelKey: 'produce', to: '/farmer/produce', icon: Sprout },
-    { labelKey: 'sell', to: '/farmer/sell', icon: ShoppingBag, primary: true },
     { labelKey: 'orders', to: '/farmer/orders', icon: PackageCheck },
+    { labelKey: 'produce', to: '/farmer/produce', icon: Sprout, primary: true },
     { labelKey: 'marketMakerNav', to: '/farmer/market', icon: Radar },
     { labelKey: 'earnings', to: '/farmer/earnings', icon: BarChart3, desktopOnly: true },
     { labelKey: 'demandInsights', to: '/farmer/insights', icon: BarChart3, desktopOnly: true },
@@ -38,7 +37,7 @@ const navByRole: Record<Role, NavItemConfig[]> = {
     { labelKey: 'explore', to: '/consumer/explore', icon: Search },
     { labelKey: 'cart', to: '/consumer/cart', icon: ShoppingBag, primary: true },
     { labelKey: 'orders', to: '/consumer/orders', icon: PackageCheck },
-    { labelKey: 'marketMakerNav', to: '/consumer/market', icon: Radar },
+    { labelKey: 'marketMakerNav', to: '/consumer/market', icon: Radar, desktopOnly: true },
     { labelKey: 'saved', to: '/consumer/saved', icon: Heart, desktopOnly: true },
     { labelKey: 'profile', to: '/consumer/profile', icon: UserRound },
   ],
@@ -53,10 +52,10 @@ const navByRole: Record<Role, NavItemConfig[]> = {
   logistics: [
     { labelKey: 'overview', to: '/logistics', icon: LayoutDashboard, end: true },
     { labelKey: 'pickups', to: '/logistics/pickups', icon: Boxes },
+    { labelKey: 'routes', to: '/logistics/routes', icon: MapPinned, primary: true },
     { labelKey: 'deliveries', to: '/logistics/deliveries', icon: PackageCheck },
-    { labelKey: 'marketMakerNav', to: '/logistics/market', icon: Radar },
-    { labelKey: 'routes', to: '/logistics/routes', icon: MapPinned },
-    { labelKey: 'vehicles', to: '/logistics/vehicles', icon: Truck },
+    { labelKey: 'marketMakerNav', to: '/logistics/market', icon: Radar, desktopOnly: true },
+    { labelKey: 'vehicles', to: '/logistics/vehicles', icon: Truck, desktopOnly: true },
     { labelKey: 'profile', to: '/logistics/profile', icon: UserRound },
   ],
 }

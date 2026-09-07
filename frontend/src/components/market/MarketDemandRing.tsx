@@ -1,6 +1,7 @@
 import type { MarketMakerBoard } from '../../types'
 import type { MarketMath } from '../../services/marketMakerEngine'
 import { AnimatedNumber } from './AnimatedNumber'
+import { useLanguage } from '../../contexts/LanguageContext'
 
 const SIZE = 220
 const STROKE = 16
@@ -13,6 +14,8 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS
  * reason the market is not viable yet.
  */
 export function MarketDemandRing({ board, math, compact = false }: { board: MarketMakerBoard; math: MarketMath; compact?: boolean }) {
+  const { language } = useLanguage()
+  const l = (en: string, hi: string) => language === 'hi' ? hi : en
   const threshold = Number.isFinite(math.thresholdKg) && math.thresholdKg > 0 ? math.thresholdKg : Math.max(1, math.committedKg)
   let cursor = 0
   const segments = board.commitments.map((commitment) => {
@@ -26,7 +29,7 @@ export function MarketDemandRing({ board, math, compact = false }: { board: Mark
 
   return (
     <div className={`mm-ring ${math.viable ? 'is-viable' : 'is-forming'} ${compact ? 'mm-ring-compact' : ''}`}>
-      <svg viewBox={`0 0 ${SIZE} ${SIZE}`} role="img" aria-label={`${math.committedKg} kg committed of ${threshold} kg needed`}>
+      <svg viewBox={`0 0 ${SIZE} ${SIZE}`} role="img" aria-label={l(`${math.committedKg} kg committed of ${threshold} kg needed`, `${threshold} किलो में से ${math.committedKg} किलो मांग पक्की`)}>
         <defs>
           <linearGradient id="mmRingBulk" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor="#2f7d57" /><stop offset="100%" stopColor="#1c5b3c" />
@@ -69,14 +72,14 @@ export function MarketDemandRing({ board, math, compact = false }: { board: Mark
       </svg>
       <div className="mm-ring-core">
         <strong><AnimatedNumber value={math.committedKg} /><small>kg</small></strong>
-        <span>committed of {threshold.toLocaleString('en-IN')} kg</span>
+        <span>{l(`committed of ${threshold.toLocaleString('en-IN')} kg`, `${threshold.toLocaleString('en-IN')} किलो में से पक्की`)}</span>
         {board.status === 'created'
-          ? <em className="mm-ring-flag is-good">Market created</em>
+          ? <em className="mm-ring-flag is-good">{l('Market created', 'बाज़ार बन गया')}</em>
           : math.viable
-          ? <em className="mm-ring-flag is-good">Break-even reached</em>
+          ? <em className="mm-ring-flag is-good">{l('Threshold reached', 'ज़रूरी मात्रा पूरी')}</em>
           : math.gapKg > 0
-            ? <em className="mm-ring-flag"><AnimatedNumber value={math.gapKg} /> kg to unlock</em>
-            : <em className="mm-ring-flag is-blocked">Blocked upstream</em>}
+            ? <em className="mm-ring-flag"><AnimatedNumber value={math.gapKg} /> {l('kg to unlock', 'किलो और चाहिए')}</em>
+            : <em className="mm-ring-flag is-blocked">{l('Needs attention', 'ध्यान ज़रूरी')}</em>}
       </div>
     </div>
   )

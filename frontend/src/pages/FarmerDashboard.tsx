@@ -1,4 +1,4 @@
-import { BarChart3, CalendarClock, IndianRupee, PackageCheck, Plus, Sprout, Sun, WalletCards } from 'lucide-react'
+import { BarChart3, CalendarClock, IndianRupee, PackageCheck, Sprout, Sun, WalletCards } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { FarmerPulseCard } from '../components/ai/FarmerPulseCard'
 import { MarketPulseCard } from '../components/market/MarketPulseCard'
@@ -81,10 +81,7 @@ export function FarmerDashboard() {
         <div className="weather-pill"><Sun size={23} /><strong>29°C</strong><small>{t('clear')}</small></div>
       </section>
 
-      <section className="farmer-hero-card">
-        <div className="farmer-hero-copy"><span className="farmer-hero-kicker"><Sprout size={17} /> {t('reachBuyers')}</span><h2>{t('sellProduce')}</h2><p>{t('fairPricePickup')}</p><Link to="/farmer/sell" className="btn btn-light btn-large"><Plus size={21} />{t('sellProduce')}</Link></div>
-        <div className="farmer-hero-illustration" aria-hidden="true"><span className="hero-produce-frame"><img src="/assets/produce/tomato.webp" alt="" /></span></div>
-      </section>
+      <MarketPulseCard role="farmer" />
 
       <section className="section-block">
         <div className="section-heading"><div><span className="eyebrow">{t('quickActions')}</span><h2>{t('attention')}</h2></div><Link to="/farmer/produce">{t('viewDetails')}</Link></div>
@@ -94,8 +91,6 @@ export function FarmerDashboard() {
           <MetricCard icon={PackageCheck} value={data.newOrders} label={t('newOrders')} tone="amber" hint={t('tapReview')} />
         </div>
       </section>
-
-      <MarketPulseCard role="farmer" />
 
       <FarmerPulseCard listings={data.listings} />
 

@@ -1,108 +1,103 @@
 import { ArrowRight, CircleAlert, Radar, Sparkles, Truck } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useLanguage } from '../../contexts/LanguageContext'
+import { useAsyncData } from '../../hooks/useAsyncData'
 import type { MarketMakerBoard, Role } from '../../types'
 import type { MarketMath } from '../../services/marketMakerEngine'
-import { useAsyncData } from '../../hooks/useAsyncData'
 import { marketMakerService } from '../../services/marketMakerService'
-import { AnimatedNumber } from './AnimatedNumber'
 import { MarketThresholdMeter } from './MarketThresholdMeter'
 
-const money = (value: number) => `₹${Math.round(value).toLocaleString('en-IN')}`
+type Localize = (en: string, hi: string) => string
 
-/** What each module needs to know about the corridor, in its own language. */
-function pitch(role: Role, board: MarketMakerBoard, math: MarketMath) {
+function pitch(role: Role, board: MarketMakerBoard, math: MarketMath, l: Localize) {
+  const crop = l(board.crop, board.cropHi)
   const own = math.allocations.find((entry) => entry.lot.own)
-  if (board.status === 'created') return {
-    headline: 'Direct market created',
+  const blocker = math.blockers.find((item) => item.kind !== 'demand')
+
+  if (blocker) return {
+    headline: role === 'farmer' ? l('This direct market needs attention', 'इस सीधे बाज़ार पर ध्यान देना ज़रूरी है') : blocker.title,
     body: role === 'farmer'
-      ? `${own?.allocatedKg ?? 0} kg of your ${board.crop.toLowerCase()} sold at ₹${math.farmerGatePerKg}/kg with no deductions.`
+      ? l('Demand is visible, but supply or a suitable vehicle must be available before the market can form.', 'मांग मौजूद है, लेकिन बाज़ार बनने से पहले पर्याप्त फसल और सही वाहन उपलब्ध होना चाहिए।')
+      : blocker.detail,
+  }
+
+  if (board.status === 'created') return {
+    headline: l('Direct market ready', 'सीधा बाज़ार तैयार है'),
+    body: role === 'farmer'
+      ? l(`${own?.allocatedKg ?? 0} kg of your ${crop.toLowerCase()} is matched. Pickup can now be created.`, `आपके ${own?.allocatedKg ?? 0} किलो ${crop} का मिलान हो गया है। अब पिकअप बनाया जा सकता है।`)
       : role === 'logistics'
-        ? `${board.routeId} is planned · ${math.committedKg} kg at ${math.utilisationPct}% load.`
-        : `${board.crop} delivered at ₹${math.deliveredPerKg.toFixed(2)}/kg instead of ₹${board.buyerCurrentPerKg.toFixed(2)}/kg.`,
-    metric: role === 'farmer' ? money(own ? own.allocatedKg * math.farmerGatePerKg : math.farmerTotal) : money(Math.max(0, math.buyerSavingTotal)),
-    metricLabel: role === 'farmer' ? 'paid to you' : role === 'logistics' ? 'buyer saving on this route' : 'saved across the pool',
+        ? `${board.routeId} · ${math.committedKg} kg · ${math.utilisationPct}% ${l('vehicle load', 'वाहन भरा')}`
+        : l(`${crop} is moving farm-direct at ₹${math.deliveredPerKg.toFixed(2)}/kg.`, `${crop} अब खेत से सीधे ₹${math.deliveredPerKg.toFixed(2)}/किलो पर आ रही है।`),
   }
 
-  const blocker = math.blockers[0]
-  if (blocker && blocker.kind !== 'demand') return {
-    headline: blocker.title,
-    body: blocker.detail,
-    metric: Number.isFinite(math.thresholdKg) ? `${math.thresholdKg.toLocaleString('en-IN')} kg` : '—',
-    metricLabel: 'needed to break even',
-  }
-
-  const gap = math.gapKg
   if (math.viable) return {
-    headline: 'Enough demand, supply and logistics have aligned',
-    body: `${math.committedKg} kg is committed against a ${math.thresholdKg} kg break-even. The market is ready to create.`,
-    metric: `₹${math.deliveredPerKg.toFixed(2)}`,
-    metricLabel: 'delivered per kg',
+    headline: l('Direct market ready', 'सीधा बाज़ार तैयार है'),
+    body: role === 'farmer'
+      ? l(`${math.committedKg} kg of demand is confirmed. Your matched produce can now move in the pooled pickup.`, `${math.committedKg} किलो मांग पक्की है। आपकी मिली हुई फसल अब साझा पिकअप में जा सकती है।`)
+      : role === 'logistics'
+        ? l(`${math.committedKg} kg clears the ${math.thresholdKg} kg break-even load. The route can be created.`, `${math.committedKg} किलो ने ${math.thresholdKg} किलो की न्यूनतम मात्रा पूरी कर ली है। रूट बनाया जा सकता है।`)
+        : l(`Farmer earns ₹${math.farmerGatePerKg}/kg, you pay ₹${math.deliveredPerKg.toFixed(2)}/kg.`, `किसान को ₹${math.farmerGatePerKg}/किलो मिलता है, आप ₹${math.deliveredPerKg.toFixed(2)}/किलो देते हैं।`),
   }
 
-  switch (role) {
-    case 'farmer': return {
-      headline: `${gap} kg from a direct market for your ${board.crop.toLowerCase()}`,
-      body: `${own?.availableKg ?? 0} kg of your lot is held for this corridor at your ₹${math.farmerGatePerKg}/kg floor — ₹${board.mandiPricePerKg}/kg is what the mandi pays.`,
-      metric: money((own?.availableKg ?? 0) * math.farmerGatePerKg),
-      metricLabel: 'if the market opens',
-    }
-    case 'consumer': return {
-      headline: `${gap} kg unlocks farm-direct pricing`,
-      body: `${math.consumerParticipants} household groups and one bulk buyer are already in. Adding the last ${gap} kg opens the route for all of them.`,
-      metric: `₹${math.deliveredAtThresholdPerKg.toFixed(2)}`,
-      metricLabel: `per kg, from ₹${board.buyerCurrentPerKg.toFixed(2)}`,
-    }
-    case 'bulk': return {
-      headline: `Your corridor is ${gap} kg short of viable`,
-      body: `${math.bulkKg} kg of your requirement is pooled with ${math.consumerKg} kg of household demand. The trip pays for itself at ${math.thresholdKg} kg.`,
-      metric: money(Math.max(0, Math.round((board.buyerCurrentPerKg - math.deliveredAtThresholdPerKg) * math.bulkKg))),
-      metricLabel: 'saving on your share',
-    }
-    default: return {
-      headline: `Corridor is ${gap} kg from a viable trip`,
-      body: `${math.vehicle ? `${math.vehicle.registration} · ${math.vehicle.type}` : 'No vehicle'} is held for ${board.corridor}. Break-even load is ${math.thresholdKg} kg of ${math.capacityKg} kg.`,
-      metric: `${math.utilisationPct}%`,
-      metricLabel: 'load at current demand',
-    }
+  return {
+    headline: role === 'farmer'
+      ? l(`Your ${crop.toLowerCase()} are close to a direct market`, `${crop} के लिए सीधा बाज़ार करीब है`)
+      : role === 'consumer'
+        ? l(`${math.gapKg} kg more needed to unlock farm-direct pricing`, `खेत से सीधी कीमत पाने के लिए ${math.gapKg} किलो और चाहिए`)
+        : role === 'bulk'
+          ? l(`Your corridor is ${math.gapKg} kg short of viable`, `आपके कॉरिडोर को व्यवहार्य बनने के लिए ${math.gapKg} किलो और चाहिए`)
+          : l(`${math.gapKg} kg from a viable trip`, `व्यवहार्य यात्रा के लिए ${math.gapKg} किलो और चाहिए`),
+    body: role === 'farmer'
+      ? l(`${math.committedKg} of ${math.thresholdKg} kg demand is committed. ${own?.allocatedKg ?? 0} kg of your produce can be matched.`, `${math.thresholdKg} किलो में से ${math.committedKg} किलो मांग पक्की है। आपकी ${own?.allocatedKg ?? 0} किलो फसल का मिलान हो सकता है।`)
+      : role === 'consumer'
+        ? l(`${math.committedKg} of ${math.thresholdKg} kg is already committed by pooled buyers.`, `साझा खरीदारों ने ${math.thresholdKg} किलो में से ${math.committedKg} किलो पहले ही पक्का किया है।`)
+        : role === 'logistics'
+          ? l(`${math.vehicle?.registration ?? 'No vehicle'} is held for ${board.corridor}.`, `${board.corridorHi} के लिए ${math.vehicle?.registration ?? 'कोई वाहन नहीं'} रखा गया है।`)
+          : l(`${math.bulkKg} kg business demand is pooled with ${math.consumerKg} kg household demand.`, `${math.bulkKg} किलो व्यावसायिक मांग को ${math.consumerKg} किलो घरेलू मांग से जोड़ा गया है।`),
   }
 }
 
-/**
- * The Market Maker's presence on every module home: the same board, the same numbers, framed
- * for whoever is looking at it. Reads live shared state so an action in another role shows up
- * here without a reload.
- */
+/** Compact, role-specific home summary backed by the detail page's shared market board. */
 export function MarketPulseCard({ role }: { role: Role }) {
+  const { language } = useLanguage()
+  const l: Localize = (en, hi) => language === 'hi' ? hi : en
   const { data } = useAsyncData(() => marketMakerService.board(), [], { live: true })
   if (!data) return null
   const { board, math } = data
-  const copy = pitch(role, board, math)
+  const copy = pitch(role, board, math, l)
   const blocked = math.blockers.some((item) => item.kind !== 'demand')
+  const created = board.status === 'created'
+  const own = math.allocations.find((entry) => entry.lot.own)
+  const action = created
+    ? l('View market', 'बाज़ार देखें')
+    : math.viable
+      ? role === 'logistics' ? l('Create route', 'रूट बनाएं') : l('Create direct market', 'सीधा बाज़ार बनाएं')
+      : role === 'logistics' ? l('Review corridor', 'कॉरिडोर देखें') : l('View opportunity', 'अवसर देखें')
 
   return (
-    <section className={`mm-pulse mm-pulse-${board.status} ${blocked ? 'is-blocked' : ''}`}>
+    <section className={`mm-pulse mm-pulse-${role} mm-pulse-${board.status} ${blocked ? 'is-blocked' : ''}`}>
       <div className="mm-pulse-copy">
         <span className="eyebrow light">
-          {board.status === 'created' ? <Sparkles size={14} /> : blocked ? <CircleAlert size={14} /> : <Radar size={14} />}
-          Market Maker · {board.corridor}
+          {created ? <Sparkles size={14} /> : blocked ? <CircleAlert size={14} /> : <Radar size={14} />}
+          {l('Market Maker opportunity', 'मार्केट मेकर अवसर')} · {l(board.crop, board.cropHi)}
         </span>
         <h2>{copy.headline}</h2>
         <p>{copy.body}</p>
-        <MarketThresholdMeter board={board} math={math} tone="dark" />
+        {!blocked && <MarketThresholdMeter board={board} math={math} tone="dark" showLabels={false} />}
+        <div className="mm-pulse-economics" aria-label={l('Market Maker price comparison', 'मार्केट मेकर कीमत तुलना')}>
+          <div><span>{l('Current mandi earning', 'अभी मंडी कमाई')}</span><strong>₹{board.mandiPricePerKg}<small>{l('/kg', '/किलो')}</small></strong></div>
+          <div><span>{l('With Market Maker', 'मार्केट मेकर के साथ')}</span><strong>₹{math.farmerGatePerKg}<small>{l('/kg to farmer', '/किलो किसान को')}</small></strong></div>
+          {role !== 'farmer' && <div><span>{l('Buyer pays', 'खरीदार देता है')}</span><strong>₹{(math.viable ? math.deliveredPerKg : math.deliveredAtThresholdPerKg).toFixed(2)}<small>{l('/kg', '/किलो')}</small></strong></div>}
+          {role === 'farmer' && <div><span>{l('Your produce matched', 'आपकी मिली फसल')}</span><strong>{own?.allocatedKg ?? 0}<small> kg</small></strong></div>}
+        </div>
         <div className="mm-pulse-actions">
-          <Link className="btn btn-light" to={`/${role}/market`}>
-            {board.status === 'created' ? 'See what it created' : math.viable ? 'Create the market' : role === 'logistics' ? 'Review feasibility' : 'Open Market Maker'}
-            <ArrowRight size={16} />
-          </Link>
-          {math.vehicle && <span className="mm-pulse-vehicle"><Truck size={14} /> {math.vehicle.registration} · {math.capacityKg} kg</span>}
+          <Link className="btn btn-light" to={`/${role}/market`}>{action}<ArrowRight size={16} /></Link>
+          {role === 'logistics' && math.vehicle && <span className="mm-pulse-vehicle"><Truck size={14} /> {math.vehicle.registration} · {math.capacityKg} kg</span>}
         </div>
       </div>
-      <aside className="mm-pulse-metric">
-        <span>{copy.metricLabel}</span>
-        <strong>{copy.metric.startsWith('₹')
-          ? <AnimatedNumber value={Number(copy.metric.replace(/[^0-9.]/g, '')) || 0} decimals={copy.metric.includes('.') ? 2 : 0} prefix="₹" />
-          : copy.metric}</strong>
-        <small>{board.crop} · {board.grade} · {board.deliveryWindow}</small>
+      <aside className="mm-pulse-progress">
+        <strong>{math.committedKg}<small> / {Number.isFinite(math.thresholdKg) ? math.thresholdKg : '—'} kg</small></strong>
+        <span>{math.viable ? l('Demand threshold reached', 'मांग की सीमा पूरी') : l(`${math.gapKg} kg demand still needed`, `${math.gapKg} किलो मांग और चाहिए`)}</span>
       </aside>
     </section>
   )

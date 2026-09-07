@@ -1,6 +1,7 @@
 import { Building2, Home, Sprout, Truck } from 'lucide-react'
 import type { MarketMakerBoard } from '../../types'
 import type { MarketMath } from '../../services/marketMakerEngine'
+import { useLanguage } from '../../contexts/LanguageContext'
 
 /**
  * Fragmented supply and fragmented demand converging on one route.
@@ -10,6 +11,8 @@ import type { MarketMath } from '../../services/marketMakerEngine'
  * Nodes that are too small to trade alone are marked as such — that is the whole point.
  */
 export function MarketConvergence({ board, math }: { board: MarketMakerBoard; math: MarketMath }) {
+  const { language } = useLanguage()
+  const l = (en: string, hi: string) => language === 'hi' ? hi : en
   const threshold = Number.isFinite(math.thresholdKg) ? math.thresholdKg : 0
   const supply = math.allocations
   const demand = board.commitments
@@ -17,7 +20,7 @@ export function MarketConvergence({ board, math }: { board: MarketMakerBoard; ma
   return (
     <div className={`mm-flow ${math.viable ? 'is-connected' : ''} ${board.status === 'created' ? 'is-created' : ''}`}>
       <section className="mm-flow-side">
-        <h4><Sprout size={14} /> Fragmented supply<em>{math.offeredKg.toLocaleString('en-IN')} kg offered</em></h4>
+        <h4><Sprout size={14} /> {l('Available farm lots', 'उपलब्ध खेत फसल')}<em>{math.offeredKg.toLocaleString('en-IN')} kg {l('offered', 'उपलब्ध')}</em></h4>
         <ul>
           {supply.map((entry, index) => (
             <li key={entry.lot.id} className={entry.allocatedKg > 0 ? 'is-matched' : ''} style={{ animationDelay: `${index * 80}ms` }}>
@@ -27,7 +30,7 @@ export function MarketConvergence({ board, math }: { board: MarketMakerBoard; ma
               </div>
               <span>
                 <b>{entry.availableKg} kg</b>
-                <i>{threshold && entry.availableKg < threshold ? 'too small alone' : 'ready'}</i>
+                <i>{threshold && entry.availableKg < threshold ? l('too small alone', 'अकेले कम') : l('ready', 'तैयार')}</i>
               </span>
             </li>
           ))}
@@ -39,13 +42,13 @@ export function MarketConvergence({ board, math }: { board: MarketMakerBoard; ma
         <div className="mm-flow-hub">
           <Truck size={20} />
           <strong>{math.committedKg} kg</strong>
-          <small>{math.vehicle ? `${math.vehicle.type} · ${math.utilisationPct}% full` : 'no vehicle'}</small>
+          <small>{math.vehicle ? `${math.vehicle.type} · ${math.utilisationPct}% ${l('full', 'भरा')}` : l('no vehicle', 'कोई वाहन नहीं')}</small>
         </div>
         <span className="mm-flow-rail mm-flow-rail-out" />
       </div>
 
       <section className="mm-flow-side mm-flow-demand">
-        <h4><Home size={14} /> Fragmented demand<em>{math.committedKg.toLocaleString('en-IN')} kg committed</em></h4>
+        <h4><Home size={14} /> {l('Pooled buyer demand', 'साझा खरीदार मांग')}<em>{math.committedKg.toLocaleString('en-IN')} kg {l('committed', 'पक्की')}</em></h4>
         <ul>
           {demand.map((commitment, index) => (
             <li key={commitment.id} className={`is-matched ${commitment.own ? 'is-own' : ''}`} style={{ animationDelay: `${index * 80}ms` }}>
@@ -55,7 +58,7 @@ export function MarketConvergence({ board, math }: { board: MarketMakerBoard; ma
               </div>
               <span>
                 <b>{commitment.quantityKg} kg</b>
-                <i>{threshold && commitment.quantityKg < threshold ? 'cannot fill a trip' : 'ready'}</i>
+                <i>{threshold && commitment.quantityKg < threshold ? l('part of the pool', 'साझा मांग का भाग') : l('ready', 'तैयार')}</i>
               </span>
             </li>
           ))}
