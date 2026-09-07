@@ -8,7 +8,7 @@
 
 ---
 
-## 🌾 Problem Statement & Solution Overview
+## Problem Statement & Solution Overview
 
 ### The Problem
 In the traditional Indian agricultural supply chain, produce changes hands between 4 to 8 intermediaries (village aggregators, commission agents, wholesalers, retailers). This leads to:
@@ -28,7 +28,7 @@ In the traditional Indian agricultural supply chain, produce changes hands betwe
 
 ---
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 ```
 +-------------------+--------------------------------------------------------------------------------+
@@ -47,7 +47,7 @@ In the traditional Indian agricultural supply chain, produce changes hands betwe
 
 ---
 
-## 📚 Master Documentation Hub
+## Master Documentation Hub
 
 The [`DOCS/`](./DOCS) directory contains complete architectural, technical, design, and operational specifications:
 
@@ -66,7 +66,7 @@ The [`DOCS/`](./DOCS) directory contains complete architectural, technical, desi
 
 ---
 
-## 🎯 Target SIH 2026 Golden Demo Scenario
+## Target SIH 2026 Golden Demo Scenario
 
 The entire system is optimized to demonstrate an end-to-end direct agricultural transaction across the **Sonipat – New Delhi Corridor** (42 km):
 
@@ -97,7 +97,7 @@ The entire system is optimized to demonstrate an end-to-end direct agricultural 
 
 ---
 
-## 💻 Local Development Setup
+## Local Development Setup
 
 ### Prerequisites
 - Node.js 18+ & npm
@@ -124,7 +124,7 @@ uvicorn app.main:app --reload --port 8000
 
 ---
 
-## 👥 Team & Attribution
+## Team & Attribution
 
 **Smart India Hackathon 2026** — *Problem Statement 26033*  
 **Team Aeris**  
