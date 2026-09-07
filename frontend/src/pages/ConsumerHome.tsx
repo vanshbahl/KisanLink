@@ -10,7 +10,7 @@ import { marketplaceService } from '../services/marketplaceService'
 import { useAsyncData } from '../hooks/useAsyncData'
 import type { Category } from '../types'
 import { useLanguage } from '../contexts/LanguageContext'
-import { MarketplaceAiTrigger } from '../components/ai/MarketplaceAiTrigger'
+import { MarketplaceAiSection } from '../components/ai/MarketplaceAiSection'
 import { MarketplaceInsightResult } from '../components/ai/MarketplaceInsightResult'
 import { freshPick } from '../services/consumerIntelligenceService'
 import { phase2Service } from '../services/phase2Service'
@@ -31,7 +31,7 @@ export function ConsumerHome() {
       <SearchBar value={search} onChange={setSearch} />
       <div className="category-row"><CategoryChip name="All" active={category === 'All'} onClick={() => setCategory('All')} />{categories.map((item) => <CategoryChip key={item.name} {...item} active={category === item.name} onClick={() => setCategory(item.name)} />)}</div>
 
-      <section className="section-block consumer-intelligence-slot"><div className="section-heading"><div><span className="eyebrow">Kisan Intelligence</span><h2>Fresh Pick</h2></div></div><MarketplaceAiTrigger idleLabel="Find my pick" idleHint="Find the strongest current produce option" stages={['Checking fresh harvests', 'Comparing nearby farm prices', 'Checking mandi references', 'Reviewing available supply', 'Preparing your recommendation']} run={() => freshPick(intelligenceListings ?? [])} renderResult={(insight, reset) => <MarketplaceInsightResult {...insight} onClose={reset} onCta={() => insight.listingId ? navigate(`/consumer/listing/${insight.listingId}`) : reset()} footer="Uses active listing price, mandi reference, harvest date, stock and verification fields." />} /></section>
+      <MarketplaceAiSection sectionClassName="consumer-intelligence-slot" title="Fresh Pick" subtitle="One recommendation across every active farm listing near you." idleLabel="Find my pick" idleHint="Find the strongest current produce option" stages={['Checking fresh harvests', 'Comparing nearby farm prices', 'Checking mandi references', 'Reviewing available supply', 'Preparing your recommendation']} run={() => freshPick(intelligenceListings ?? [])} renderResult={(insight, reset) => <MarketplaceInsightResult {...insight} onClose={reset} onCta={() => insight.listingId ? navigate(`/consumer/listing/${insight.listingId}`) : reset()} footer="Uses active listing price, mandi reference, harvest date, stock and verification fields." />} />
 
       <section className="section-block">
         <div className="section-heading"><div><span className="eyebrow">{t('pickedClose')}</span><h2>{t('freshNearYou')}</h2></div><Link to="/consumer/explore">{t('exploreAll')} <ArrowRight size={16} /></Link></div>

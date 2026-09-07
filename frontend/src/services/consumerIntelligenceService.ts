@@ -27,3 +27,37 @@ export function basketOptimizer(cart: CartItem[], listings: FarmerListing[]): Co
   const efficient = farms.size <= 1 && low.length === 0
   return { title: 'Basket Optimizer', recommendation: efficient ? 'Your basket is already efficient for the current prototype pickup model.' : farms.size > 1 ? 'Your basket spans multiple farms; pooled pickup is estimated at checkout.' : 'One item has limited remaining stock; keep the basket unchanged to protect availability.', confidence: efficient ? 85 : 73, note: `Logistics estimate ₹${costs.logistics}, based on the current prototype logistics formula — not a route quote.`, ctaLabel: efficient ? 'Keep basket unchanged' : 'View nearby produce', factors: [{ label: 'Items', value: `${rows.length} line item${rows.length === 1 ? '' : 's'}` }, { label: 'Farm origins', value: `${farms.size} farm${farms.size === 1 ? '' : 's'}` }, { label: 'Prototype logistics', value: `₹${costs.logistics} estimate` }, { label: 'Stock check', value: low.length ? `${low.length} low-stock item${low.length === 1 ? '' : 's'}` : 'All selected quantities available' }] }
 }
+
+/**
+ * Explore-page scout. Deliberately scoped to the listings the shopper's own filters have left on
+ * screen, so the recommendation is always defensible against what they can actually see.
+ */
+export function bestInResults(listings: FarmerListing[]): ConsumerInsight {
+  const available = listings.filter((item) => item.remainingKg > 0)
+  if (!available.length) return { title: 'Best In These Results', recommendation: 'Nothing in the current results is in stock to compare.', confidence: 55, factors: [] }
+  const priceOf = (item: FarmerListing) => (item.rescueStatus === 'RESCUE_ACTIVE' ? item.rescueDiscountPricePerKg ?? item.pricePerKg : item.pricePerKg)
+  const pick = freshPick(available.map((item) => ({ ...item, status: 'active' as const })))
+  const chosen = available.find((item) => item.id === pick.listingId) ?? available[0]
+  const price = priceOf(chosen)
+  const cheapest = [...available].sort((a, b) => priceOf(a) - priceOf(b))[0]
+  const freshest = [...available].sort((a, b) => b.harvestDate.localeCompare(a.harvestDate))[0]
+  const belowMandi = available.filter((item) => priceOf(item) < item.mandiPricePerKg).length
+  return {
+    title: 'Best In These Results',
+    recommendation: `${chosen.crop} from ${chosen.farm} balances price and freshness best across these ${available.length} results.`,
+    confidence: pick.confidence,
+    price,
+    mandi: chosen.mandiPricePerKg,
+    listingId: chosen.id,
+    ctaLabel: 'Open this listing',
+    note: chosen.id === cheapest.id ? undefined : `${cheapest.crop} is cheaper at ₹${priceOf(cheapest)}/kg, but scores lower on harvest date, stock or grade.`,
+    factors: [
+      { label: 'Price', value: `₹${price}/kg vs mandi ₹${chosen.mandiPricePerKg}` },
+      { label: 'Harvest', value: daysSince(chosen.harvestDate) === 0 ? 'Harvested today' : `Harvested ${daysSince(chosen.harvestDate)} day${daysSince(chosen.harvestDate) === 1 ? '' : 's'} ago` },
+      { label: 'Supply', value: `${chosen.remainingKg} kg available` },
+      { label: 'Grade & farm', value: `${chosen.grade} · verified farmer` },
+      { label: 'Freshest in results', value: freshest.id === chosen.id ? 'This listing' : `${freshest.crop} · ${freshest.farm}` },
+      { label: 'Below mandi reference', value: `${belowMandi} of ${available.length} results` },
+    ],
+  }
+}

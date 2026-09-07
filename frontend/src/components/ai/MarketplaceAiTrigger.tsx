@@ -96,14 +96,15 @@ export function MarketplaceAiTrigger<T>({ idleLabel, idleHint, stages, run, rend
     releaseTimer.current = window.setTimeout(() => setReserved(null), reduced ? 0 : 320)
   }, [reduced])
 
-  // Escape dismisses a finished analysis. An in-flight analysis is left alone: the underlying
-  // call is already running and cancelling mid-way would strand it.
+  // Escape dismisses a finished insight, whether it is still elevated or has settled back into
+  // the page. An in-flight analysis is left alone: the underlying call is already running and
+  // cancelling mid-way would strand it.
   useEffect(() => {
-    if (!focused || state === 'thinking') return
+    if (state !== 'result' && state !== 'error') return
     const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') reset() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [focused, state, reset])
+  }, [state, reset])
 
   const start = async () => {
     if (busyRef.current) return

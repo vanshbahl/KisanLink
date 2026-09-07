@@ -36,7 +36,7 @@ export function dispatchPulse(pickups: LogisticsPickup[], deliveries: Delivery[]
   if (unassigned.length) {
     const first = unassigned[0]
     const load = unassigned.reduce((sum, item) => sum + item.quantityKg, 0)
-    return { title: 'Dispatch Pulse', recommendation: available ? `${unassigned.length} pickup${unassigned.length === 1 ? '' : 's'} still need a vehicle — start with ${first.id} at ${first.farm}.` : `${unassigned.length} pickup${unassigned.length === 1 ? '' : 's'} are waiting and no vehicle is free; release one before the window closes.`, confidence: clamp(74 + unassigned.length * 3 + (available ? 6 : 0), 62, 90), ctaLabel: 'Assign a vehicle', href: `/logistics/pickups/${first.id}`, note: available ? undefined : 'Every vehicle is currently assigned or in maintenance.', factors: [...base, { label: 'Waiting load', value: kg(load) }, { label: 'Earliest window', value: first.pickupWindow }] }
+    return { title: 'Dispatch Pulse', recommendation: available ? `${unassigned.length} pickup${unassigned.length === 1 ? ' still needs' : 's still need'} a vehicle — start with ${first.id} at ${first.farm}.` : `${unassigned.length} pickup${unassigned.length === 1 ? ' is' : 's are'} waiting and no vehicle is free; release one before the window closes.`, confidence: clamp(74 + unassigned.length * 3 + (available ? 6 : 0), 62, 90), ctaLabel: 'Assign a vehicle', href: `/logistics/pickups/${first.id}`, note: available ? undefined : 'Every vehicle is currently assigned or in maintenance.', factors: [...base, { label: 'Waiting load', value: kg(load) }, { label: 'Earliest window', value: first.pickupWindow }] }
   }
   const next = openDeliveries[0]
   return next
@@ -93,8 +93,8 @@ export function deliveryRiskCheck(deliveries: Delivery[]): LogisticsInsight {
     recommendation: flagged.length
       ? `${risk} risk — ${flagged.length} shipment${flagged.length === 1 ? ' has' : 's have'} a reported issue; ${focus.id} needs a buyer update.`
       : unassigned.length
-        ? `${risk} risk — ${unassigned.length} shipment${unassigned.length === 1 ? '' : 's'} still have no vehicle, starting with ${focus.id}.`
-        : `${risk} risk — all ${open.length} open shipments have a vehicle and are moving through the queue.`,
+        ? `${risk} risk — ${unassigned.length} shipment${unassigned.length === 1 ? ' still has' : 's still have'} no vehicle, starting with ${focus.id}.`
+        : `${risk} risk — ${open.length === 1 ? 'the one open shipment has' : `all ${open.length} open shipments have`} a vehicle and ${open.length === 1 ? 'is' : 'are'} moving through the queue.`,
     confidence: clamp(72 + flagged.length * 5 + unassigned.length * 3, 60, 91),
     ctaLabel: 'Open the shipment',
     href: `/logistics/deliveries/${focus.id}`,

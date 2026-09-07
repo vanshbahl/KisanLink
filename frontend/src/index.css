@@ -914,19 +914,57 @@ html[lang="hi"] .status-badge { white-space: normal; text-align: center; line-he
 .voice-parsed-fields select { width: 100%; padding: 7px 9px; border: 1px solid var(--border); border-radius: 8px; font: inherit; font-size: 12px; background: white; }
 
 
-/* Shared Farmer AI focus treatment */
-.ai-analysis-overlay { position:fixed; z-index:90; inset:0; background:rgba(9,28,19,.52); backdrop-filter:blur(2px); animation:aiOverlayIn .2s ease both; }
+/* =========================================================================
+   Shared Kisan Intelligence focus treatment — Farmer, Consumer, Bulk, Logistics.
+   The overlay and the elevated card are portal SIBLINGS on <body>, never nested,
+   so the dim/blur can only ever reach the background, never the active card.
+   ========================================================================= */
+.ai-analysis-overlay { position:fixed; z-index:90; inset:0; background:rgba(9,28,19,.52); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); animation:aiOverlayIn .26s ease both; }
+/* Background scroll is locked while an analysis is focused so the elevated card
+   stays welded to the placeholder it lifted out of. */
+body.ai-analysis-active { overflow:hidden; }
 .ai-surface { position:relative; }
-.ai-surface-focused { z-index:91; overflow:visible; transform:translateY(-3px) scale(1.006); filter:drop-shadow(0 24px 38px rgba(8,31,19,.26)); transition:transform .24s ease,filter .24s ease; }
+/* The in-flow wrapper stays mounted and holds the floating card's measured height,
+   so returning to the page never reflows the surrounding layout. */
+.ai-surface-placeholder { visibility:hidden; pointer-events:none; }
+/* `top` is repositioned in the same frame the content changes, so it is deliberately not
+   transitioned — a moving anchor would let a growing result hang past the fold mid-slide.
+   A result taller than the viewport scrolls inside the elevated card rather than clipping. */
+.ai-surface-focused { z-index:91; max-height:calc(100vh - 32px); max-height:calc(100dvh - 32px); overflow:hidden auto; overscroll-behavior:contain; transform:translateY(-4px) scale(1.008); filter:drop-shadow(0 26px 44px rgba(8,31,19,.28)); transition:transform .26s cubic-bezier(.22,.7,.28,1),filter .26s ease; animation:aiLift .3s cubic-bezier(.22,.7,.28,1) both; }
 .ai-surface-focused .ai-trigger-icon,.ai-surface-focused .ai-result-head > svg { animation:aiFocusIcon 1.05s ease-in-out infinite; }
-.consumer-intelligence-slot,.procurement-pulse { margin-top: 18px; }
-.listing-intelligence,.basket-intelligence,.contribution-intelligence { margin: 14px 0; }
-.bulk-price-advisor { margin: -4px 0 18px; padding: 16px; background: #fffdf7; border: 1px solid #e4dcc9; border-radius: 18px; }
-.bulk-price-advisor h2 { font-size: 18px; margin: 4px 0 11px; }
-.target-price-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-.ai-error-state { min-height:120px; display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:12px; align-items:center; padding:18px; border:1px solid #e5c9a0; border-radius:18px; background:#fffaf0; color:var(--text); }
+/* Result reveal: the card is already elevated, so the content crossfades in place. */
+.ai-surface-result .ai-result-card { animation:aiResultIn .34s cubic-bezier(.22,.7,.28,1) both; }
+.ai-surface-thinking .ai-thinking { animation:aiFlow 1.25s ease-in-out infinite alternate,aiResultIn .24s ease both; }
+
+/* Page-level intelligence slots share one rhythm across every module. */
+.ai-section-slot,.consumer-intelligence-slot,.procurement-pulse,.logistics-intelligence-slot,.bulk-supply-intelligence,.explore-intelligence-slot { margin-top:18px; }
+.ai-section-slot .section-heading { margin-bottom:10px; }
+.ai-section-subtitle { margin-top:3px; color:var(--muted); font-size:11px; line-height:1.5; max-width:56ch; }
+.listing-intelligence,.basket-intelligence,.contribution-intelligence,.logistics-queue-advisor,.logistics-route-advisor { margin:14px 0; }
+.logistics-route-advisor { margin-top:2px; }
+.bulk-supply-intelligence,.explore-intelligence-slot { margin-bottom:6px; }
+
+.bulk-price-advisor { margin:14px 0 4px; padding:16px; background:#fffdf7; border:1px solid #e4dcc9; border-radius:18px; }
+.bulk-price-advisor > .eyebrow { color:var(--green); }
+.bulk-price-advisor h2 { font-size:18px; margin:4px 0 11px; }
+/* Price options are the choice itself here, so they are real buttons. */
+.bulk-price-advisor .ai-price-option { cursor:pointer; text-align:center; font:inherit; transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease; }
+.bulk-price-advisor .ai-price-option:hover { transform:translateY(-2px); border-color:#8db294; box-shadow:0 8px 20px rgba(38,72,52,.1); }
+.bulk-price-advisor .ai-price-option:focus-visible { outline:2px solid var(--green); outline-offset:2px; }
+/* Nested inside the requirement card, three price columns get too narrow on a phone —
+   stack them into full-width choices instead of squeezing the rate. */
+@media (max-width:520px) {
+  .bulk-price-advisor .ai-price-options { grid-template-columns:1fr; gap:8px; }
+  .bulk-price-advisor .ai-price-option { display:grid; grid-template-columns:auto minmax(0,1fr); column-gap:12px; align-items:center; min-height:0; padding:12px 14px; text-align:left; }
+  .bulk-price-advisor .ai-price-option strong { grid-row:1/3; font-size:20px; }
+  .bulk-price-advisor .ai-price-option small { align-self:end; font-size:10px; }
+  .bulk-price-advisor .ai-price-option .ai-price-tag { align-self:start; font-size:9px; }
+}
+
+.ai-error-state { min-height:120px; display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:12px; align-items:center; padding:18px; border:1px solid #e5c9a0; border-radius:18px; background:#fffaf0; color:var(--text); animation:aiResultIn .28s ease both; }
 .ai-error-state > svg { color:#9a6613; }.ai-error-state strong { font-size:13px; }.ai-error-state p { margin-top:3px; color:var(--muted); font-size:10px; line-height:1.5; }
 @keyframes aiOverlayIn { from { opacity:0; } }
+@keyframes aiLift { from { transform:translateY(0) scale(1); filter:drop-shadow(0 0 0 rgba(8,31,19,0)); } }
 @keyframes aiFocusIcon { 50% { transform:rotate(7deg) scale(1.08); } }
 
 /* Farmer order detail scan hierarchy */
@@ -958,7 +996,8 @@ html[lang="hi"] .status-badge { white-space: normal; text-align: center; line-he
 }
 
 @media (prefers-reduced-motion:reduce) {
-  .ai-analysis-overlay,.ai-surface-focused,.ai-surface-focused .ai-trigger-icon,.ai-surface-focused .ai-result-head > svg { animation:none!important; transition:none!important; transform:none!important; }
+  .ai-analysis-overlay,.ai-surface-focused,.ai-surface-focused .ai-trigger-icon,.ai-surface-focused .ai-result-head > svg,.ai-surface-result .ai-result-card,.ai-surface-thinking .ai-thinking { animation:none!important; transition:none!important; transform:none!important; }
+  .ai-analysis-overlay { backdrop-filter:none; }
 }
 .voice-sample-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .voice-sample-row small { width: 100%; color: var(--muted); font-size: 10px; }
