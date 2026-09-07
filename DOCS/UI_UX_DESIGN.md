@@ -1,9 +1,9 @@
-# KisanLink — UI/UX Design System & Wireframe Specifications
+# KisanLink — UI/UX Design System & Component Specifications
 
 **Project Name:** KisanLink (Direct Farm-to-Buyer Operating System)  
 **Problem Statement ID:** 26033 (Smart India Hackathon 2026)  
-**Document Version:** 1.0.0  
-**Status:** Approved Design System Specification  
+**Document Version:** 1.1.0  
+**Status:** Canonical Design System Specification (Synchronized with Codebase)  
 **Design Philosophy:** Premium Agricultural Simplicity — Radical Rural Ease + Institutional Procurement Elegance  
 **Last Updated:** September 2026  
 
@@ -12,571 +12,288 @@
 ## Table of Contents
 
 1. [Design Vision & Identity](#1-design-vision--identity)
-2. [Reference Inspiration & Aesthetics](#2-reference-inspiration--aesthetics)
-3. [What We Take From Reference vs. What We Explicitly Avoid](#3-what-we-take-from-reference-vs-what-we-explicitly-avoid)
-4. [Brand Personality & Perception](#4-brand-personality--perception)
-5. [Core Design Principles](#5-core-design-principles)
-6. [Color System & Semantic Tokens](#6-color-system--semantic-tokens)
-7. [Typography Hierarchy](#7-typography-hierarchy)
-8. [Spacing & Layout Grid](#8-spacing--layout-grid)
-9. [Shape Language & Corner Radii](#9-shape-language--corner-radii)
-10. [Elevation & Depth](#10-elevation--depth)
-11. [Iconography Standards](#11-iconography-standards)
-12. [Produce Photography Guidelines](#12-produce-photography-guidelines)
-13. [Purposeful Motion & Micro-Interactions](#13-purposeful-motion--micro-interactions)
-14. [Responsive Breakpoint Architecture](#14-responsive-breakpoint-architecture)
-15. [Accessibility & WCAG 2.1 AA Compliance](#15-accessibility--wcag-21-aa-compliance)
-16. [Localization & Bilingual Toggle Architecture](#16-localization--bilingual-toggle-architecture)
-17. [Farmer UX Principles (Radical Simplicity)](#17-farmer-ux-principles-radical-simplicity)
-18. [Farmer Navigation System](#18-farmer-navigation-system)
-19. [Farmer Component Patterns](#19-farmer-component-patterns)
-20. [Farmer Screen Wireframes (ASCII)](#20-farmer-screen-wireframes-ascii)
-21. [Voice User Experience (VUI)](#21-voice-user-experience-vui)
-22. [Buyer UX Principles (Progressive Complexity)](#22-buyer-ux-principles-progressive-complexity)
-23. [Consumer Direct Marketplace Experience](#23-consumer-direct-marketplace-experience)
-24. [B2B Procurement Workspace](#24-b2b-procurement-workspace)
-25. [Buyer Screen Wireframes (ASCII)](#25-buyer-screen-wireframes-ascii)
-26. [Logistics Provider UX (Utility-First)](#26-logistics-provider-ux-utility-first)
-27. [Logistics Screen Wireframes (ASCII)](#27-logistics-screen-wireframes-ascii)
-28. [Map Design & Spatial Data Visualization (MapLibre)](#28-map-design--spatial-data-visualization-maplibre)
-29. [Demand & Supply Forecast Presentation](#29-demand--supply-forecast-presentation)
-30. [Explainable Matching UI](#30-explainable-matching-ui)
-31. [Dynamic Farmer Cluster Visualizer (SIH Hero Screen)](#31-dynamic-farmer-cluster-visualizer-sih-hero-screen)
-32. [Order Tracking & State Visualizer](#32-order-tracking--state-visualizer)
-33. [Payment & Settlement Transparency Visuals](#33-payment--settlement-transparency-visuals)
-34. [Wastage Rescue & Urgent Sale Tagging UI](#34-wastage-rescue--urgent-sale-tagging-ui)
-35. [Empty State Design](#35-empty-state-design)
-36. [Loading States & Skeleton Screens](#36-loading-states--skeleton-screens)
-37. [Error Handling & Forgiving UI](#37-error-handling--forgiving-ui)
-38. [Offline & Weak Network Indicators](#38-offline--weak-network-indicators)
-39. [Desktop & Laptop Layout Adaptation](#39-desktop--laptop-layout-adaptation)
-40. [Mobile-First Native Feel](#40-mobile-first-native-feel)
-41. [Design Token Reference Table](#41-design-token-reference-table)
-42. [Component Inventory](#42-component-inventory)
-43. [Anti-Patterns to Strictly Avoid](#43-anti-patterns-to-strictly-avoid)
-44. [Future Phase Design Considerations](#44-future-phase-design-considerations)
+2. [Reference Aesthetics & Implementation Stack](#2-reference-aesthetics--implementation-stack)
+3. [Color System & Semantic Tokens](#3-color-system--semantic-tokens)
+4. [Typography & Responsive Scale](#4-typography--responsive-scale)
+5. [Cross-Module Navigation Strategy (5-Slot Mobile Architecture)](#5-cross-module-navigation-strategy-5-slot-mobile-architecture)
+6. [Market Maker Visual System (Flagship Core)](#6-market-maker-visual-system-flagship-core)
+7. [AI Card & Intelligence Interaction Pattern (MarketplaceAiTrigger)](#7-ai-card--intelligence-interaction-pattern-marketplaceaitrigger)
+8. [Farmer Experience Design (Radical Simplicity & Voice)](#8-farmer-experience-design-radical-simplicity--voice)
+9. [Consumer Direct Marketplace Experience (Unified Home)](#9-consumer-direct-marketplace-experience-unified-home)
+10. [Bulk Buyer Procurement Workspace](#10-bulk-buyer-procurement-workspace)
+11. [Logistics Console & Fleet Experience](#11-logistics-console--fleet-experience)
+12. [Map Visualization Design & Schematic Fallback](#12-map-visualization-design--schematic-fallback)
+13. [Component Inventory & Design Tokens](#13-component-inventory--design-tokens)
 
 ---
 
 ## 1. Design Vision & Identity
 
-**KisanLink** embodies a modern, premium agricultural operating system. It bridges the gap between rural Indian smallholders who require radical simplicity and institutional bulk buyers who demand sophisticated procurement tools.
+**KisanLink** bridges the gap between rural Indian smallholder farmers who require radical simplicity and institutional bulk buyers who demand sophisticated procurement tools. 
+
+The aesthetic is clean, trustworthy, and modern:
+- Soft, natural ivory and warm neutral canvases (`#fbf8f2`, `#f4ede2`).
+- Deep agricultural green accents (`#236747`, `#1a5036`) for trust and primary actions.
+- Restrained amber highlights (`#c88424`, `#d99232`) for pending states and commercial signals.
+- High legibility sans-serif typography with generous spacing and large touch targets.
 
 ---
 
-## 2. Reference Inspiration & Aesthetics
+## 2. Reference Aesthetics & Implementation Stack
 
-The design draws inspiration from modern, high-end organic produce marketplaces:
-- Soft, organic neutral canvases.
-- Large, high-definition crop photography with generous white space.
-- Clean sans-serif typography with high legibility.
-- Large rounded card surfaces and restrained brand accents.
+- **Technology Stack:** Built with pure **Vanilla CSS** (`frontend/src/index.css`) utilizing CSS variables and semantic design tokens. (Zero Tailwind CSS or heavy component library overhead).
+- **Iconography:** `lucide-react` with consistent optical sizing ($16\text{px}$, $18\text{px}$, $20\text{px}$, $22\text{px}$).
+- **Micro-Animations:** Fluid CSS transitions (`180ms ease`, `240ms cubic-bezier`) with strict compliance to `prefers-reduced-motion`.
 
 ---
 
-## 3. What We Take From Reference vs. What We Explicitly Avoid
-
-### What We Take:
-- **Calm, High-End Presentation:** Light, clean surfaces that feel trustworthy and premium.
-- **Large Product Cards:** Crisp visual focus on harvest quality and origin details.
-- **Clear Categorical Filtering:** Pill/chip-based navigation for immediate discovery.
-- **Obvious Primary Actions:** High-contrast CTA buttons that leave no ambiguity.
-
-### What We Explicitly Do NOT Copy:
-- **No Cluttered ERPs:** We do not build dense spreadsheet-style screens for farmers.
-- **No Generic Green Overkill:** We avoid painting every background, card, and icon green.
-- **No Rustic Caricatures:** No cartoon tractors, faux-wooden textures, or generic government portal styling.
-- **No Neon or Glassmorphism:** No translucent neon blur effects that hurt readability in bright sunlight.
-
----
-
-## 4. Brand Personality & Perception
-
-```
-+--------------------------------------------------------------------------------------------------+
-|                                    KISANLINK BRAND ATTRIBUTES                                    |
-+-------------------+-------------------+--------------------+------------------+------------------+
-|      PREMIUM      |   AGRICULTURAL    |     ACCESSIBLE     |   TRUSTWORTHY    |     MODERN       |
-| Refined & sleek   | Rooted in Indian  | Effortless for low-| Transparent with | Fast, reactive,  |
-| for bulk buyers   | soil & harvests   | literacy farmers   | zero hidden cuts | and intelligent  |
-+-------------------+-------------------+--------------------+------------------+------------------+
-```
-
----
-
-## 5. Core Design Principles
-
-1. **Radical Simplicity for Farmers:** 6 large primary touch cards on Home. One question per screen for listings. Zero data-dense dashboards.
-2. **Progressive Complexity for Buyers:** Clean consumer marketplace by default; rich procurement tools (reverse marketplace, supply calendar, cluster planner) for B2B institutions.
-3. **Utility-First for Transporters:** Clear manifests, turn-by-turn waypoint routes, and immediate payment confirmations.
-4. **Restrained Semantic Color:** Green is a deliberate brand accent, not a background fill.
-5. **Human Voice & Assisted Touchpoints:** Native Hindi/English voice input + prominent 1-tap `Call Support / हमसे बात करें`.
-
----
-
-## 6. Color System & Semantic Tokens
-
-```
-+----------------------------------------------------------------------------------------------------+
-|                                    COLOR PALETTE SPECIFICATION                                     |
-+--------------------+------------+------------------------------------------------------------------+
-| TOKEN NAME         | HEX VALUE  | SEMANTIC USAGE                                                   |
-+--------------------+------------+------------------------------------------------------------------+
-| `canvas-warm`      | `#F7F4EB`  | Main application canvas / background (warm ivory)                |
-| `surface-white`    | `#FFFFFF`  | Card backgrounds, modals, input fields                           |
-| `brand-deep-green` | `#236747`  | Primary CTA buttons, active tabs, brand headers                  |
-| `brand-soil`       | `#75563B`  | Earth accents, farm origin badges, harvest icons                 |
-| `brand-harvest`    | `#EBAF3C`  | Pre-harvest badges, high demand alerts, rating stars             |
-| `brand-urgency`    | `#D9613C`  | Spoilage rescue badges, call-center emergency, price drop alerts |
-| `text-primary`     | `#1F2924`  | Primary headings, body copy, active numbers (deep charcoal)      |
-| `text-secondary`   | `#68736D`  | Subtitles, helper text, timestamps, unit labels                  |
-| `border-subtle`    | `#DDE3DD`  | Card borders, dividers, inactive input strokes                   |
-+--------------------+------------+------------------------------------------------------------------+
-```
-
----
-
-## 7. Typography Hierarchy
-
-- **Primary English Font:** `Manrope`, sans-serif (Clean geometric modernism).
-- **Primary Indian Language Font:** `Noto Sans Devanagari` (Native Hindi readability).
-
-| Level | Size | Weight | Line Height | Application |
-|---|---|---|---|---|
-| **Display (Farmer)** | `28px - 32px` | Bold (`700`) | `38px` | Farmer greeting & single-question listing headers |
-| **Heading 1 (H1)** | `24px - 26px` | SemiBold (`600`) | `32px` | Buyer workspace titles, cluster hero headers |
-| **Heading 2 (H2)** | `18px - 20px` | SemiBold (`600`) | `26px` | Card titles, crop names, modal headers |
-| **Body (Farmer Touch)**| `18px` | Medium (`500`) | `26px` | Farmer card labels, option buttons |
-| **Body (Standard)** | `15px - 16px` | Regular (`400`) | `22px` | General body copy, descriptions |
-| **Caption / Badge** | `12px - 13px` | SemiBold (`600`) | `16px` | Grade badges, harvest dates, tags |
-
----
-
-## 8. Spacing & Layout Grid
-
-- **8pt Base Grid System:** All paddings, margins, and gaps are multiples of $4\text{px}$ or $8\text{px}$ (`4px`, `8px`, `12px`, `16px`, `24px`, `32px`, `48px`, `64px`).
-- **Standard Container Max-Width:**
-  - Mobile: $100\%$ width with $16\text{px}$ gutter.
-  - Tablet: Max $768\text{px}$ width with $24\text{px}$ gutter.
-  - Desktop: Max $1280\text{px}$ width with $32\text{px}$ gutter.
-
----
-
-## 9. Shape Language & Corner Radii
-
-- **Cards & Surfaces:** `16px – 20px` border radius (`rounded-2xl`).
-- **Primary Buttons:** `12px – 16px` border radius (`rounded-xl`).
-- **Pills & Status Chips:** `9999px` full pill radius (`rounded-full`).
-- **Touch Target Dimensions:**
-  - Standard Mobile CTA: Minimum $48\text{px}$ height.
-  - Farmer Major Action Cards: $64\text{px} – 72\text{px}+$ height.
-
----
-
-## 10. Elevation & Depth
-
-- **Restrained Shadows:** We prioritize subtle 1px border strokes (`#DDE3DD`) over heavy shadows.
-- **Card Shadow:** `box-shadow: 0 2px 8px rgba(31, 41, 36, 0.04);`
-- **Floating Call Support Action Button:** `box-shadow: 0 4px 16px rgba(217, 97, 60, 0.25);`
-
----
-
-## 11. Iconography Standards
-
-- **Icon Set:** `lucide-react` with consistent $2\text{px}$ stroke width.
-- **Dual Presentation Rule:** Every icon in the Farmer experience is accompanied by explicit text in Hindi and English. Zero ambiguous standalone icons.
-
----
-
-## 12. Produce Photography Guidelines
-
-- Clean, naturally lit produce shots with generous white or neutral background padding.
-- Used prominently on Buyer Catalog, Pre-Harvest Previews, and Farm Story popups.
-- Avoid low-resolution, overly saturated stock photos.
-
----
-
-## 13. Purposeful Motion & Micro-Interactions
-
-- **Voice Recording:** Gentle pulsing halo around the microphone icon when active.
-- **Order State Progression:** Smooth CSS step transition as consignment changes state.
-- **Cluster Aggregation:** Animated counter scaling from $0\text{ kg}$ to $5,000\text{ kg}$ as farmers are combined during the SIH demo.
-- **Strict Motion Safeguard:** `prefers-reduced-motion` fully supported.
-
----
-
-## 14. Responsive Breakpoint Architecture
-
-```
-+----------------------------------------------------------------------------------------------------+
-|                                    RESPONSIVE BREAKPOINT GRID                                      |
-+---------------+-------------------+----------------------------------------------------------------+
-| BREAKPOINT    | MIN WIDTH         | LAYOUT SPECIFICATION                                           |
-+---------------+-------------------+----------------------------------------------------------------+
-| **Mobile**    | `< 640px`         | Single column, 6-card farmer grid (2x3), sticky bottom nav     |
-| **Tablet**    | `640px - 1023px`  | 2-column marketplace grid, split preview panels                |
-| **Desktop**   | `1024px - 1439px` | 3-4 column catalog, Left navigation + Canvas + Context panel   |
-| **Wide**      | `≥ 1440px`        | Max-width centered container (1400px), rich twin map visualizer|
-+---------------+-------------------+----------------------------------------------------------------+
-```
-
----
-
-## 15. Accessibility & WCAG 2.1 AA Compliance
-
-- **Contrast Ratios:** Text on `#F7F4EB` canvas exceeds $4.5:1$ contrast ratio.
-- **Large Touch Targets:** Minimum $48 \times 48\text{ px}$ clickable area for all buttons.
-- **Screen Reader Support:** Semantic HTML5 elements (`<main>`, `<nav>`, `<article>`, `<button>`) with `aria-label` attributes for voice and status badges.
-
----
-
-## 16. Localization & Bilingual Toggle Architecture
-
-- Sticky Header Toggle: `[हिन्दी | English]` permanently accessible on top-right.
-- Toggling instantly swaps runtime string dictionaries via `i18next` without page reload.
-
----
-
-## 17. Farmer UX Principles (Radical Simplicity)
-
-1. **Zero Clutter:** No complex graphs, analytical indices, or nested drawer menus.
-2. **Immediate Clarity:** Every card presents a large recognizable icon and dual-language title.
-3. **One Question Per Screen:** Step-by-step listing creation wizard.
-4. **Always Reachable Support:** Floating red/green Call Support button.
-
----
-
-## 18. Farmer Navigation System
-
-Persistent 4-tab bottom navigation bar for mobile:
-1. `🏠 Home / मुख्य`
-2. `🌾 Sell / बेचें`
-3. `📦 Orders / ऑर्डर`
-4. `📞 Support / सहायता`
-
----
-
-## 19. Farmer Component Patterns
-
-### 6-Card Farmer Home Layout
-```
-+------------------------------------------------------------------------+
-|  [Logo] KisanLink / किसान लिंक                 [हिन्दी | English]  [Bell]|
-+------------------------------------------------------------------------+
-|  🌾 Namaste, Ramesh Ji! (Sonipat, Haryana)                             |
-+------------------------------------------------------------------------+
-|                                                                        |
-|   +--------------------------------+  +------------------------------+ |
-|   |        [🌾 Sell My Crop]       |  |      [🔍 Find Buyers]        | |
-|   |         अपनी फसल बेचें         |  |         खरीदार खोजें         | |
-|   +--------------------------------+  +------------------------------+ |
-|                                                                        |
-|   +--------------------------------+  +------------------------------+ |
-|   |        [📦 My Orders]          |  |      [🚚 Transport]          | |
-|   |          मेरे ऑर्डर            |  |          गाड़ी / वाहन         | |
-|   +--------------------------------+  +------------------------------+ |
-|                                                                        |
-|   +--------------------------------+  +------------------------------+ |
-|   |        [💰 Payments]           |  |      [🤖 Speak to AI]        | |
-|   |         भुगतान / खाते          |  |         बोलकर बताएं          | |
-|   +--------------------------------+  +------------------------------+ |
-|                                                                        |
-+------------------------------------------------------------------------+
-|  [🔴 Call Support / हमसे बात करें (Toll Free: 1800-XXX-XXXX)]          |
-+------------------------------------------------------------------------+
-|  Market Guidance: Tomato Mandi ₹19/kg | KisanLink Direct ₹25/kg        |
-+------------------------------------------------------------------------+
-```
-
----
-
-## 20. Farmer Screen Wireframes (ASCII)
-
-### 20.1 One-Question-Per-Screen Listing Wizard
-```
-+------------------------------------------------------------------------+
-|  < Back                     Step 2 of 5                  [हिन्दी]      |
-+------------------------------------------------------------------------+
-|                                                                        |
-|   How much quantity do you have?                                       |
-|   आपके पास कितनी मात्रा है?                                            |
-|                                                                        |
-|                +------------------------------------+                  |
-|                |            1,200  kg               |                  |
-|                |         (1.2  Tonnes)              |                  |
-|                +------------------------------------+                  |
-|                                                                        |
-|         [ - 100 kg ]                     [ + 100 kg ]                  |
-|                                                                        |
-|         Quick Select:  [ 500 kg ]   [ 1,000 kg ]   [ 2,000 kg ]        |
-|                                                                        |
-+------------------------------------------------------------------------+
-|  [ Next / आगे बढ़ें  ➔ ]                                               |
-+------------------------------------------------------------------------+
-```
-
----
-
-## 21. Voice User Experience (VUI)
-
-```
-+------------------------------------------------------------------------+
-|                       🎤 Speaking in Hindi...                          |
-|                       "सुन रहे हैं..."                                 |
-+------------------------------------------------------------------------+
-|                                                                        |
-|                   ( ( ( ( (  🎙️  ) ) ) ) )                            |
-|                                                                        |
-|   "Mere paas 800 kilo tamatar hai, agle hafte taiyaar hoga"            |
-|                                                                        |
-+------------------------------------------------------------------------+
-|   ✓ Understood:                                                        |
-|     • Crop: Tomato (टमाटर)                                             |
-|     • Quantity: 800 kg                                                 |
-|     • Availability: Next Week (अगले हफ्ते)                             |
-+------------------------------------------------------------------------+
-|   [ Looks Correct / सही है ➔ ]              [ Try Again / दोबारा बोलें]|
-+------------------------------------------------------------------------+
-```
-
----
-
-## 22. Buyer UX Principles (Progressive Complexity)
-
-- **Consumer View:** Clean e-commerce catalog with high-res crop cards, origin farm stories, and direct checkout.
-- **B2B Bulk Procurement View:** Sidebar navigation, reverse marketplace posting modal, 4-week forward crop calendar, dynamic cluster planner, and digital twin map.
-
----
-
-## 23. Consumer Direct Marketplace Experience
-
-- 3-column product grid featuring farm distance, harvest timestamp (*"Harvested 6h ago"*), farmer name, and savings vs. retail benchmark.
-
----
-
-## 24. B2B Procurement Workspace
-
-- Enables corporate buyers (hotels, restaurants, retail chains) to post 5,000kg+ requirements and receive multi-farmer aggregated supply plans.
-
----
-
-## 25. Buyer Screen Wireframes (ASCII)
-
-### 25.1 B2B Requirement Poster (Reverse Marketplace)
-```
-+------------------------------------------------------------------------+
-|  Post Procurement Requirement / नया मांग पत्र                         |
-+------------------------------------------------------------------------+
-|  Crop: [ Tomato (टमाटर)          ▼ ]   Target Qty: [ 5,000  kg ]       |
-|  Quality Grade: (•) Grade A   ( ) Grade B   ( ) Processing Grade       |
-|  Delivery Location: [ The Imperial Hotel, Connaught Place, New Delhi ] |
-|  Required By Date: [ 10 Sept 2026 ]   Ceiling Price: [ ₹ 28.00 / kg ]  |
-+------------------------------------------------------------------------+
-|  [ ⚡ Find Sourcing Matches / किसान खोजें ]                            |
-+------------------------------------------------------------------------+
-```
-
----
-
-## 26. Logistics Provider UX (Utility-First)
-
-- Clean load board showing payout in rupees, total payload weight, pickup stops, and destination.
-
----
-
-## 27. Logistics Screen Wireframes (ASCII)
-
-```
-+------------------------------------------------------------------------+
-|  Active Dispatch Job #SH-402                       Payout: ₹12,500    |
-+------------------------------------------------------------------------+
-|  Payload: 5.0 Tonnes Tomatoes | Vehicle: 5.0T Eicher Pro (HR-38-A-1024)|
-|  Route: Sonipat ➔ Panipat ➔ New Delhi (Total: 112 km)                  |
-+------------------------------------------------------------------------+
-|  PICKUP STOPS:                                                         |
-|  [✓] 1. Farm A (Ramesh - Sonipat)     : 1,200 kg  [Verified]           |
-|  [✓] 2. Farm B (Suresh - Sonipat)     :   800 kg  [Verified]           |
-|  [ ] 3. Farm C (Balbir - Panipat)     : 1,700 kg  [Navigate ➔]         |
-|  [ ] 4. Farm D (Jaipal - Panipat)     : 1,300 kg  [Pending]            |
-+------------------------------------------------------------------------+
-|  DROP-OFF DESTINATION:                                                 |
-|  [ ] The Imperial Hotel, New Delhi    : 5,000 kg  [Delivery OTP]       |
-+------------------------------------------------------------------------+
-```
-
----
-
-## 28. Map Design & Spatial Data Visualization (MapLibre)
-
-- MapLibre GL vector tiles in soft neutral tones (`#F7F4EB` canvas compatible).
-- Dynamic Farmer Clusters represented as green circular catchment polygons with individual farm markers connected via optimized routing polyline.
-
----
-
-## 29. Demand & Supply Forecast Presentation
-
-- **Farmer View:** Qualitative, bold indicator chips:
-  `🟢 High Demand Expected | Tomato | Next 3 Weeks | Fair Price: ₹24-₹27/kg`
-- **Buyer View:** Quantitative trend graphs showing regional arrival volume indices and projected supply deficits.
-
----
-
-## 30. Explainable Matching UI
-
-```
-+------------------------------------------------------------------------+
-|  ✓ Why this sourcing match was selected:                               |
-|    • Distance: All 4 farms within 28 km radius of Murthal highway.     |
-|    • Quality: 100% Grade A certified via pre-harvest declarations.      |
-|    • Timing: Harvest dates align within 24h of requested delivery.     |
-|    • Logistics: Consolidated 1-truck pickup saves ₹4,800 in freight.   |
-+------------------------------------------------------------------------+
-```
-
----
-
-## 31. Dynamic Farmer Cluster Visualizer (SIH Hero Screen)
-
-```
-+------------------------------------------------------------------------+
-|  🎯 DYNAMIC FARMER CLUSTER #TC-104                 Status: 100% MATCH  |
-+------------------------------------------------------------------------+
-|  Target Sourcing Demand: 5,000 kg Tomatoes | Delivered to: Delhi NCR   |
-|                                                                        |
-|  +-------------------+  +-------------------+  +---------------------+ |
-|  | Farmer A (Sonipat)|  | Farmer B (Sonipat)|  | Farmer C (Panipat)  | |
-|  | 1,200 kg (₹25/kg) |  |   800 kg (₹25/kg) |  | 1,700 kg (₹25/kg)   | |
-|  +-------------------+  +-------------------+  +---------------------+ |
-|                                 +------------------------------------+ |
-|                                 | Farmer D (Panipat) : 1,300 kg      | |
-|                                 +------------------------------------+ |
-|                                                                        |
-|  TOTAL POOLED SUPPLY: 5,000 / 5,000 kg (✓ FULFILLED)                   |
-|                                                                        |
-|  • Average Farm Price : ₹ 25.00 / kg                                   |
-|  • Shared Freight     : ₹  2.20 / kg                                   |
-|  • Total Delivered    : ₹ 27.20 / kg  (Wholesale Mandi: ₹32.00 / kg)   |
-|  • BUYER NET SAVINGS  : 15.0% (₹ 24,000 saved)                         |
-|  • FARMER EXTRA GAIN  : +31.5% (vs Mandi ₹19/kg)                       |
-+------------------------------------------------------------------------+
-|  [ Accept Sourcing Plan & Lock Escrow (₹1,37,500) ➔ ]                  |
-+------------------------------------------------------------------------+
-```
-
----
-
-## 32. Order Tracking & State Visualizer
-
-Horizontal step indicator showing real-time milestone transitions:
-`[✓ Matched] ➔ [✓ Confirmed] ➔ [✓ Escrow Locked] ➔ [🚚 In Transit] ➔ [ Delivered] ➔ [ Settled]`
-
----
-
-## 33. Payment & Settlement Transparency Visuals
-
-Detailed cost breakdown card showing every rupee allocated:
-- Gross Buyer Payment: **₹1,37,500**
-- Farmers Payout (Combined 5,000kg): **₹1,22,500**
-- Transporter Freight: **₹12,500**
-- Platform Fee (1.8%): **₹2,500**
-- Middleman Cuts: **₹0.00 (Removed)**
-
----
-
-## 34. Wastage Rescue & Urgent Sale Tagging UI
-
-- Distinctive warm badge (`#D9613C`):
-  `🚨 Urgent Sale / जल्दी बेचें (Expires in 48h) — Recommended Rescue Price: ₹21/kg`
-
----
-
-## 35. Empty States
-
-- Friendly illustrations with clear CTAs:
-  *"No active listings found in this district. Post a Buyer Requirement to notify nearby farmers."*
-
----
-
-## 36. Loading States & Skeleton Screens
-
-- Shimmering light gray bone placeholders replicating the exact dimensions of produce cards to prevent layout shift (CLS).
-
----
-
-## 37. Error Handling & Forgiving UI
-
-- Non-blocking toast alerts with clear recovery actions:
-  *"Network disconnected. Your listing draft is saved locally and will upload automatically."*
-
----
-
-## 38. Offline & Weak Network Indicators
-
-- Muted banner at screen top:
-  `⚠️ Offline Mode — Working from local cache`
-
----
-
-## 39. Desktop & Laptop Layout Adaptation
-
-- On screen widths $\ge 1024\text{px}$:
-  - Left navigation sidebar ($240\text{px}$).
-  - Main working canvas ($800\text{px}$).
-  - Right contextual summary panel ($360\text{px}$) showing dynamic cluster breakdown or cart overview.
-
----
-
-## 40. Mobile-First Native Feel
-
-- Bottom navigation bar, smooth touch swipes, pull-to-refresh on listing feeds, and oversized tap targets.
-
----
-
-## 41. Design Token Reference Table
+## 3. Color System & Semantic Tokens
 
 ```css
 :root {
-  --color-canvas: #F7F4EB;
-  --color-surface: #FFFFFF;
-  --color-brand-green: #236747;
-  --color-soil: #75563B;
-  --color-harvest: #EBAF3C;
-  --color-urgency: #D9613C;
-  --color-text-primary: #1F2924;
-  --color-text-secondary: #68736D;
-  --color-border: #DDE3DD;
-  --radius-card: 18px;
-  --radius-btn: 14px;
+  /* Brand Green Palette */
+  --color-primary: #236747;
+  --color-primary-dark: #184c33;
+  --color-primary-light: #e8f3ec;
+
+  /* Accent Amber Palette */
+  --color-accent: #c88424;
+  --color-accent-light: #fdf5ea;
+
+  /* Surfaces & Canvas */
+  --color-bg: #fbf8f2;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f4ede2;
+  --color-border: #e6dcce;
+
+  /* Typography */
+  --color-text: #1d251f;
+  --color-text-muted: #647067;
+
+  /* Semantic Alerts */
+  --color-success: #2e7d32;
+  --color-warning: #e65100;
+  --color-error: #c62828;
 }
 ```
 
 ---
 
-## 42. Component Inventory
+## 4. Typography & Responsive Scale
 
-- `ButtonCard`: Large touch card for farmer actions.
-- `VoiceMicButton`: Animated microphone recording trigger.
-- `ClusterHeroCard`: Multi-farmer supply pooling visualizer.
-- `ProduceCard`: Large image crop card with grade badge.
-- `CallSupportFAB`: Floating emergency support button.
-- `StatusBadge`: Semantic pill for crop/order states.
-
----
-
-## 43. Anti-Patterns to Strictly Avoid
-
-- ❌ Do not use tiny $12\text{px}$ text for farmer screens.
-- ❌ Do not present raw unformatted numbers like `0.84279` to farmers.
-- ❌ Do not create 12-field single-page forms for rural users.
-- ❌ Do not use generic all-green interfaces.
+- **Primary Typeface:** `Inter`, system `-apple-system`, `BlinkMacSystemFont`, `Segoe UI`, `sans-serif`.
+- **Bilingual Typographic Harmony:** Hindi (Devanagari script) and English share unified baseline heights and font weights across all views.
+- **Scale:**
+  - `Hero Heading`: $28\text{px} - 32\text{px}$ (Bold / 700)
+  - `Section Heading`: $20\text{px} - 24\text{px}$ (Semi-bold / 600)
+  - `Card Title`: $16\text{px} - 18\text{px}$ (Semi-bold / 600)
+  - `Body Copy`: $14\text{px} - 15\text{px}$ (Regular / 400)
+  - `Caption & Eyebrow`: $11\text{px} - 12\text{px}$ (Medium / 500, uppercase letter-spacing $0.05\text{em}$)
 
 ---
 
-## 44. Future Phase Design Considerations
+## 5. Cross-Module Navigation Strategy (5-Slot Mobile Architecture)
 
-- Future FPO cooperative management dashboards.
-- Administrative dispute arbitration consoles.
-- Real-time IoT temperature gauges for cold-chain transit.
+Every role in KisanLink uses a strictly standardized **5-slot bottom navigation bar** (`AppShell.tsx`):
+- Equal width slots ($20\%$ each) with fixed icon boxes ensuring a flat, unified label baseline.
+- **Slot 3** is permanently reserved for the **elevated primary action** (`nav-primary`), styled with an elevated round action bubble (`nav-bubble`).
+- **Slot 4** is universally dedicated to **Market Maker** (`/role/market`) across all 4 roles, signaled by the Radar icon.
+
+```
++-------------------------------------------------------------------------+
+| [ Slot 1 ]   [ Slot 2 ]   [  (SLOT 3)  ]   [ Slot 4 ]   [  Slot 5   ]   |
+|   Home         Orders     [  PRIMARY   ]     Market       Profile /     |
+|                           [  ELEVATED  ]     Maker        Operations    |
++-------------------------------------------------------------------------+
+```
+
+### 5.1 Role Navigation Matrix
+
+| Role | Slot 1 | Slot 2 | Slot 3 (Primary Elevated) | Slot 4 | Slot 5 | Profile Access Pattern |
+|---|---|---|---|---|---|---|
+| **Farmer** | Home (`/farmer`) | Orders (`/farmer/orders`) | **Produce / Fasal** (`/farmer/produce`) | Market Maker (`/farmer/market`) | Profile (`/farmer/profile`) | In bottom nav (Slot 5) |
+| **Consumer** | Home (`/consumer`) | Orders (`/consumer/orders`) | **Cart** (`/consumer/cart`) | Market Maker (`/consumer/market`) | Profile (`/consumer/profile`) | In bottom nav (Slot 5) |
+| **Bulk Buyer** | Overview (`/bulk`) | Supply (`/bulk/supply`) | **Requests** (`/bulk/requests`) | Orders (`/bulk/orders`) | Market Maker (`/bulk/market`) | **Mobile Header Avatar** |
+| **Logistics** | Overview (`/logistics`) | Pickups (`/logistics/pickups`) | **Routes** (`/logistics/routes`) | Deliveries (`/logistics/deliveries`) | Market Maker (`/logistics/market`) | **Mobile Header Avatar** |
+
+### 5.2 Header Profile Avatar Pattern
+In Bulk Buyer and Logistics, all 5 bottom navigation slots represent core operational workflows. Profile access is placed in the top mobile header as an interactive avatar with user initials (`header-avatar`).
 
 ---
-*End of KisanLink UI/UX Design System & Wireframe Specifications*
+
+## 6. Market Maker Visual System (Flagship Core)
+
+Market Maker is visually anchored in `frontend/src/components/market/`:
+
+### 6.1 Market Demand Ring (`MarketDemandRing.tsx`)
+- **Radial Geometry:** $220\text{px} \times 220\text{px}$ SVG ring with $16\text{px}$ stroke width.
+- **Arc Segments:**
+  - Green gradient arc: Commercial bulk demand.
+  - Amber gradient arc: Consumer household demand.
+  - Dashed track: Remaining demand gap ($\text{Gap}_{\text{kg}}$).
+- **Animated Number Center:** Real-time count-up odometer displaying committed kilograms and percentage of threshold.
+
+### 6.2 Outcome Summary Bar (`MarketOutcomeSummary`)
+- High-contrast visual banner contrasting:
+  - Before: Mandi rate (₹24/kg) vs Retail buyer price (₹42/kg).
+  - After: Protected farmer floor (₹28/kg) vs Pooled direct price (₹33.02/kg).
+
+### 6.3 State Rail (`MarketStateRail`)
+- 3-step progress stepper:
+  1. `Market is forming / बाज़ार बन रहा है`
+  2. `Ready to create / बनाने के लिए तैयार`
+  3. `Direct market created / सीधा बाज़ार बन गया`
+
+### 6.4 Deep Visualizations
+- **Delivered Price Curve (`MarketFreightCurve.tsx`):** Plots hyperbolic freight amortization ($y = \text{Floor} + \frac{\text{FixedTrip}}{x} + \text{Fee}$) against committed volume, with green shaded viable zone past break-even. Responsive viewBox switches between desktop ($660\text{px}$) and mobile ($360\text{px}$).
+- **Value Split Stack (`MarketValueSplit.tsx`):** Proportional stacked bars comparing traditional 5-tier intermediary margin against direct costs (Farmer, Freight, Fee, Buyer Savings).
+- **Convergence Flow (`MarketConvergence.tsx`):** 3-column responsive grid showing individual smallholder lots on the left, central transit vehicle, and pooled buyers on the right.
+- **Arithmetic Audit Panel (`MarketWhyPanel.tsx`):** Expandable 7-step accordion detailing the exact mathematical derivation of trip viability.
+
+### 6.5 Market Unlock Reveal (`MarketUnlockReveal.tsx`)
+- Modal with dark blurred scrim (`mm-reveal-scrim`), animated checkmark badge, and live ledger table linking directly to generated farmer orders, bulk procurement invoices, and pooled routes.
+
+---
+
+## 7. AI Card & Intelligence Interaction Pattern (`MarketplaceAiTrigger`)
+
+Every AI card across KisanLink (`FarmerPulseCard`, `MarketplaceAiSection`, `BulkIntelligenceCards`, `LogisticsIntelligenceCards`) adheres to a unified interaction lifecycle:
+
+```
+[ Idle Card ] ──(User Tap)──> [ Floating Portal Focus State ]
+                                   │
+                                   ├── Background page scroll locked (.ai-analysis-active)
+                                   ├── Dark blurred overlay mounted via React Portal
+                                   ├── Floating card elevated above overlay (never blurred)
+                                   ├── In-flow placeholder reserves measured height (no layout shift)
+                                   │
+                                   ▼
+                              [ Staged Thinking Animation (AiThinkingState) ]
+                                   │  4-5 paced check steps across 1400ms
+                                   ▼
+                              [ Recommendation / Result Surface ]
+                                   │  Confidence badge + Reasoning factors + CTA
+                                   ▼
+                              [ Dismissal / Settle ]
+                                   Escape key / Close button smoothly restores normal flow
+```
+
+---
+
+## 8. Farmer Experience Design (Radical Simplicity & Voice)
+
+### 8.1 Farmer Home Layout (`/farmer`)
+```
++------------------------------------------------------------------------+
+|  [Logo] KisanLink / किसान लिंक                 [हिन्दी | English]  [Bell]|
++------------------------------------------------------------------------+
+|  Namaste, Ramesh Ji! (Sonipat, Haryana)                        [29°C ☀️]|
++------------------------------------------------------------------------+
+|  [ MARKET MAKER PULSE CARD ]                                           |
+|  Radar: Tomato Corridor · Needs 40 kg more demand to break even        |
+|  Farmer Floor: ₹28/kg | Local Mandi: ₹24/kg                            |
+|  [ View opportunity ➔ ]                                               |
++------------------------------------------------------------------------+
+|  [ Attention Metrics: ₹ Earnings Month | Active Listings | New Orders ] |
++------------------------------------------------------------------------+
+|  [ FARMER AI PULSE CARD (MarketplaceAiTrigger) ]                       |
+|  "Check stock and prices across your active listings"                  |
++------------------------------------------------------------------------+
+|  [ Quick Action Grid: My Produce | Orders | Earnings | Demand Insights]|
++------------------------------------------------------------------------+
+|  [ Upcoming Pickup Card ]          | [ Tomato Price Insight: +₹7/kg ]  |
++------------------------------------------------------------------------+
+|  [ Call Support / हमसे बात करें (Toll Free: 1800 123 4567) ]           |
++------------------------------------------------------------------------+
+|  [Home]       [Orders]       [(PRODUCE)]       [Market]       [Profile]|
++------------------------------------------------------------------------+
+```
+
+### 8.2 Voice Input Modal (`VoiceInputModal.tsx`)
+- Floating modal with microphone visualizer.
+- Browser speech recognition with audio level feedback.
+- Gemini AI auto-parsing into review form (Crop, Qty, Unit, Price, Harvest Date, Window).
+- One-tap confirmation into produce listing draft.
+
+---
+
+## 9. Consumer Direct Marketplace Experience (Unified Home)
+
+### 9.1 Unified Home Architecture (`/consumer`)
+- Direct access to Market Maker pulse card and Fresh Pick recommendation.
+- **Integrated Marketplace Section (`#marketplace`):** Eliminates separate explore page; deep-linked directly from home.
+- Search input with instant keyword filtering.
+- Category chips (`All`, `Vegetables`, `Fruits`, `Grains`, `Staples`).
+- Filter drawer modal with grade, freshness, price slider, and distance filters.
+- Responsive product card grid with quick Add-to-Cart buttons.
+- Price transparency comparison: Farm-direct (₹31/kg) vs Retail shop (₹42/kg).
+
+---
+
+## 10. Bulk Buyer Procurement Workspace
+
+### 10.1 Sourcing Desk (`/bulk`)
+- Monthly procurement savings counter (₹26,450).
+- Reverse marketplace requirement posting wizard with **Target Price Advisor** AI component.
+- Deterministic supply pooling preview showing multi-farm contribution breakdown.
+- Landed cost summary (Produce value + Consolidated freight + Platform fee).
+
+---
+
+## 11. Logistics Console & Fleet Experience
+
+### 11.1 Operational Console (`/logistics`)
+- Shift status badge and 4 operational KPIs (Active pickups, deliveries, capacity, produce in transit).
+- Active jobs card ranking issues (`status === 'issue'`) and unassigned pickups before routine work.
+- Digital Twin Corridor map showing multi-farm pickup nodes and buyer drops.
+- Market Maker fleet lever allowing operators to hold or withdraw vehicles from corridors.
+
+---
+
+## 12. Map Visualization Design & Schematic Fallback
+
+- **Canvas:** MapLibre GL JS vector map with CartoCDN Positron style.
+- **Corridor Routing:** Quadratic Bezier polyline arcs connecting pickup nodes, Sonipat Hub, and Azadpur Mandi.
+- **Graceful Schematic Fallback:** If WebGL fails, tiles time out, or browser is offline, the component renders a structured schematic card list with retry button, ensuring zero broken canvases.
+
+---
+
+## 13. Component Inventory & Design Tokens
+
+```text
+frontend/src/components/
+├── ai/
+│   ├── AiConfidenceBadge.tsx
+│   ├── AiInsightCard.tsx
+│   ├── AiReasoningFactors.tsx
+│   ├── AiThinkingState.tsx
+│   ├── BulkIntelligenceCards.tsx
+│   ├── FarmerPulseCard.tsx
+│   ├── LogisticsIntelligenceCards.tsx
+│   ├── MarketplaceAiSection.tsx
+│   ├── MarketplaceAiTrigger.tsx
+│   └── MarketplaceInsightResult.tsx
+├── maps/
+│   └── DigitalTwinCorridorMap.tsx
+├── market/
+│   ├── AnimatedNumber.tsx
+│   ├── FarmerMarketMaker.tsx
+│   ├── MarketCommitPanel.tsx
+│   ├── MarketConvergence.tsx
+│   ├── MarketDemandRing.tsx
+│   ├── MarketFreightCurve.tsx
+│   ├── MarketHowItWorks.tsx
+│   ├── MarketInfographics.tsx
+│   ├── MarketPulseCard.tsx
+│   ├── MarketThresholdMeter.tsx
+│   ├── MarketUnlockReveal.tsx
+│   ├── MarketValueSplit.tsx
+│   └── MarketWhyPanel.tsx
+├── marketplace/
+│   └── ConsumerMarketplace.tsx
+└── voice/
+    └── VoiceInputModal.tsx
+```
+
+---
+*End of KisanLink UI/UX Design System Specification*

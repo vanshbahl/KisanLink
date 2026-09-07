@@ -53,7 +53,7 @@ graph TD
     Railway --> SupabaseDB[("Supabase PostgreSQL 16\n(+ PostGIS Spatial Engine)")]:::db
     Railway --> SupabaseStorage[("Supabase Storage\n(Crop Images & Signatures)")]:::db
 
-    Railway --> BhashiniAPI["BHASHINI API\n(Speech & Translation)"]:::ext
+    Railway --> GeminiAPI["Google Gemini API\n(Voice NLP Listing Extraction)"]:::ext
     Railway --> OSRM["OSRM Routing Server\n(Road Distance Matrices)"]:::ext
 ```
 

@@ -2,9 +2,9 @@
 
 **Project Name:** KisanLink (Direct Farm-to-Buyer Operating System)  
 **Problem Statement ID:** 26033 (Smart India Hackathon 2026)  
-**Document Version:** 1.0.0  
-**Status:** Approved System Flow Specification  
-**Parent Specifications:** [PRD.md](./PRD.md) | [TRD.md](./TRD.md) | [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md)  
+**Document Version:** 1.1.0  
+**Status:** Canonical System Flow Specification (Synchronized with Codebase)  
+**Parent Specifications:** [PRD.md](./PRD.md) | [TRD.md](./TRD.md) | [MARKET_MAKER.md](./MARKET_MAKER.md)  
 **Last Updated:** September 2026  
 
 ---
@@ -13,50 +13,37 @@
 
 1. [Flow Architecture Overview](#1-flow-architecture-overview)
 2. [Finite State Machines (FSM)](#2-finite-state-machines-fsm)
-   - 2.1 [Order Lifecycle State Machine](#21-order-lifecycle-state-machine)
-   - 2.2 [Crop Listing State Machine](#22-crop-listing-state-machine)
-   - 2.3 [Shipment & Logistics State Machine](#23-shipment--logistics-state-machine)
-   - 2.4 [Dynamic Supply Cluster State Machine](#24-dynamic-supply-cluster-state-machine)
-3. [Farmer Experience Flows](#3-farmer-experience-flows)
-   - 3.1 [Farmer Onboarding & Mobile OTP](#31-farmer-onboarding--mobile-otp)
-   - 3.2 [Step-by-Step Touch Listing Flow](#32-step-by-step-touch-listing-flow)
-   - 3.3 [Spoken Voice-Driven Listing Flow](#33-spoken-voice-driven-listing-flow)
-   - 3.4 [Pre-Harvest Forward Listing Flow](#34-pre-harvest-forward-listing-flow)
-   - 3.5 [Offer Receipt, Negotiation & Acceptance Flow](#35-offer-receipt-negotiation--acceptance-flow)
-   - 3.6 [Order & Payment Payout Tracking Flow](#36-order--payment-payout-tracking-flow)
-   - 3.7 [Wastage Rescue / Urgent Sale Tagging Flow](#37-wastage-rescue--urgent-sale-tagging-flow)
-   - 3.8 [Assisted Tele-Support & Call Center Proxy Flow](#38-assisted-tele-support--call-center-proxy-flow)
-4. [Buyer Experience Flows](#4-buyer-experience-flows)
-   - 4.1 [Buyer Onboarding & Procurement Profile](#41-buyer-onboarding--procurement-profile)
-   - 4.2 [Consumer Direct Marketplace Browse & Checkout](#42-consumer-direct-marketplace-browse--checkout)
-   - 4.3 [Bulk Procurement Posting (Reverse Marketplace)](#43-bulk-procurement-posting-reverse-marketplace)
-   - 4.4 [Dynamic Farmer Cluster Match & Procurement Plan Review](#44-dynamic-farmer-cluster-match--procurement-plan-review)
-   - 4.5 [Payment Authorization & Escrow Lock Flow](#45-payment-authorization--escrow-lock-flow)
-   - 4.6 [Consignment Delivery Verification & OTP Sign-Off](#46-consignment-delivery-verification--otp-sign-off)
-   - 4.7 [Bidirectional Rating & Repeat Order Flow](#47-bidirectional-rating--repeat-order-flow)
-5. [Logistics Provider Flows](#5-logistics-provider-flows)
-   - 5.1 [Carrier Onboarding & Vehicle Registration](#51-carrier-onboarding--vehicle-registration)
-   - 5.2 [Load Board Discovery & Job Acceptance](#52-load-board-discovery--job-acceptance)
-   - 5.3 [Multi-Stop Farm Pickup & Manifest Execution](#53-multi-stop-farm-pickup--manifest-execution)
-   - 5.4 [Delivery Handover & Freight Disbursement](#54-delivery-handover--freight-disbursement)
-6. [Core System & Intelligence Flows](#6-core-system--intelligence-flows)
-   - 6.1 [Demand & Supply Forecasting Flow](#61-demand--supply-forecasting-flow)
-   - 6.2 [Fair Price Recommendation Flow](#62-fair-price-recommendation-flow)
-   - 6.3 [Dynamic Cluster Formulation Solver Flow](#63-dynamic-cluster-formulation-solver-flow)
-   - 6.4 [Google OR-Tools Route Optimization Flow](#64-google-or-tools-route-optimization-flow)
-   - 6.5 [Multi-Party Escrow Settlement Split Flow](#65-multi-party-escrow-settlement-split-flow)
-7. [Exception & Fallback Flows](#7-exception--fallback-flows)
-   - 7.1 [AI Voice Recognition Failure Fallback](#71-ai-voice-recognition-failure-fallback)
-   - 7.2 [Routing Engine Network Timeout Fallback](#72-routing-engine-network-timeout-fallback)
-   - 7.3 [Quantity / Quality Discrepancy at Farm Gate](#73-quantity--quality-discrepancy-at-farm-gate)
-   - 7.4 [Order Cancellation & Escrow Refund Protocol](#74-order-cancellation--escrow-refund-protocol)
-   - 7.5 [Offline / Low-Connectivity PWA Synchronization](#75-offline--low-connectivity-pwa-synchronization)
+   - 2.1 [Market Maker Corridor State Machine](#21-market-maker-corridor-state-machine)
+   - 2.2 [Order Lifecycle State Machine](#22-order-lifecycle-state-machine)
+   - 2.3 [Crop Listing State Machine](#23-crop-listing-state-machine)
+   - 2.4 [Logistics & Route State Machine](#24-logistics--route-state-machine)
+3. [Market Maker Multi-Role Sequence Flow](#3-market-maker-multi-role-sequence-flow)
+4. [Farmer Experience Flows](#4-farmer-experience-flows)
+   - 4.1 [Farmer Onboarding & Mobile OTP](#41-farmer-onboarding--mobile-otp)
+   - 4.2 [Produce Management & Listing Creation](#42-produce-management--listing-creation)
+   - 4.3 [Gemini AI Voice-Assisted Listing Flow](#43-gemini-ai-voice-assisted-listing-flow)
+   - 4.4 [Farmer Market Maker Participation Flow](#44-farmer-market-maker-participation-flow)
+   - 4.5 [Farmer Payout & Earnings Ledger Tracking](#45-farmer-payout--earnings-ledger-tracking)
+5. [Consumer Experience Flows](#5-consumer-experience-flows)
+   - 5.1 [Unified Home & In-Page Marketplace Discovery](#51-unified-home--in-page-marketplace-discovery)
+   - 5.2 [Direct Produce Purchase, Cart & Checkout](#52-direct-produce-purchase-cart--checkout)
+   - 5.3 [Consumer Market Maker Household Pooling](#53-consumer-market-maker-household-pooling)
+6. [Bulk Buyer Procurement Flows](#6-bulk-buyer-procurement-flows)
+   - 6.1 [Reverse Marketplace RFQ Creation with Target Price Advisor](#61-reverse-marketplace-rfq-creation-with-target-price-advisor)
+   - 6.2 [Deterministic Supply Match Preview & Order Conversion](#62-deterministic-supply-match-preview--order-conversion)
+   - 6.3 [Bulk Buyer Market Maker Corridor Commitment](#63-bulk-buyer-market-maker-corridor-commitment)
+7. [Logistics Experience Flows](#7-logistics-experience-flows)
+   - 7.1 [Operations Dashboard & Active Jobs Prioritization](#71-operations-dashboard--active-jobs-prioritization)
+   - 7.2 [Digital Twin Corridor Map & Schematic Fallback](#72-digital-twin-corridor-map--schematic-fallback)
+   - 7.3 [Vehicle Holding, Re-Quoting & Fleet Allocation Lever](#73-vehicle-holding-re-quoting--fleet-allocation-lever)
+8. [Cross-Module State Synchronization Flow](#8-cross-module-state-synchronization-flow)
+9. [Exception & Fallback Flows](#9-exception--fallback-flows)
 
 ---
 
 ## 1. Flow Architecture Overview
 
-Every workflow in **KisanLink** is designed around the principles of **Radical Farmer Simplicity**, **Deterministic Transaction Integrity**, and **Zero Hidden Intermediary Overhead**.
+Every workflow in **KisanLink** is designed around **Farmer Floor Protection**, **Closed-Form Transport Feasibility**, and **Zero Hidden Intermediary Overhead**.
 
 ```mermaid
 graph TD
@@ -65,402 +52,281 @@ graph TD
     classDef sys fill:#ede7f6,stroke:#512da8,stroke-width:2px;
     classDef log fill:#fff3e0,stroke:#e65100,stroke-width:2px;
 
-    FarmerSupply["Farmer Lists Harvest\n(Touch or Spoken Hindi)"]:::farmer --> MatchingEngine["System Matching &\nDynamic Clustering"]:::sys
-    BuyerDemand["Buyer Posts Requirement\n(5T Bulk Procurement)"]:::buyer --> MatchingEngine
+    FarmerSupply["Farmer Offers Lot / Listing\n(Voice or Touch)"]:::farmer --> MMEngine["Market Maker Engine\n(Closed-Form Feasibility)"]:::sys
+    BulkDemand["Bulk Buyer Posts RFQ / Commits"]:::buyer --> MMEngine
+    ConsumerDemand["Consumers Pool Household Demand"]:::buyer --> MMEngine
+    FleetStatus["Logistics Fleet Availability"]:::log --> MMEngine
 
-    MatchingEngine --> ClusterFormed["Dynamic Supply Pool\n(4 Farmers = 5.0T)"]:::sys
-    ClusterFormed --> EscrowLocked["Buyer Confirms &\nEscrow Locked"]:::buyer
-    EscrowLocked --> RouteOptimized["Google OR-Tools\nRoute Optimised"]:::sys
-    RouteOptimized --> MultiPickup["Logistics Carrier\nMulti-Farm Pickups"]:::log
-    MultiPickup --> DeliveryConfirmed["Consignment Delivered &\nBuyer Signs OTP"]:::buyer
-    DeliveryConfirmed --> SplitPayout["Automated Escrow Split\n(4 Farmers + Transporter)"]:::sys
+    MMEngine -->|Committed >= Threshold| ViableMarket["Viable Corridor Unlocked\n(Delivered <= Buyer Ceiling)"]:::sys
+    ViableMarket -->|Create Triggered| RealState["Materialize Shared State"]:::sys
+
+    RealState --> FarmerOrders["Farmer Order @ Floor Price\n(Zero Deductions)"]:::farmer
+    RealState --> BuyerOrders["Landed Bulk & Consumer Orders\n(Save vs Retail)"]:::buyer
+    RealState --> PooledRoute["Pooled Route & Pickups\n(Full Vehicle Payload)"]:::log
 ```
 
 ---
 
 ## 2. Finite State Machines (FSM)
 
-### 2.1 Order Lifecycle State Machine
+### 2.1 Market Maker Corridor State Machine
 
 ```mermaid
 stateDiagram-v2
-    [*] --> DRAFT : Sourcing Plan Generated
-    DRAFT --> CONFIRMED : Buyer & Farmers Agree
-    CONFIRMED --> ESCROW_LOCKED : Buyer Authorizes Payment
-    ESCROW_LOCKED --> PICKUP_SCHEDULED : Truck Assigned & Route Dispatched
-    PICKUP_SCHEDULED --> IN_TRANSIT : Transporter Completes Farm Gate Pickups
-    IN_TRANSIT --> DELIVERED : Vehicle Arrives at Buyer Facility
-    DELIVERED --> SETTLED : Buyer Enters Verification OTP
+    [*] --> FORMING : Corridor Initialized (Lots & Demand Seeded)
     
-    CONFIRMED --> CANCELLED : Cancelled Before Pickup (100% Refund)
-    IN_TRANSIT --> DISPUTED : Damaged Goods / Weight Mismatch Reported
-    DISPUTED --> SETTLED : Mediation Adjustment Executed
+    FORMING --> VIABLE : Demand Reaches Break-Even Threshold (Committed >= ThresholdKg)
+    FORMING --> BLOCKED : Fleet Vehicle Withdrawn / Capacity Exceeded
+    
+    BLOCKED --> FORMING : Vehicle Released Back / Demand Adjusted
+    BLOCKED --> VIABLE : Adequate Vehicle Assigned & Threshold Satisfied
+    
+    VIABLE --> FORMING : User Withdraws Demand (Committed < ThresholdKg)
+    VIABLE --> CREATED : User / Presenter Taps "Create Direct Market"
+    
+    CREATED --> [*] : Orders, Pickups & Routes Materialized in Shared State
+```
+
+### 2.2 Order Lifecycle State Machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> CONFIRMED : Order Placed / Market Created
+    CONFIRMED --> ESCROW_LOCKED : Funds Secured in Simulated Escrow
+    ESCROW_LOCKED --> PICKUP_SCHEDULED : Vehicle Dispatched to Farm Clusters
+    PICKUP_SCHEDULED --> IN_TRANSIT : Farm Pickups Loaded & Verified
+    IN_TRANSIT --> DELIVERED : Delivery Arrives at Destination
+    DELIVERED --> SETTLED : Verification OTP Entered (Farmer & Transporter Disbursed)
+    
+    CONFIRMED --> CANCELLED : Cancelled Before Dispatch (100% Refund)
+    IN_TRANSIT --> DISPUTED : Weight/Quality Issue Reported (Funds Withheld)
+    DISPUTED --> SETTLED : Dispute Resolved via Operator Mediation
+    
     SETTLED --> [*]
     CANCELLED --> [*]
 ```
 
-### 2.2 Crop Listing State Machine
+### 2.3 Crop Listing State Machine
 
 ```mermaid
 stateDiagram-v2
-    [*] --> ACTIVE : Crop Listed by Farmer
-    ACTIVE --> RESERVED : Matched in Confirmed Order
-    ACTIVE --> RESCUE_ACTIVE : Tagged for Urgent Spoilage Sale
-    RESERVED --> HARVESTED : Farm Gate Pickup Verified
-    RESCUE_ACTIVE --> RESERVED : Matched with Secondary Buyer (Processor)
-    HARVESTED --> SOLD : Consignment Delivered & Paid
-    ACTIVE --> EXPIRED : Past Harvest Window without Sale
+    [*] --> DRAFT : Voice / Form Initiated
+    DRAFT --> ACTIVE : Published by Farmer
+    ACTIVE --> PAUSED : Paused by Farmer
+    PAUSED --> ACTIVE : Resumed by Farmer
+    ACTIVE --> RESCUE_ACTIVE : Tagged as Urgent Spoilage Rescue
+    ACTIVE --> SOLD : 100% Stock Allocated / Remaining = 0
+    RESCUE_ACTIVE --> SOLD : Sold via Urgent Discount
+    ACTIVE --> UNAVAILABLE : Marked Unavailable
+    
     SOLD --> [*]
-    EXPIRED --> [*]
+    UNAVAILABLE --> [*]
 ```
 
-### 2.3 Shipment & Logistics State Machine
+### 2.4 Logistics & Route State Machine
 
 ```mermaid
 stateDiagram-v2
-    [*] --> UNASSIGNED : Cluster Formed & Escrow Locked
-    UNASSIGNED --> ASSIGNED : Transporter Accepts Job
-    ASSIGNED --> PICKUP_IN_PROGRESS : Driver Navigates to Farm Stop 1
-    PICKUP_IN_PROGRESS --> LOADED : All Multi-Farm Stops Completed
-    LOADED --> IN_TRANSIT : Moving on Highway to Buyer
-    IN_TRANSIT --> ARRIVED : Arrived at Drop-off Hub
-    ARRIVED --> COMPLETED : Delivery OTP Verified by Buyer
+    [*] --> PLANNED : Route Formed by Market Maker / Clustering
+    PLANNED --> ACTIVE : Vehicle Dispatched on Route
+    ACTIVE --> COMPLETED : All Pickups & Deliveries Verified
+    
+    ACTIVE --> ISSUE : Exception Reported (Delay / Vehicle Breakdown)
+    ISSUE --> ACTIVE : Exception Resolved
+    
     COMPLETED --> [*]
 ```
 
-### 2.4 Dynamic Supply Cluster State Machine
+---
+
+## 3. Market Maker Multi-Role Sequence Flow
 
 ```mermaid
-stateDiagram-v2
-    [*] --> PROPOSED : Sourcing Solver Aggregates Farms
-    PROPOSED --> COMMITTED : All Matched Farmers Accept
-    COMMITTED --> FULFILLED : All Crop Lots Picked Up
-    COMMITTED --> PARTIAL_DISPATCH : 1 Farmer Fails; Backup Injected
-    PROPOSED --> DISSOLVED : Buyer Declines or Window Times Out
-    FULFILLED --> [*]
-    DISSOLVED --> [*]
+sequenceDiagram
+    autonumber
+    actor Farmer as Farmer (Ramesh)
+    actor Consumer as Consumer (Neha)
+    actor Bulk as Bulk Buyer (FreshKart)
+    participant Engine as Market Maker Engine
+    actor Logi as Logistics (Kavita)
+
+    Note over Farmer, Logi: 1. Corridor Evaluation
+    Engine->>Engine: Evaluates Sonipat ➔ Azadpur (Tomatoes Grade A, 42 km)
+    Engine->>Engine: Fixed Trip Cost = ₹1,668 (Tata Ace 750 kg)
+    Engine->>Engine: Headroom = ₹34.00 (Ceiling) - ₹28.00 (Floor) - ₹0.98 (Fee) = ₹5.02/kg
+    Engine->>Engine: Break-Even Volume = ceil(1668 / 5.02) = 333 kg
+
+    Note over Farmer, Engine: 2. Supply Side Activation
+    Farmer->>Engine: Views Market Maker Pulse: 40 kg short of break-even
+    Farmer->>Engine: Taps "40 किलो और दें" (Releases 40 kg more from listing)
+    Engine-->>Logi: Notification: Corridor supply increased
+
+    Note over Bulk, Consumer: 3. Demand Pooling
+    Bulk->>Engine: Commits 200 kg procurement demand
+    Consumer->>Engine: Commits 93 kg household group demand
+    Consumer->>Engine: Demo User commits +40 kg
+    Note over Engine: Committed = 333 kg (100% threshold reached!)
+    Engine->>Engine: Corridor flips from 'forming' to 'viable'
+    Engine-->>Farmer: Notification: "सीधा बाज़ार अब संभव है" (Direct market now viable)
+    Engine-->>Bulk: Notification: "साझा कॉरिडोर व्यवहार्य है" (Pooled corridor viable)
+
+    Note over Farmer, Logi: 4. Market Creation & State Materialization
+    Farmer->>Engine: Clicks "Create the direct market"
+    Engine->>Engine: Materializes Farmer Order @ ₹28.00/kg floor (Zero deductions)
+    Engine->>Engine: Materializes Bulk Order @ ₹33.02/kg delivered
+    Engine->>Engine: Materializes Consumer Order (KL-C-MM-XXXX)
+    Engine->>Engine: Materializes Pooled Route (RTE-MM-XXXX) with farm pickup stops
+    Engine->>Farmer: Opens MarketUnlockReveal modal with clickable ledger links
 ```
 
 ---
 
-## 3. Farmer Experience Flows
+## 4. Farmer Experience Flows
 
-### 3.1 Farmer Onboarding & Mobile OTP
+### 4.1 Farmer Onboarding & Mobile OTP
+1. Farmer enters mobile number (`+91 98765 43210`).
+2. Taps "Send OTP" / "ओटीपी भेजें".
+3. System verifies OTP (`123456` in demo environment).
+4. System sets role token and opens `/farmer` dashboard.
+
+### 4.2 Produce Management & Listing Creation
+1. Farmer navigates to Produce via elevated center slot (`/farmer/produce`).
+2. Taps "+ Sell Produce" (`/farmer/sell`).
+3. Selects Crop from visual agricultural cards.
+4. Enters harvest date, quantity (kg/quintal), and asking price.
+5. Reviews fair-price comparison against local APMC mandi price.
+6. Submits; listing appears immediately in Active tab.
+
+### 4.3 Gemini AI Voice-Assisted Listing Flow
 ```mermaid
 sequenceDiagram
     autonumber
-    actor F as Farmer
-    participant App as React PWA
-    participant Auth as FastAPI Auth Router
-    participant DB as PostgreSQL
+    actor Farmer as Farmer
+    participant Browser as Browser Web Speech API
+    participant Backend as FastAPI (/api/v1/listings/parse-voice)
+    participant Gemini as Google Gemini AI Engine
 
-    F->>App: Opens App -> Selects "हिन्दी"
-    App->>F: Displays Mobile Input (No password / email required)
-    F->>App: Enters +91 98123 45678
-    App->>Auth: POST /api/v1/auth/request-otp { phone: "+919812345678" }
-    Auth-->>F: Sends 6-digit SMS OTP (Demo: '123456')
-    F->>App: Enters OTP
-    App->>Auth: POST /api/v1/auth/verify-otp { phone, otp, role: "FARMER" }
-    Auth->>DB: Upserts User & FarmerProfile (Location, Name)
-    Auth-->>App: Returns JWT Token
-    App-->>F: Displays 6-Card Simplified Home Screen
+    Farmer->>Browser: Taps Microphone & speaks Hindi: "Mujhe 725 kilo tamatar ₹28 mein bechne hain..."
+    Browser->>Browser: Captures audio & streams real-time transcript
+    Farmer->>Browser: Speech ends / Taps Stop
+    Browser->>Backend: POST /api/v1/listings/parse-voice { transcript, language: "hi" }
+    Backend->>Gemini: Executes extract_listing(transcript, "hi")
+    alt Gemini Success
+        Gemini-->>Backend: Structured JSON (crop: "Tomato", qty: 725, price: 28, unit: "kg")
+    else API Timeout / Failure
+        Backend->>Backend: Executes _basic_extract(transcript) regex fallback
+    end
+    Backend-->>Browser: Returns VoiceParseResponse
+    Browser->>Farmer: Displays pre-filled editable review form
+    Farmer->>Browser: Inspects fields & taps "Apply"
+    Browser->>Browser: Populates Sell Produce form for instant publishing
 ```
 
-### 3.2 Step-by-Step Touch Listing Flow
-To eliminate cognitive overload, the listing flow enforces **One Question Per Screen**:
-
-```
-Screen 1: What crop? (Crop Icons: Tomato, Potato, Onion, Cauliflower)
-   ↓
-Screen 2: How much quantity? (Large stepper: 1,200 kg / 1.2 Tonnes)
-   ↓
-Screen 3: When is it available? ("Ready Now" vs "Pre-Harvest: 3 Days")
-   ↓
-Screen 4: What is your expected price? (Guidance: ₹23-₹26/kg | Input: ₹25/kg)
-   ↓
-Screen 5: Add photo? (Optional camera capture)
-   ↓
-Screen 6: Big Green Button -> "Confirm & Sell / फसल बेचें"
-```
-
-### 3.3 Spoken Voice-Driven Listing Flow
-```mermaid
-sequenceDiagram
-    autonumber
-    actor F as Farmer
-    participant App as React Microphone Widget
-    participant Gateway as FastAPI Voice Router
-    participant NLP as BHASHINI / NLP Engine
-    participant Form as Listing Form State
-
-    F->>App: Taps & Holds Mic: "मेरे पास 800 किलो टमाटर है, अगले हफ्ते तैयार होगा"
-    App->>Gateway: POST /api/v1/voice/parse-audio (Audio Stream)
-    Gateway->>NLP: Transcribes Hindi Audio -> Extracts Intent & Entities
-    NLP-->>Gateway: { crop: "Tomato", quantity_kg: 800, harvest_window: "NEXT_WEEK" }
-    Gateway-->>App: Returns Extracted JSON
-    App->>Form: Pre-fills Crop & Quantity Cards
-    App-->>F: Displays Confirmation Modal + Asks Voice Prompt: "आप क्या दाम चाहते हैं?" (Price)
-    F->>App: Taps ₹25/kg Guidance Card -> Confirms Listing
-```
-
-### 3.4 Pre-Harvest Forward Listing Flow
-- Farmers declare crops 1 to 4 weeks prior to harvest.
-- The platform tags the listing `is_pre_harvest = true` and indexes it in the **Crop Availability Calendar**.
-- Buyers can place pre-harvest reservation locks, giving the farmer guaranteed purchase security before harvesting.
-
-### 3.5 Offer Receipt, Negotiation & Acceptance Flow
-```mermaid
-sequenceDiagram
-    autonumber
-    actor F as Farmer
-    participant App as Farmer PWA
-    actor B as Bulk Buyer
-    participant Core as KisanLink Engine
-
-    B->>Core: Accepts Sourcing Plan for 5.0T Cluster
-    Core->>App: Push Alert: "बधाई! खरीदार मिला: 1,200kg टमाटर @ ₹25/kg"
-    App->>F: Displays Simple Action Card:
-    Note over F,App: Net Earnings: ₹30,000 | Buyer: Delhi Hotel | Pickup: Friday
-    F->>App: Taps "स्वीकार करें" (Accept Offer)
-    App->>Core: POST /api/v1/offers/{id}/accept
-    Core-->>App: Confirms: "ऑर्डर पक्का हुआ! गाड़ी का इंतज़ार करें।"
-```
-
-### 3.6 Order & Payment Payout Tracking Flow
-- Farmer taps **"💰 Payments / भुगतान"** card on Home.
-- Screen displays clear cards:
-  - **In Escrow (Locked):** `₹30,000 (Tomato 1.2T - In Transit)`
-  - **Paid to Bank:** `₹24,500 (Cauliflower - Delivered Yesterday)`
-- Zero complex accounting tables; direct rupee amounts.
-
-### 3.7 Wastage Rescue / Urgent Sale Tagging Flow
-- If produce is approaching maturity without a buyer or an order is cancelled:
-- Farmer taps **"Urgent Sale / जल्दी बेचें"** on the listing.
-- System recommends dynamic rescue price (e.g., ₹21/kg vs. standard ₹25/kg).
-- Listing is prioritized on the **Buyer Rescue Feed** for nearby food processors and catering kitchens.
-
-### 3.8 Assisted Tele-Support & Call Center Proxy Flow
-```mermaid
-sequenceDiagram
-    autonumber
-    actor F as Low-Literacy Farmer
-    actor Agent as Call Center Operator
-    participant Terminal as Operator Console
-    participant Core as KisanLink Backend
-
-    F->>Agent: Dials Toll-Free Support (1800-XXX-XXXX): "मुझे 500 किलो गोभी बेचनी है"
-    Agent->>Terminal: Enters Farmer Phone -> Triggers 4-digit Voice/SMS OTP
-    F->>Agent: Speaks OTP over call
-    Agent->>Terminal: Enters OTP -> Unlocks Farmer Proxy Session
-    Agent->>Terminal: Selects Cauliflower, 500kg, Ready in 2 days, ₹18/kg
-    Terminal->>Core: POST /api/v1/assisted/proxy-listing (Audit: Agent ID #09)
-    Core-->>F: Sends Confirmation SMS to Farmer: "आपकी 500kg गोभी लिस्ट हो गई है"
-```
+### 4.4 Farmer Market Maker Participation Flow
+1. Farmer views **Market Maker Pulse Card** on home dashboard.
+2. Taps into `/farmer/market`.
+3. Reviews colloquial Hindi guidance: *"सीधा बाज़ार बनने के लिए 40 किलो और चाहिए"* (Needs 40 kg more).
+4. Taps **"40 किलो और दें" (Give 40 kg more)** to release held crop into the corridor.
 
 ---
 
-## 4. Buyer Experience Flows
+## 5. Consumer Experience Flows
 
-### 4.1 Buyer Onboarding & Procurement Profile
-- Buyer registers with Phone + OTP.
-- Selects Buyer Type: **Individual Consumer**, **Restaurant / Hotel**, **Retailer**, or **Food Processor**.
-- Inputs Business Name, GSTIN (optional for consumers), and primary delivery warehouse coordinates.
+### 5.1 Unified Home & In-Page Marketplace Discovery
+1. Consumer opens `/consumer`.
+2. Inspects **Fresh Near You** carousel and **Fresh Pick** AI recommendation.
+3. Scrolls into **Explore Fresh Produce (`#marketplace`)**:
+   - Types query into search bar.
+   - Toggles category chips (`All`, `Vegetables`, `Fruits`, `Grains`, `Staples`).
+   - Opens filter drawer to set maximum price, distance, or grade.
+   - Adjusts sort order (`Recommended`, `Nearest`, `Freshest`, `Price low to high`).
+4. Clicks product card to view listing detail with retail benchmark comparison.
 
-### 4.2 Consumer Direct Marketplace Browse & Checkout
-- Consumer browses nearby single-farm listings.
-- Selects 10 kg Tomatoes @ ₹26/kg (vs. Retail ₹34/kg).
-- Views farmer farm story (*"Harvested in Sonipat 6 hours ago by Ramesh"*).
-- Instant simulated UPI checkout with direct delivery.
-
-### 4.3 Bulk Procurement Posting (Reverse Marketplace)
-```mermaid
-sequenceDiagram
-    autonumber
-    actor B as Bulk Buyer (Hotel Procurement)
-    participant UI as Buyer Procurement Dashboard
-    participant API as FastAPI Backend
-    participant Solver as Dynamic Cluster Solver
-
-    B->>UI: Clicks "Post Procurement Requirement"
-    B->>UI: Inputs: Tomato | 5,000 kg | Grade A | Delhi NCR | Max ₹28/kg | Required Friday
-    UI->>API: POST /api/v1/requirements
-    API->>Solver: Executes Dynamic Supply Clustering
-    Solver-->>UI: Returns Sourcing Plan: 4 Farmers in Sonipat/Panipat (5,000 kg @ ₹25.10/kg)
-    UI-->>B: Displays Interactive Cluster Plan with Route & Economic Savings Breakdown
-```
-
-### 4.4 Dynamic Farmer Cluster Match & Procurement Plan Review
-- Buyer sees visual cluster card:
-  - Total Volume: **5,000 / 5,000 kg (100% Fulfilled)**.
-  - Sourcing Breakdown: Farmer A (1.2T), Farmer B (0.8T), Farmer C (1.7T), Farmer D (1.3T).
-  - Average Farm-Gate Cost: **₹25.00/kg**.
-  - Shared Freight Cost: **₹2.20/kg**.
-  - Landed Kitchen Cost: **₹27.20/kg** (vs. Wholesale Mandi ₹32.00/kg ➔ **15.0% Buyer Savings**).
-
-### 4.5 Payment Authorization & Escrow Lock Flow
-- Buyer clicks **"Accept Sourcing Plan & Secure Payment"**.
-- Simulated payment gateway locks ₹1,37,500 in platform custody.
-- Escrow ledger entry created; triggers automated notification to all 4 cluster farmers.
-
-### 4.6 Consignment Delivery Verification & OTP Sign-Off
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Driver as Logistics Driver
-    actor Buyer as Buyer Receiving Manager
-    participant App as Buyer App
-    participant Core as KisanLink Backend
-
-    Driver->>Buyer: Arrives at Delhi Hotel with 5.0T Consolidated Tomatoes
-    Buyer->>Buyer: Inspects quality & verifies digital scale weighbridge
-    Buyer->>App: Opens Active Order -> Clicks "Verify Delivery & Release Payment"
-    App-->>Buyer: Displays 4-Digit Delivery OTP: "8421"
-    Driver->>Core: Enters Delivery OTP "8421" in Driver App
-    Core->>Core: Validates OTP -> Changes Order State to SETTLED
-    Core->>Core: Executes Multi-Party Split Settlement (Farmers + Transporter)
-```
-
-### 4.7 Bidirectional Rating & Repeat Order Flow
-- Buyer rates Farmer Cluster: Quality (5/5), Fulfilment Accuracy (5/5).
-- Farmers rate Buyer: Unloading Turnaround (5/5), Payment Promptness (5/5).
-- Buyer can click **"Repeat Order"** to automatically initiate future procurement from the same farmer group.
+### 5.2 Direct Produce Purchase, Cart & Checkout
+1. Consumer selects quantity and taps **"Add to Cart"** or **"Buy Now"**.
+2. Navigates to Cart via elevated center slot (`/consumer/cart`).
+3. Reviews transparent cost split (Produce share, Logistics fee, Platform fee).
+4. Proceeds to Checkout (`/consumer/checkout`).
+5. Selects delivery address and simulated payment method (UPI / Card / Cash on Delivery).
+6. Order confirmed; consumer tracks status on `/consumer/orders/:id`.
 
 ---
 
-## 5. Logistics Provider Flows
+## 6. Bulk Buyer Procurement Flows
 
-### 5.1 Carrier Onboarding & Vehicle Registration
-- Transporter registers vehicle: Capacity (3.5T or 5.0T), Vehicle Type (Eicher / Tata 407 / Pickup), Operating Base (e.g., Murthal, Haryana).
+### 6.1 Reverse Marketplace RFQ Creation with Target Price Advisor
+1. Bulk Buyer opens `/bulk` and taps **"Post Requirement"** (`/bulk/requests`).
+2. Step 1 (Details): Enters crop, grade, quantity (MOQ 100 kg), target price, delivery location, and window.
+   - Interacts with **Target Price Advisor** AI component to select competitive pricing.
+3. Step 2 (Match Preview): Reviews deterministic supply pooling showing participating farm lots.
+4. Step 3 (Review): Reviews total estimated landed cost.
+5. Step 4 (Submit): Requirement published with active matching status.
 
-### 5.2 Load Board Discovery & Job Acceptance
-- Transporter views available pooled jobs:
-  - **Route:** Sonipat ➔ Panipat ➔ Delhi NCR.
-  - **Stops:** 4 Farm Gate Pickups ➔ 1 Drop-off.
-  - **Payload:** 5,000 kg.
-  - **Freight Payout:** ₹12,500.
-- Transporter clicks **"Accept Dispatch Job"**.
-
-### 5.3 Multi-Stop Farm Pickup & Manifest Execution
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Driver as Transporter
-    actor F1 as Farmer A (Sonipat)
-    actor F2 as Farmer B (Sonipat)
-    participant App as Driver Manifest App
-    participant Core as KisanLink Logistics Engine
-
-    Driver->>App: Opens Waypoint Route -> Navigates to Farm Stop 1
-    Driver->>F1: Weighs & Loads 1,200kg Tomatoes
-    Driver->>App: Verifies Farm Pickup 1 OTP -> Status: LOADED_1
-    Driver->>App: Navigates to Farm Stop 2
-    Driver->>F2: Weighs & Loads 800kg Tomatoes
-    Driver->>App: Verifies Farm Pickup 2 OTP -> Status: LOADED_2
-    Note over Driver,App: Repeats for Farm Stop 3 & 4 (Total 5,000kg in Truck)
-    Driver->>App: Clicks "Depart to Buyer Destination" -> State: IN_TRANSIT
-```
-
-### 5.4 Delivery Handover & Freight Disbursement
-- Driver arrives at Buyer warehouse.
-- Buyer enters Delivery OTP.
-- System automatically credits ₹12,500 freight payment to Transporter wallet.
+### 6.2 Deterministic Supply Match Preview & Order Conversion
+1. Buyer opens requirement detail (`/bulk/requests/:id`).
+2. Reviews fulfilled percentage and multi-farmer contribution visual.
+3. Taps **"Accept match & convert"**.
+4. System creates confirmed Procurement Order (`/bulk/orders/:id`) with transparent landed cost.
 
 ---
 
-## 6. Core System & Intelligence Flows
+## 7. Logistics Experience Flows
 
-### 6.1 Demand & Supply Forecasting Flow
-1. Nightly cron job executes LightGBM regression pipeline on regional APMC arrivals and buyer procurement trends.
-2. Updates `demand_forecasts` table with 7-day and 14-day demand pressure index.
-3. Farmer and Buyer UI consume `/api/v1/forecasts/regional` to render demand trend badges.
+### 7.1 Operations Dashboard & Active Jobs Prioritization
+1. Operator opens `/logistics`.
+2. Reviews shift KPIs: Active pickups, active deliveries, vehicle capacity, load in transit.
+3. Scans Active Jobs ranked in priority order:
+   - Exceptions (`issue`) ranked first.
+   - Unassigned pickups (`unassigned`) ranked second.
+   - Scheduled work ranked third.
+4. Taps job card to open pickup manifest or delivery confirmation.
 
-### 6.2 Fair Price Recommendation Flow
-```
-Inputs: Modal Mandi Price (₹19/kg) + Buyer Wholesale Benchmark (₹32/kg) + Transit Cost (₹2.20/kg)
-   ↓
-Formula: Fair Base = Mandi + 0.5 * (Wholesale - Mandi - Transit) = 19 + 0.5 * (32 - 19 - 2.20) = ₹24.40/kg
-   ↓
-Output Band: ₹23.50/kg to ₹26.00/kg (Rendered on Farmer & Buyer screens)
-```
-
-### 6.3 Dynamic Cluster Formulation Solver Flow
+### 7.2 Digital Twin Corridor Map & Schematic Fallback
 ```mermaid
 flowchart TD
-    Req[Buyer Requirement: 5,000kg] --> SpatialFilter[PostGIS Query: Active/Pre-Harvest within 100km]
-    SpatialFilter --> Candidates[Candidate Pool: 12 Farmers]
-    Candidates --> MILP[SciPy MILP Solver\nMinimizes Distance & Price Variance]
-    MILP --> Cluster[Dynamic Cluster Created:\nFarmer A: 1.2T | Farmer B: 0.8T | Farmer C: 1.7T | Farmer D: 1.3T]
-    Cluster --> Preview[Render Sourcing Plan on Buyer UI]
+    InitMap[Mount DigitalTwinCorridorMap] --> Check[WebGL Probe & Tile Network Check]
+    Check -->|WebGL OK & Online| RenderMap[Render MapLibre GL JS with Bezier Corridors]
+    Check -->|WebGL Unsupported / Timeout / Offline| Fallback[Render Structured Schematic Corridor Cards]
+    RenderMap -->|Tile Error / Disconnect| Fallback
+    Fallback --> Retry[User Taps 'Retry']
+    Retry --> Check
 ```
 
-### 6.4 Google OR-Tools Route Optimization Flow
-1. Inputs: Depot coordinates, 4 Farm coordinates, 1 Buyer destination coordinate, 5.0T vehicle capacity.
-2. Distance Matrix: Fetched asynchronously from OSRM table endpoint.
-3. OR-Tools CVRP Solver executes Capacitated Vehicle Routing solver with 2-second time limit.
-4. Returns optimal pickup order minimizing total km traveled: $\text{Depot} \rightarrow \text{Farm C} \rightarrow \text{Farm A} \rightarrow \text{Farm D} \rightarrow \text{Farm B} \rightarrow \text{Buyer}$.
+### 7.3 Vehicle Holding, Re-Quoting & Fleet Allocation Lever
+1. Operator opens Market Maker console (`/logistics/market`).
+2. Views corridor quoter: Tata Ace (750 kg) is held for the corridor.
+3. Operator taps **"Withdraw vehicle from corridor"** (simulating maintenance).
+4. Engine immediately re-quotes corridor against next available fleet vehicle (1,500 kg pickup).
+5. Higher fixed trip costs shift break-even threshold volume from 333 kg to 480 kg in real time!
 
-### 6.5 Multi-Party Escrow Settlement Split Flow
+---
+
+## 8. Cross-Module State Synchronization Flow
+
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Core as Settlement Service
-    participant DB as Payments Ledger
-    participant Gate as Payment Gateway / Bank Rail
+    actor Presenter as User / Presenter
+    participant Frontend as React App (Shared Services)
+    participant ProtoAPI as Prototype API (/api/state)
+    participant BackendAPI as Canonical Backend (/api/v1/*)
 
-    Core->>DB: Read Locked Escrow (Order #ORD-9821: ₹1,37,500)
-    Core->>DB: Begin Atomic ACID Transaction
-    Core->>Gate: Transfer ₹30,000 -> Farmer A UPI
-    Core->>Gate: Transfer ₹20,000 -> Farmer B UPI
-    Core->>Gate: Transfer ₹42,500 -> Farmer C UPI
-    Core->>Gate: Transfer ₹32,500 -> Farmer D UPI
-    Core->>Gate: Transfer ₹12,500 -> Transporter Account
-    Core->>DB: Credit Platform Fee ₹2,500 -> Platform Wallet
-    Core->>DB: Commit Transaction -> State: SETTLED
+    Note over Presenter, BackendAPI: Cross-Module Prototype Roundtrip
+    Presenter->>Frontend: Adds commitment or creates market
+    Frontend->>ProtoAPI: PUT /api/state (Updated StatePayload with 'markets')
+    ProtoAPI-->>Frontend: Returns synced state
+    Frontend->>BackendAPI: Syncs listing status / order allocations where applicable
+    Frontend->>Presenter: Instant UI re-render across all role views
 ```
 
 ---
 
-## 7. Exception & Fallback Flows
+## 9. Exception & Fallback Flows
 
-### 7.1 AI Voice Recognition Failure Fallback
-```
-[Farmer Speaks Audio] ➔ [Audio Transmission Timeout / Unclear Audio]
-                               │
-                [System Detects Low Confidence < 0.60]
-                               │
-            [App Displays Gentle Fallback Screen in Hindi]
-       "माफ़ कीजिये, आवाज़ साफ नहीं आई। कृपया स्क्रीन पर फसल चुनें।"
-                               │
-         [Farmer Completes Step-by-Step Touch Wizard (1 Question/Screen)]
-```
-
-### 7.2 Routing Engine Network Timeout Fallback
-- If the OSRM road matrix server times out ($> 2.0\text{ s}$), the system calculates pairwise Euclidean distances adjusted by a $1.3\times$ road-tortuosity factor and executes a greedy nearest-neighbor TSP algorithm.
-
-### 7.3 Quantity / Quality Discrepancy at Farm Gate
-- If Farmer A listed 1,200 kg but only loads 1,000 kg:
-  1. Driver inputs actual scale weight ($1,000\text{ kg}$) into manifest check-in.
-  2. Farmer confirms modified weight via SMS OTP.
-  3. Escrow ledger automatically recalculates payout shares ($1,000 \times ₹25 = ₹25,000$) and refunds surplus ($200 \times ₹25 = ₹5,000$) to the buyer.
-
-### 7.4 Order Cancellation & Escrow Refund Protocol
-- **Cancellation Before Dispatch:** 100% full refund returned to buyer escrow account; listings reverted to `ACTIVE`.
-- **Cancellation After Dispatch:** Transporter receives 100% guaranteed freight payment; produce redirected to nearby **Wastage Rescue** processor.
-
-### 7.5 Offline / Low-Connectivity PWA Synchronization
-```
-[Farmer Submits Listing in Low-Network Khet]
-                   │
-     [No Active Internet Connection Detected]
-                   │
-[PWA Service Worker Stores Listing in Local IndexedDB]
-                   │
-[UI Displays: "ऑफ़लाइन सेव हुआ - नेटवर्क आते ही अपलोड होगा"]
-                   │
-     [Device Reconnects to 4G Network]
-                   │
-[Background Sync Worker Transmits Payload to FastAPI Backend]
-```
+1. **Speech Recognition Failure:** Browser displays clear localized error message ("माइक अनुमति दें" / "Microphone blocked") and keeps direct numeric touch inputs open.
+2. **Gemini AI Outage:** Backend automatically catches exception and executes regex entity extractor (`_basic_extract`).
+3. **MapLibre Canvas Error:** Graceful fallback UI renders schematic corridor node cards with full details and retry CTA.
+4. **Backend Unreachable:** Frontend hooks gracefully fall back to local prototype seed state without breaking the demonstration.
 
 ---
 *End of KisanLink End-to-End System Flows & State Machines*

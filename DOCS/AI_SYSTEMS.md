@@ -2,9 +2,9 @@
 
 **Project Name:** KisanLink (Direct Farm-to-Buyer Operating System)  
 **Problem Statement ID:** 26033 (Smart India Hackathon 2026)  
-**Document Version:** 1.0.0  
-**Status:** Approved Intelligence Systems Specification  
-**Architecture Principle:** Mathematical Optimization for Logistics & Pooling; Statistical ML for Forecasting; NLP for Speech; Strict Deterministic Bounds for Commerce  
+**Document Version:** 1.1.0  
+**Status:** Canonical Intelligence Specification (Synchronized with Codebase)  
+**Core Architecture Principle:** Closed-Form Mathematical Determinism for Logistics & Feasibility; Generative/NLP AI for Voice Speech-to-Intent; Strict Separation of Transactions from Heuristics  
 **Last Updated:** September 2026  
 
 ---
@@ -12,224 +12,199 @@
 ## Table of Contents
 
 1. [Intelligence Systems Philosophy & Taxonomy](#1-intelligence-systems-philosophy--taxonomy)
-2. [Classification Matrix (Deterministic vs. Optimization vs. ML vs. NLP vs. Vision)](#2-classification-matrix)
-3. [System 1: Regional Demand Forecasting (ML / LightGBM)](#3-system-1-regional-demand-forecasting)
-4. [System 2: Forward Supply Forecasting (Statistical & Time-Series)](#4-system-2-forward-supply-forecasting)
-5. [System 3: Multi-Criteria Farmer-Buyer Matching Engine (Scoring Function)](#5-system-3-multi-criteria-farmer-buyer-matching-engine)
-6. [System 4: Dynamic Farmer Supply Clustering (Mixed-Integer Linear Programming)](#6-system-4-dynamic-farmer-supply-clustering)
-7. [System 5: Logistics Route Optimization (Google OR-Tools CVRP)](#7-system-5-logistics-route-optimization)
-8. [System 6: Fair Price Intelligence Engine (Statistical & Hedonic Model)](#8-system-6-fair-price-intelligence-engine)
-9. [System 7: Spoken Voice & NLP Intent Extractor (BHASHINI / Speech-to-Intent)](#9-system-7-spoken-voice--nlp-intent-extractor)
-10. [System 8: Multilingual Language Translation (BHASHINI Subsystem)](#10-system-8-multilingual-language-translation)
-11. [System 9: Indicative Produce Computer Vision Grading (MobileNetV3)](#11-system-9-indicative-produce-computer-vision-grading)
-12. [System 10: Supply-Demand Imbalance & Arbitrage Detection](#12-system-10-supply-demand-imbalance--arbitrage-detection)
-13. [System 11: Wastage Rescue Recommendation Engine (Dynamic Discounting)](#13-system-11-wastage-rescue-recommendation-engine)
-14. [AI Failure Safeguards & Graceful Degradation Framework](#14-ai-failure-safeguards--graceful-degradation-framework)
-15. [SIH Demonstration Execution Strategy](#15-sih-demonstration-execution-strategy)
+2. [Classification Matrix (Implemented vs. Prototype vs. Future)](#2-classification-matrix-implemented-vs-prototype-vs-future)
+3. [System 0: Market Maker Feasibility Engine (Deterministic Closed-Form Core)](#3-system-0-market-maker-feasibility-engine-deterministic-closed-form-core)
+4. [System 1: Voice Intent Extractor (Google Gemini AI + Regex Fallback)](#4-system-1-voice-intent-extractor-google-gemini-ai--regex-fallback)
+5. [System 2: Interactive AI Intelligence Cards (MarketplaceAiTrigger Lifecycle)](#5-system-2-interactive-ai-intelligence-cards-marketplaceaitrigger-lifecycle)
+6. [System 3: Multi-Criteria Procurement Matching Engine](#6-system-3-multi-criteria-procurement-matching-engine)
+7. [System 4: Dynamic Farmer Supply Clustering](#7-system-4-dynamic-farmer-supply-clustering)
+8. [System 5: Fair Price Guidance & Mandi Benchmark Modeling](#8-system-5-fair-price-guidance--mandi-benchmark-modeling)
+9. [System 6: Regional Demand & Arrival Forecasting](#9-system-6-regional-demand--arrival-forecasting)
+10. [System 7: Logistics Route Optimization & Map Display](#10-system-7-logistics-route-optimization--map-display)
+11. [System 8: Wastage Rescue & Dynamic Discounting](#11-system-8-wastage-rescue--dynamic-discounting)
+12. [Planned Post-MVP Intelligence Systems (Future Scope)](#12-planned-post-mvp-intelligence-systems-future-scope)
+13. [AI Failure Safeguards & Graceful Degradation Framework](#13-ai-failure-safeguards--graceful-degradation-framework)
 
 ---
 
 ## 1. Intelligence Systems Philosophy & Taxonomy
 
-**KisanLink** rejects the anti-pattern of "AI for the sake of marketing." We apply strict engineering discipline:
-- **Never use Generative AI or LLMs for mathematical optimization, financial settlements, or database state transitions.**
-- **Use Mathematical Solvers (OR-Tools / MILP)** for physical resource constraints (truck capacities, kilometer minimization, multi-farm supply pooling).
-- **Use Statistical Machine Learning (LightGBM)** for time-series forecasting where historical mandi arrival patterns provide structured signals.
-- **Use NLP & Speech Models (BHASHINI)** strictly for accessibility (transcribing spoken Hindi into structured form inputs).
+**KisanLink** rejects the anti-pattern of superficial "AI for the sake of marketing." We apply strict engineering discipline:
+- **Never use Generative AI or black-box models for mathematical feasibility, financial settlements, or database state transitions.**
+- **Use Closed-Form Deterministic Arithmetic** for transport viability, freight allocation, break-even volume, and ledger payouts (Market Maker Engine).
+- **Use Generative AI / Large Language Models (Google Gemini)** strictly for accessibility: transcribing spoken Hindi or English audio into structured produce listing attributes (`/api/v1/listings/parse-voice`).
+- **Use Staged Cognitive Animations** in the UI to present complex market insights in digestible, bite-sized steps without overwhelming rural users.
 
 ---
 
-## 2. Classification Matrix
+## 2. Classification Matrix (Implemented vs. Prototype vs. Future)
 
 ```
 +----------------------------------------------------------------------------------------------------+
 |                                    SYSTEM CLASSIFICATION MATRIX                                    |
 +--------------------------+-----------------------+------------------------+------------------------+
-| SUBSYSTEM                | CLASSIFICATION        | PRIMARY ALGORITHM/TOOL | PRIMARY FUNCTION       |
+| SUBSYSTEM                | IMPLEMENTATION TYPE   | ALGORITHM / ENGINE     | STATUS IN REPOSITORY   |
 +--------------------------+-----------------------+------------------------+------------------------+
-| 1. Demand Forecasting    | **Machine Learning**  | LightGBM / XGBoost     | Regional demand trends |
-| 2. Supply Forecasting    | **Statistical ML**    | Seasonal Holt-Winters  | Harvest volume curves  |
-| 3. Sourcing Matching     | **Deterministic**     | Weighted Utility Model | Candidate pre-ranking  |
-| 4. Dynamic Clustering    | **Optimization**      | MILP (SciPy / PuLP)    | Pool multiple farms    |
-| 5. Route Optimization    | **Optimization**      | Google OR-Tools CVRP   | Multi-stop pickup route|
-| 6. Fair Price Engine     | **Statistical Model** | Hedonic Price Equation | Indicative price bands |
-| 7. Voice Listing Intent  | **NLP / LLM Parsing** | BHASHINI / Whisper STT | Spoken Hindi -> JSON   |
-| 8. Translation           | **NLP Machine Trans** | BHASHINI / NLLB        | Dynamic string i18n    |
-| 9. Produce Grading       | **Computer Vision**   | MobileNetV3 Classifier | Surface defect score   |
-| 10. Imbalance Detection  | **Statistical / Rules**| Z-Score Anomaly Filter | Regional deficit alert |
-| 11. Wastage Rescue       | **Dynamic Pricing**   | Decay Discount Model   | Spoilage salvage price |
+| 0. Market Maker Feasib.  | **Deterministic**     | Closed-form arithmetic | ✅ Fully Implemented   |
+| 1. Voice Listing NLP     | **AI / Generative**   | Google Gemini API      | ✅ Fully Implemented   |
+| 2. AI Card Focus Pattern | **Frontend Pattern**  | Portal + Scrim + Timer | ✅ Fully Implemented   |
+| 3. Sourcing Matching     | **Real Backend**      | 5-Factor Weighted Model| ✅ Fully Implemented   |
+| 4. Dynamic Clustering    | **Real Backend**      | Spatial Radius Pooling | ✅ Fully Implemented   |
+| 5. Fair Price Guidance   | **Real Backend**      | Hedonic Mandi Spread   | ✅ Fully Implemented   |
+| 6. Demand Forecasting    | **Deterministic/Demo**| Regional Arrival Model | ✅ Implemented / Demo  |
+| 7. Multi-Stop Routing    | **Real API + Fallback**| Heuristic / OR-Tools   | ✅ API Ready + Fallback|
+| 8. Wastage Rescue Sale   | **Real Backend**      | Algorithmic Discount   | ✅ Fully Implemented   |
+| 9. Computer Vision CV    | **Planned (Future)**  | MobileNetV3 CNN        | ⚪ Post-MVP Roadmap     |
+| 10. BHASHINI Speech API  | **Planned (Future)**  | MeitY BHASHINI Pipeline| ⚪ Post-MVP Roadmap     |
 +--------------------------+-----------------------+------------------------+------------------------+
 ```
 
 ---
 
-## 3. System 1: Regional Demand Forecasting
+## 3. System 0: Market Maker Feasibility Engine (Deterministic Closed-Form Core)
 
-- **Classification:** Machine Learning (Gradient Boosted Decision Trees).
-- **Problem Statement:** Farmers suffer from price crashes because they plant and harvest blindly without forward demand visibility.
-- **Why ML is Needed:** Agricultural demand is influenced by non-linear interactions across seasonal calendar lags, regional festival dates, APMC arrival history, and live wholesale procurement requirements.
-- **Inputs:**
-  - `crop_id`, `district_id`, `calendar_week`, `is_festival_season` (Boolean).
-  - Lag features: Mandi arrival volumes at $T-7, T-14, T-28$ days.
-  - Live 7-day buyer procurement requirement velocity.
-- **Output:** Predicted 7-day demand index ($\Delta D \in [-1.0, +1.0]$) mapped to farmer qualitative status (`HIGH_DEMAND`, `NORMAL`, `LOW_DEMAND`).
-- **Algorithm & Library:** `LightGBM Regressor` via Python `scikit-learn` pipeline.
-- **Training Data:** Historical APMC Agmarknet daily price/arrival datasets (2020–2025) for Delhi NCR / Haryana.
-- **Fallback Strategy:** If inference fails or feature data is missing, the system falls back to a 30-day moving average of historical mandi trading volumes.
+For complete mathematical breakdown, refer to [DOCS/MARKET_MAKER.md](./MARKET_MAKER.md).
 
----
+### 3.1 Closed-Form Equation
+There is no probabilistic prediction or speculative machine learning here. The engine calculates the exact volume threshold at which fixed freight amortizes into a viable per-kg landed cost:
 
-## 4. System 2: Forward Supply Forecasting
+$$\text{Freight}_{\text{fixed}} = \text{round}(300 + \text{Capacity}_{\text{kg}} \times 0.375)$$
+$$\text{Freight}_{\text{perKm}} = \text{round}(9 + \text{Capacity}_{\text{kg}} \times 0.0225)$$
+$$\text{Freight}_{\text{total}} = \text{Freight}_{\text{fixed}} + (\text{Freight}_{\text{perKm}} \times \text{RouteDistance}_{\text{km}})$$
+$$\text{Headroom}_{\text{perKg}} = \text{BuyerCeiling}_{\text{perKg}} - \text{FarmerFloor}_{\text{perKg}} - \text{PlatformFee}_{\text{perKg}}$$
+$$\text{Threshold}_{\text{kg}} = \left\lceil \frac{\text{Freight}_{\text{total}}}{\text{Headroom}_{\text{perKg}}} \right\rceil$$
 
-- **Classification:** Statistical Aggregation & Time-Series Extrapolation.
-- **Problem Statement:** Buyers cannot plan forward procurement contracts without knowing upcoming harvest volumes.
-- **Inputs:** Active pre-harvest listings (`is_pre_harvest = true`, `harvest_date`), historical yield per acre in district.
-- **Output:** 4-week forward district-level supply availability curves ($S_{t+1}, S_{t+2}, S_{t+3}, S_{t+4}$).
-- **Fallback:** Sum of verified active pre-harvest farmer listings within the district boundary.
+### 3.2 Auditability
+Every parameter is inspectable in the UI via `MarketWhyPanel.tsx`, which executes `explainMarket()` to present the 7 arithmetic steps that justified corridor viability.
 
 ---
 
-## 5. System 3: Multi-Criteria Farmer-Buyer Matching Engine
+## 4. System 1: Voice Intent Extractor (Google Gemini AI + Regex Fallback)
 
-- **Classification:** Deterministic Weighted Utility Scoring Function.
-- **Why Deterministic:** Sourcing matching must be 100% explainable to both farmers and institutional buyers.
-- **Utility Function:**
-  $$\text{Score}(F_i, R) = 0.30 \cdot S_{\text{dist}} + 0.25 \cdot S_{\text{price}} + 0.20 \cdot S_{\text{time}} + 0.15 \cdot S_{\text{rel}} + 0.10 \cdot S_{\text{quality}}$$
-- **Outputs:** Ranked candidate list of farmers eligible for single fulfillment or dynamic clustering.
+### 4.1 Endpoint Contract
+`POST /api/v1/listings/parse-voice`
+- **Controller:** `backend/app/api/v1/listings.py`
+- **Service:** `backend/app/services/gemini_listing.py`
 
----
-
-## 6. System 4: Dynamic Farmer Supply Clustering
-
-- **Classification:** Mathematical Optimization (Mixed-Integer Linear Programming - MILP).
-- **Problem Statement:** Individual smallholder farmers (e.g., 800 kg – 1.7T) cannot fulfill bulk institutional orders (e.g., 5,000 kg).
-- **Why Optimization is Needed:** Finding the optimal subset of geographically clustered farmers that minimizes total transit distance and landed price while satisfying capacity constraints is an NP-hard combinatorial problem.
-- **Mathematical Formulation:**
-  $$\min_{x, y} \sum_{i=1}^N \left( P_i \cdot x_i + \lambda \cdot D(F_i, C_{\text{centroid}}) \cdot y_i \right)$$
-  $$\text{Subject to:} \quad \sum_{i=1}^N x_i = Q_{\text{target}}, \quad 0 \le x_i \le q_i \cdot y_i, \quad y_i \in \{0, 1\}$$
-- **Algorithm & Solver:** SciPy `linprog` / PuLP with CBC solver bounded to candidates within $100\text{ km}$.
-- **Execution SLA:** $< 500\text{ ms}$ for candidate pool sizes $N \le 50$.
-- **Fallback:** Greedy Nearest-Neighbor Selection by proximity to buyer until target volume is reached.
+### 4.2 Architecture & Execution
+1. Browser Web Speech API records farmer audio in Hindi (`hi-IN`) or English (`en-IN`).
+2. The speech transcript is sent to `/api/v1/listings/parse-voice`.
+3. In `gemini_listing.py`, the backend calls Google Gemini (`gemini-1.5-flash` / `gemini-pro`) with a strict agricultural JSON system prompt.
+4. Gemini extracts:
+   - `crop_name` (e.g. "Tomato")
+   - `crop_name_hi` (e.g. "टमाटर")
+   - `quantity_kg` (converts quintals/tonnes into kilograms)
+   - `price_per_kg` (extracts expected rate)
+   - `confidence_score` ($0.0 - 1.0$)
+5. **Deterministic Regex Fallback:** If the Gemini API key is missing, network times out, or quota is exceeded, the server automatically catches the exception and executes `_basic_extract()`, which uses Hindi number and crop regex matchers to populate the review form without crashing.
 
 ---
 
-## 7. System 5: Logistics Route Optimization
+## 5. System 2: Interactive AI Intelligence Cards (`MarketplaceAiTrigger` Lifecycle)
 
-- **Classification:** Mathematical Optimization (Google OR-Tools CVRP Solver).
-- **Problem Statement:** Multi-farm pickups without routing optimization result in zig-zag transit, excessive fuel consumption, and delivery delays.
-- **Inputs:**
-  - Depot coordinates ($lat_0, lon_0$).
-  - Farm pickup waypoints $(lat_1 \dots lat_k, lon_1 \dots lon_k)$ with pickup weights $w_i$.
-  - Buyer destination coordinates ($lat_{\text{dest}}, lon_{\text{dest}}$).
-  - Vehicle max payload capacity $W_{\max} = 5,000\text{ kg}$.
-  - $N \times N$ road distance matrix from OSRM table service.
-- **Output:** Optimal sequence of stops: $\text{Depot} \rightarrow \text{Farm C} \rightarrow \text{Farm A} \rightarrow \text{Farm D} \rightarrow \text{Farm B} \rightarrow \text{Buyer}$.
-- **Solver Configuration:** `pywrapcp.RoutingModel` with `PATH_CHEAPEST_ARC` first solution strategy and `GUIDED_LOCAL_SEARCH` metaheuristic (time limit: 2.0s).
-- **Fallback:** 2-Opt Euclidean Traveling Salesperson Problem (TSP) algorithm with $1.3\times$ road-tortuosity adjustment.
+Across all role modules, intelligence cards (`FarmerPulseCard`, `MarketplaceAiSection`, `BulkIntelligenceCards`, `LogisticsIntelligenceCards`) use the standardized lifecycle implemented in `frontend/src/components/ai/MarketplaceAiTrigger.tsx`:
 
----
+### 5.1 Floating Focus & Scrim Overlay
+When an AI check is triggered:
+- The `body` element receives `.ai-analysis-active`, locking background scrolling without jumpy scrollbar shifts.
+- A dark blurred scrim mounts via a **React Portal** directly onto `document.body`.
+- The active card mounts as a sibling of the scrim, floating above the dimmed page.
+- The in-flow page keeps an invisible placeholder with exact measured height, guaranteeing **zero layout shift** upon return.
 
-## 8. System 6: Fair Price Intelligence Engine
-
-- **Classification:** Statistical Hedonic Pricing Model.
-- **Inputs:**
-  - $P_{\text{mandi}}$: Current modal mandi price from APMC Agmarknet.
-  - $P_{\text{wholesale}}$: Benchmark wholesale landed price at buyer hub.
-  - $C_{\text{transport}}$: Estimated shared freight cost per kg.
-  - $C_{\text{platform}}$: Platform fee ($1.8\%$).
-- **Pricing Formulation:**
-  $$\text{Fair Farm-Gate Base} = P_{\text{mandi}} + 0.5 \cdot (P_{\text{wholesale}} - P_{\text{mandi}} - C_{\text{transport}})$$
-  $$\text{Recommended Band} = \left[ \text{Base} \times 0.96, \, \text{Base} \times 1.05 \right]$$
-- **Output Example:** Mandi: ₹19/kg, Wholesale: ₹32/kg ➔ **Recommended Fair Band: ₹23.50–₹26.00/kg**.
+### 5.2 Staged Analysis Animation (`AiThinkingState.tsx`)
+Paces 4 to 5 domain-specific validation steps across $\sim 1400\text{ ms}$:
+1. Checking harvest freshness.
+2. Comparing regional farm prices.
+3. Checking mandi benchmark references.
+4. Reviewing available corridor stock.
+5. Preparing recommendation.
 
 ---
 
-## 9. System 7: Spoken Voice & NLP Intent Extractor
+## 6. System 3: Multi-Criteria Procurement Matching Engine
 
-- **Classification:** Speech-to-Text (ASR) + Structured Entity Extraction (NLP/LLM).
-- **Problem Statement:** Rural farmers struggle with complex digital form fields and smartphone keyboards.
-- **Pipeline:**
-  1. Audio speech-to-text recorded in browser via Web Speech API (`webkitSpeechRecognition` / `SpeechRecognition`) in Hindi (`hi-IN`) and English (`en-IN`), with auto-parse on utterance finish.
-  2. Structured Entity Parser: Hybrid pipeline with deterministic regex & natural-language date/semantics extractor, complemented by Google Gemini (`gemini-1.5-flash`) for nuanced multilingual Hinglish intent:
-     ```json
-     {
-       "crop_name": "Tomato",
-       "crop_name_hi": "टमाटर",
-       "category": "Vegetables",
-       "quantity_kg": 725.0,
-       "unit": "kg",
-       "price_per_kg": 2.0,
-       "pickup_date": "2026-09-18",
-       "pickup_location": "Green Field Farm",
-       "pickup_window": "Morning · 7–10 AM",
-       "fulfillment": "pickup",
-       "notes": "Farm pickup (buyer to collect from farm)",
-       "confidence_score": 0.95,
-       "ai_used": false
-     }
-     ```
-- **Safety Boundary:** AI-extracted values are presented on an interactive editable confirmation card for the farmer to review, adjust, and tap "Apply to form". **Zero unchecked direct database writes.**
-- **Fallback:** Deterministic parser executes first with zero network latency. If Gemini fails or API keys are unconfigured, deterministic parser serves extracted crop, quantities, dates, and locations without HTTP 500 crashes. Farmer can always type transcript or manually fill wizard fields.
+Implemented in `backend/app/services/matching_service.py` and exposed via `/api/v1/requirements/{id}/generate-matches`:
+- Evaluates candidate crop listings against buyer requirements using a 5-factor scoring function:
+  1. Distance score (PostGIS geodetic proximity).
+  2. Price score (comparison against requirement target price).
+  3. Reputation score (farmer track record).
+  4. Freshness score (harvest window alignment).
+  5. Urgency / Rescue bonus (prioritizing perishable crops tagged for urgent sale).
 
 ---
 
-## 10. System 8: Multilingual Language Translation
+## 7. System 4: Dynamic Farmer Supply Clustering
 
-- **Classification:** Machine Translation (BHASHINI / NLLB).
-- **Pipeline:** Pre-compiled static JSON dictionaries for UI chrome; dynamic runtime translation via BHASHINI API for user-generated notes and custom crop variety descriptions.
-
----
-
-## 11. System 9: Indicative Produce Computer Vision Grading
-
-- **Classification:** Computer Vision (MobileNetV3 Lightweight CNN).
-- **Problem Statement:** Remote buyers require visual confidence regarding surface defects and ripeness.
-- **Inputs:** RGB photo of produce ($224 \times 224\text{ px}$).
-- **Output:** Indicative classification: `GRADE_A (84%)`, `GRADE_B (14%)`, `DEFECT_RISK (2%)`.
-- **Framing & Disclaimer:** Clearly labeled as **"Indicative AI Visual Estimation"**; does not replace physical weighbridge and buyer inspection at drop-off.
-- **Fallback:** Farmer self-assesses grade (`Grade A / Grade B`) from visual reference guide.
+Implemented in `backend/app/api/v1/clusters.py`:
+- Clusters multiple smallholder listings whose combined harvest satisfies a bulk requirement volume ($> 100\text{ kg} - 5,000\text{ kg}$).
+- Maintains individual `OrderFarmerAllocation` rows for every contributing farmer, ensuring 100% transparent and traceable individual payouts.
 
 ---
 
-## 12. System 10: Supply-Demand Imbalance & Arbitrage Detection
+## 8. System 5: Fair Price Guidance & Mandi Benchmark Modeling
 
-- **Classification:** Statistical Anomaly Detection.
-- **Function:** Compares regional supply volume with aggregate buyer demand.
-- **Example Alert:** *"High tomato surplus in Sonipat (18 tonnes) + High tomato deficit in South Delhi (-14 tonnes) ➔ Arbitrage opportunity created."*
-
----
-
-## 13. System 11: Wastage Rescue Recommendation Engine
-
-- **Classification:** Dynamic Discounting & Perishability Decay Model.
-- **Function:** For produce within 48 hours of maximum shelf-life without an order:
-  $$\text{Rescue Price} = \max\left(P_{\text{floor}}, \, P_{\text{asking}} \times \left(1 - 0.15 \times \frac{\text{Days Stale}}{\text{Shelf Life}}\right)\right)$$
-- Immediately broadcasts listing to nearby secondary food processors, sauce manufacturers, and catering kitchens.
+Implemented in `backend/app/api/v1/intelligence.py` and `app/services/pricing_service.py`:
+- Anchored to `DEFAULT_CROP_BENCHMARKS` storing regional APMC mandi prices and historical 7-day price trends for key perishables:
+  - Tomatoes: Mandi ₹24/kg, Direct ₹32/kg.
+  - Potatoes: Mandi ₹21/kg, Direct ₹25/kg.
+  - Onions: Mandi ₹18/kg, Direct ₹24/kg.
+  - Spinach: Mandi ₹35/kg, Direct ₹42/kg.
+- Formulates indicative fair price bands for farmers:
+  $$P_{\text{fair}} = P_{\text{mandi}} + 0.5 \times (P_{\text{direct}} - P_{\text{mandi}})$$
 
 ---
 
-## 14. AI Failure Safeguards & Graceful Degradation Framework
+## 9. System 6: Regional Demand & Arrival Forecasting
 
+- Exposed via `GET /api/v1/intelligence/forecast/{crop_name}`.
+- Categorizes crop demand into clear qualitative indicators (`HIGH_DEMAND`, `BALANCED`, `LOW_DEMAND`) with expected price trajectory over a 3-week window.
+
+---
+
+## 10. System 7: Logistics Route Optimization & Map Display
+
+- **Canonical Endpoint:** `POST /api/v1/logistics/routes/optimize`.
+- **MapLibre GL JS Visualization:** Renders pickup waypoints and delivery drops on `DigitalTwinCorridorMap.tsx` using CartoCDN Positron tiles and quadratic Bezier curves.
+- **Fail-Safe Fallback:** If MapLibre fails or tiles time out, a structured schematic corridor card layout renders immediately with retry controls.
+
+---
+
+## 11. System 8: Wastage Rescue & Dynamic Discounting
+
+- Exposed via `GET /api/v1/rescue/listings`.
+- Farmers can tag perishable crops nearing shelf-life expiry as **Urgent Rescue Sales** with algorithmic discounts (e.g., 20% off), redirecting supply to food processors or quick-turnaround buyers before spoilage occurs.
+
+---
+
+## 12. Planned Post-MVP Intelligence Systems (Future Scope)
+
+The following systems are documented in research specifications but are **explicitly out of scope for the current MVP prototype**:
+- **MobileNetV3 Computer Vision Quality Grading:** Indicative image-based produce surface defect detection. Current implementation uses farmer-declared grading (`Grade A`, `Grade A+`).
+- **MeitY BHASHINI Speech Integration:** Direct API integration with the Government of India BHASHINI STT/TTS pipeline. Current implementation uses browser Web Speech API + Google Gemini AI.
+- **IoT Cold-Chain Telemetry:** Hardware sensor integration for live container temperature/humidity tracking.
+
+---
+
+## 13. AI Failure Safeguards & Graceful Degradation Framework
+
+```mermaid
+flowchart TD
+    subgraph Voice_Failure_Path [Voice Parsing Safeguards]
+        VoiceIn[Speech Audio] --> WebSpeech[Browser Speech Recognition]
+        WebSpeech -->|Recognized| GeminiAPI[Google Gemini API]
+        WebSpeech -->|Blocked / Error| ManualForm[Direct Numeric Form Input]
+        GeminiAPI -->|Success| StructuredDraft[Pre-filled Listing Draft]
+        GeminiAPI -->|Timeout / Quota| RegexFallback[Regex Entity Extractor]
+        RegexFallback --> StructuredDraft
+    end
+
+    subgraph Map_Failure_Path [Map Display Safeguards]
+        MapMount[Mount MapLibre Canvas] --> WebGLCheck[WebGL Probe]
+        WebGLCheck -->|Supported & Online| RenderMap[Render Vector Tiles & Bezier Lines]
+        WebGLCheck -->|Unsupported / Offline| SchematicFallback[Render Structured Schematic Cards]
+        RenderMap -->|Tile Error / Disconnect| SchematicFallback
+    end
 ```
-+----------------------------------------------------------------------------------------------------+
-|                                    AI FAILURE SAFEGUARD ARCHITECTURE                               |
-+--------------------------+-------------------------------+-----------------------------------------+
-| SYSTEM                   | FAILURE TRIGGER               | AUTOMATED SAFEGUARD BEHAVIOR            |
-+--------------------------+-------------------------------+-----------------------------------------+
-| Voice NLP Parsing        | API timeout / low confidence  | Opens 1-question-per-screen touch form  |
-| Demand Forecasting       | Missing historical features   | Uses 30-day APMC arrival moving average |
-| Route Optimization       | OSRM / OR-Tools solver timeout| Greedy Nearest-Neighbor Euclidean TSP   |
-| Dynamic Clustering       | Solver infeasibility / timeout| Best-fit single farmer + shortfall note |
-| Computer Vision Grading  | Low-light / blurry photo      | Prompts manual farmer grade selection   |
-+--------------------------+-------------------------------+-----------------------------------------+
-```
-
----
-
-## 15. SIH Demonstration Execution Strategy
-
-- **Deterministic Baseline Guarantee:** For the SIH live presentation, all ML and Optimization models are pre-seeded with deterministic parameters for the **Delhi NCR – Sonipat – Panipat corridor**.
-- **Instant Demo Reset:** `/api/v1/demo/reset` endpoint restores all model states, active listings, and cluster caches to baseline in $< 1\text{ second}$.
 
 ---
 *End of KisanLink AI, Machine Learning & Optimization Specifications*

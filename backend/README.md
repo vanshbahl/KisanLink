@@ -25,6 +25,7 @@ All active business domains use PostgreSQL/PostGIS as the canonical source of tr
   - `GET /api/v1/listings/{id}`: Single listing detail.
   - `PUT /api/v1/listings/{id}`: Update listing with strict farmer ownership verification.
   - `DELETE /api/v1/listings/{id}`: Deactivate/cancel listing.
+  - `POST /api/v1/listings/parse-voice`: Gemini NLP voice listing extraction with regex fallback for Hindi/English input.
 - **Dashboard & Operations**:
   - `GET /api/v1/farmers/dashboard`: Aggregated earnings, pending payouts, active listing count, new order count, and upcoming pickup preview.
   - `GET /api/v1/farmers/earnings`: Transparent payout ledger, deductions, net amounts, and mandi benchmark gain.
@@ -45,23 +46,38 @@ All active business domains use PostgreSQL/PostGIS as the canonical source of tr
   - `POST /api/v1/orders/from-cluster/{cluster_id}`: Converts supply cluster into confirmed Order with row-level locks on listings to prevent concurrency double-allocation.
   - `POST /api/v1/orders/{id}/lock-escrow`: Locks buyer procurement funds in simulated escrow custody and logs entries to `payments_ledger`.
 
+### 4. Canonical Logistics Domain (`/api/v1/logistics`)
+- **Shipments**: `GET /api/v1/logistics/shipments` (Full shipment overview with loaded order allocations and transporter details).
+- **OTP Verification**:
+  - `POST /api/v1/logistics/verify-pickup-otp`: Two-factor pickup verification with farmer.
+  - `POST /api/v1/logistics/verify-delivery-otp`: Delivery verification with buyer.
+- **Route Optimization**:
+  - `POST /api/v1/logistics/optimize-route`: Geospatial routing with distance, duration, and waypoints via `routing_service.py`.
+- **Status Updates**: `PATCH /api/v1/logistics/shipments/{id}/status`.
+
+### 5. Additional Canonical V1 Domains
+- **Intelligence**: `GET /api/v1/intelligence/price-trends/{crop_type_id}`, `GET /api/v1/intelligence/demand-forecast`
+- **Rescue**: `GET /api/v1/rescue/listings` (Wastage rescue / distress-sale listings with dynamic discounting)
+- **Disputes**: `POST /api/v1/disputes`, `GET /api/v1/disputes/{id}`, `PATCH /api/v1/disputes/{id}/resolve`
+- **Reviews**: `POST /api/v1/reviews`, `GET /api/v1/reviews/target/{target_id}`
+- **Audit**: `GET /api/v1/audit/logs`
+
 ---
 
-## 3. Temporary Logistics Prototype Boundary
+## 3. Temporary Logistics & Demo State Boundary
 
-Arshdeep's backend did not implement the Logistics module. To keep the existing frontend Logistics dashboard and prototype workflows working without disruption, Logistics is strictly isolated:
+To support the frontend prototype workflows, demo resetting, and cross-domain Market Maker corridor materialization, an isolated state store is maintained:
 
 - **Boundary Router**: `backend/app/api/legacy_logistics.py`
 - **Endpoints**:
-  - `GET /api/state`
-  - `PUT /api/state`
-  - `POST /api/reset`
+  - `GET /api/state` / `PUT /api/state`: Full demo state sync including `pickups`, `deliveries`, `routes`, `vehicles`, and `markets` (active Market Maker corridors).
+  - `POST /api/reset`: Reset state back to initial seed data.
   - `GET /api/logistics/pickups`
   - `GET /api/logistics/deliveries`
   - `GET /api/logistics/routes`
   - `GET /api/logistics/vehicles`
-- **Data Store**: SQLite / in-memory demo state (`kisanlink.db` or seed fixture).
-- **Scope**: Used **only** by `logisticsService.ts` and legacy demo reset controls. Farmer, Consumer, and Bulk domains **never** write duplicate data to this state.
+- **Data Store**: In-memory / SQLite demo state fixture.
+- **Market Maker Cross-Domain State**: Materializes new corridors into both frontend local caches and `/api/state` (`markets` array), bridging farmer pickups, bulk orders, and logistics route dispatching.
 
 ---
 
@@ -181,19 +197,15 @@ cd backend
 
 ---
 
-## 6. Next Developer Handoff: Real Logistics Backend Migration
+## 6. Architecture Status & Logistics Migration Roadmap
 
-The next developer or AI coding agent should migrate the Logistics domain into the canonical architecture following these exact steps:
+The canonical Logistics backend router has been implemented at `backend/app/api/v1/logistics.py`:
+- `GET /api/v1/logistics/shipments`: Full shipment overview linked to PostgreSQL `Shipment` and `Order` models.
+- `POST /api/v1/logistics/verify-pickup-otp`: Two-factor cryptographic OTP pickup validation.
+- `POST /api/v1/logistics/verify-delivery-otp`: Two-factor buyer delivery completion.
+- `POST /api/v1/logistics/optimize-route`: Geospatial route waypoint sequencing via `routing_service.py`.
 
-1. **Models**: Review `app/models/logistics.py` and `app/models/user.py` (`LogisticsProfile`). Add any missing fields for routes, route stops, and inspection checklists.
-2. **Schemas**: Add request and response schemas in `app/schemas/logistics.py`.
-3. **Router**: Create `app/api/v1/logistics.py` with endpoints:
-   - `GET /api/v1/logistics/overview`: Fleet & delivery status summary
-   - `GET /api/v1/logistics/pickups`: Pending and active farmer pick-ups linked to `OrderFarmerAllocation`
-   - `PATCH /api/v1/logistics/pickups/{id}`: Driver assignment, checklist verification, OTP pickup validation
-   - `GET /api/v1/logistics/deliveries`: Consolidator deliveries to buyer destinations
-   - `GET /api/v1/logistics/routes`: Spatial vehicle routes using PostGIS line geometries
-   - `GET /api/v1/logistics/vehicles`: Fleet management
-4. **Mount Router**: Add to `app/api/v1/__init__.py`.
-5. **Update Frontend Service**: Point `frontend/src/services/logisticsService.ts` to `apiClient` routes instead of `/api/state`.
-6. **Deprecate**: Remove `app/api/legacy_logistics.py` once the PostgreSQL logistics router is active.
+### Remaining Frontend Transition Steps
+1. **Frontend Service Adapter**: Update `frontend/src/services/logisticsService.ts` to consume `/api/v1/logistics/*` endpoints via `apiClient.ts` as primary, while preserving `/api/state` for demo reset controls.
+2. **Corridor Materialization**: When Market Maker corridors are created, emit both local state updates and persist canonical PostgreSQL records (`Shipment`, `Order`, `OrderFarmerAllocation`).
+3. **Legacy Deprecation**: Retire `backend/app/api/legacy_logistics.py` once all frontend role dashboards fully migrate to `/api/v1` PostGIS spatial queries.

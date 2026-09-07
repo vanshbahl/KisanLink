@@ -37,10 +37,13 @@
 
 ## 1. Database Architecture & Core Principles
 
-- **Engine:** PostgreSQL 16 (hosted on Supabase PostgreSQL in staging/production, local Docker container in development).
+- **Engine:** PostgreSQL 16/17 (local Docker/Postgres in development, Supabase/Neon PostgreSQL in staging/production).
 - **Spatial Processing:** PostGIS spatial extension enabled (`CREATE EXTENSION IF NOT EXISTS postgis`).
-- **Identifier Strategy:** UUIDv4 (`uuid_generate_v4()`) for distributed safety and tamper-proof client exposure.
+- **Identifier Strategy:** UUIDv4 (`gen_random_uuid()`) for distributed safety and tamper-proof client exposure.
 - **Strict Typing:** Decimal types (`NUMERIC(10, 2)`) for all financial rupee amounts; PostGIS `GEOGRAPHY(Point, 4326)` for coordinates.
+- **Dual Persistence Architecture:**
+  - **Canonical Store (PostgreSQL + PostGIS):** Persists all active `/api/v1/*` domains including Users, Profiles, CropListings, Requirements, Clusters, Orders, Allocations, Shipments, Payments, Reviews, and Disputes.
+  - **Demo State Boundary (SQLite / In-Memory):** Managed by `legacy_logistics.py` at `/api/state` with fields for `pickups`, `deliveries`, `routes`, `vehicles`, and `markets` (Market Maker active corridors), supporting one-click demo resets without wiping transactional PostgreSQL tables.
 
 ---
 
