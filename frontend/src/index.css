@@ -1435,6 +1435,7 @@ body.mm-reveal-open { overflow: hidden; }
 }
 .bottom-nav a.active { color: var(--green); }
 .bottom-nav .nav-icon {
+  position: relative;
   width: var(--nav-icon-box);
   height: var(--nav-icon-box);
   display: grid;
@@ -1448,7 +1449,14 @@ body.mm-reveal-open { overflow: hidden; }
   white-space: nowrap;
   text-align: center;
 }
+/* The bubble is wider than the icon box it sits in. Grid's overflow alignment pushes an
+   oversized item to one edge rather than centring it, which knocked the bubble 6px right
+   of its slot (and so out of line with its own label). Positioning it against the box's
+   centre point makes "centred" exact at every width instead of alignment-dependent. */
 .bottom-nav .nav-bubble {
+  position: absolute;
+  left: 50%;
+  top: 50%;
   width: var(--nav-bubble);
   height: var(--nav-bubble);
   border-radius: 16px;
@@ -1458,7 +1466,7 @@ body.mm-reveal-open { overflow: hidden; }
   place-items: center;
   box-shadow: 0 7px 20px rgba(35, 103, 71, .24);
   border: 3px solid white;
-  transform: translateY(var(--nav-bubble-lift));
+  transform: translate(-50%, calc(-50% + var(--nav-bubble-lift)));
   transition: background .16s ease;
 }
 .bottom-nav a.nav-primary { color: var(--green-dark); }

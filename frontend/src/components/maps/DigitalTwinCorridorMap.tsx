@@ -128,11 +128,16 @@ export const DigitalTwinCorridorMap: FC<DigitalTwinCorridorMapProps> = ({ nodes,
     // A style that never loads (offline, blocked CDN) must surface the fallback rather than
     // leaving a grey canvas behind. A backgrounded tab is not a failure: browsers suspend
     // the animation frames maplibre loads on, so the clock only runs while visible.
+    // `style.load` means "the style is parsed and addSource/addLayer are safe". That is the
+    // real gate for drawing. `isStyleLoaded()` is stricter — it also waits on every source
+    // and tile — and can stay false indefinitely, which is what previously stalled the map:
+    // the draw pass kept early-returning, so markers, routes and the ready state never came.
+    let styleReady = false
     let failTimer = 0
     const armFailTimer = () => {
       window.clearTimeout(failTimer)
       if (document.hidden) return
-      failTimer = window.setTimeout(() => { if (!disposed && !map.isStyleLoaded()) setStatus('failed') }, 12000)
+      failTimer = window.setTimeout(() => { if (!disposed && !styleReady) setStatus('failed') }, 12000)
     }
     armFailTimer()
 
@@ -140,18 +145,30 @@ export const DigitalTwinCorridorMap: FC<DigitalTwinCorridorMapProps> = ({ nodes,
       if (disposed) return
       armFailTimer()
       // Coming back to the tab: re-measure and, if the style did land while hidden, draw.
-      if (!document.hidden) { map.resize(); draw() }
+      if (!document.hidden) { map.resize(); safeDraw() }
     }
     document.addEventListener('visibilitychange', onVisibility)
 
+    // Readiness is a property of the map, not of our drawing pass. Deriving it from `draw`
+    // meant a single early return (or a throw) left the loading shimmer covering a map that
+    // was rendering perfectly well underneath it.
+    let ready = false
+    const markReady = () => {
+      if (disposed || ready) return
+      ready = true
+      window.clearTimeout(failTimer)
+      setStatus('ready')
+    }
+
     map.on('error', (event) => {
-      if (disposed || map.isStyleLoaded()) return
+      // Once the map is up, a failed individual tile is not a failed map.
+      if (disposed || ready || styleReady) return
       console.warn('[corridor-map]', event.error?.message ?? event)
       setStatus('failed')
     })
 
     const draw = () => {
-      if (disposed || !map.isStyleLoaded()) return
+      if (disposed || !styleReady) return
       activeRoutes.forEach((route) => {
         const sourceId = `route-source-${route.id}`
         const layerId = `route-layer-${route.id}`
@@ -203,11 +220,17 @@ export const DigitalTwinCorridorMap: FC<DigitalTwinCorridorMapProps> = ({ nodes,
 
       fitToContent(map)
       map.resize()
-      setStatus('ready')
+      markReady()
     }
 
-    map.on('load', draw)
-    map.on('style.load', draw)
+    // `draw` is idempotent (it checks for existing sources and layers), so it is safe to
+    // attach to every event that can mean "the style is usable now"; `idle` is kept as a
+    // retry point in case the first pass ran before the container had its final size.
+    const safeDraw = () => { try { draw() } catch (reason) { console.warn('[corridor-map] draw', reason); markReady() } }
+    const onStyleReady = () => { styleReady = true; markReady(); safeDraw() }
+    map.on('style.load', onStyleReady)
+    map.on('load', onStyleReady)
+    map.on('idle', safeDraw)
 
     // The card can be laid out (sidebar collapse, viewport resize, tab reveal) after the
     // map is created; without this the canvas keeps its first measured size and clips.
