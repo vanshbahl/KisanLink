@@ -1,6 +1,7 @@
 import { BarChart3, CalendarClock, IndianRupee, PackageCheck, Plus, Sprout, Sun, WalletCards } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { FarmerPulseCard } from '../components/ai/FarmerPulseCard'
+import { MarketPulseCard } from '../components/market/MarketPulseCard'
 import { FarmerQuickAction } from '../components/FarmerQuickAction'
 import { DashboardSkeleton } from '../components/LoadingSkeleton'
 import { MetricCard } from '../components/MetricCard'
@@ -53,7 +54,14 @@ export function FarmerDashboard() {
       // fall through to prototype earnings/order counts below
     }
 
-    if (earnings === 0 && pending === 0) {
+    // Headline earnings are read from the same merged ledger the earnings page renders, so a
+    // payout created inside the prototype (a Market Maker order, say) is counted in both places
+    // instead of only appearing on one screen.
+    const ledger = await prototypeService.getEarnings()
+    if (ledger.length > 0) {
+      earnings = ledger.reduce((sum, item) => sum + item.net, 0)
+      pending = ledger.filter((item) => item.status === 'pending').reduce((sum, item) => sum + item.net, 0)
+    } else if (earnings === 0 && pending === 0) {
       earnings = state.earnings.reduce((sum, item) => sum + item.net, 0)
       pending = state.earnings.filter((item) => item.status === 'pending').reduce((sum, item) => sum + item.net, 0)
     }
@@ -86,6 +94,8 @@ export function FarmerDashboard() {
           <MetricCard icon={PackageCheck} value={data.newOrders} label={t('newOrders')} tone="amber" hint={t('tapReview')} />
         </div>
       </section>
+
+      <MarketPulseCard role="farmer" />
 
       <FarmerPulseCard listings={data.listings} />
 

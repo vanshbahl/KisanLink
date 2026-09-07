@@ -214,7 +214,7 @@ export interface Delivery { id: string; origin: string; destination: string; buy
 export interface LogisticsRoute { id: string; name: string; nameHi: string; vehicleId: string; pickups: string[]; deliveries: string[]; stops: string[]; distanceKm: number; durationMinutes: number; capacityKg: number; loadKg: number; status: 'planned' | 'active' | 'completed'; pooled: boolean }
 export interface Vehicle { id: string; registration: string; type: string; typeHi: string; capacityKg: number; driver: string; currentAssignment?: string; status: VehicleStatus }
 export interface LogisticsProfileData { name: string; phone: string; hub: string; shift: string; language: Language; notifications: { pickups: boolean; deliveries: boolean; issues: boolean; delays: boolean } }
-export type DemoScenario = 'full' | 'empty' | 'consumer' | 'bulk' | 'issue'
+export type DemoScenario = 'full' | 'empty' | 'consumer' | 'bulk' | 'issue' | 'market'
 
 export interface PaymentsLedgerEntry {
   id: string
@@ -256,4 +256,75 @@ export interface OperatorAuditLog {
   action_type: string
   entity_id?: string | null
   created_at?: string
+}
+
+/* ===================== Market Maker =====================
+ * A Market Maker board is one crop, one corridor, one delivery window. It holds the
+ * fragmented supply lots that no single buyer wanted and the fragmented demand that
+ * no single farmer could serve, and it is evaluated against live logistics capacity.
+ * Every number below is an input to a deterministic calculation — nothing is predicted.
+ */
+export type MarketCommitmentSource = 'consumer' | 'bulk'
+export type MarketStatus = 'forming' | 'viable' | 'created'
+
+export interface MarketCommitment {
+  id: string
+  source: MarketCommitmentSource
+  party: string
+  detail: string
+  quantityKg: number
+  committedAt: string
+  /** Committed by the demo user from one of the role modules (vs. seeded network demand). */
+  own?: boolean
+}
+
+export interface MarketSupplyLot {
+  id: string
+  /** Set when the lot is a real listing in shared state, so live stock caps the offer. */
+  listingId?: string
+  farmer: string
+  farm: string
+  location: string
+  offeredKg: number
+  /** Extra kilometres the pooled route spends to include this farm. */
+  detourKm: number
+  /** True for the demo farmer's own lot. */
+  own?: boolean
+}
+
+export interface MarketMakerBoard {
+  id: string
+  crop: string
+  cropHi: string
+  grade: FarmerListing['grade']
+  corridor: string
+  corridorHi: string
+  destination: string
+  deliveryWindow: string
+  imageSrc: string
+  visual: ProduceListing['visual']
+  /** Minimum the farmer will accept per kg. Never pushed down by the market maker. */
+  farmerFloorPerKg: number
+  /** What the same produce fetches at the local mandi today. */
+  mandiPricePerKg: number
+  /** Delivered price at or below which buyers switch away from their current supplier. */
+  buyerCeilingPerKg: number
+  /** What buyers pay today through mandi -> wholesaler -> retailer. */
+  buyerCurrentPerKg: number
+  /** Platform fee as a share of the farm-gate price, billed to the buyer. */
+  platformFeePct: number
+  routeDistanceKm: number
+  /** Vehicle the corridor is quoted against; feasibility re-checks live fleet status. */
+  vehicleId: string
+  lots: MarketSupplyLot[]
+  commitments: MarketCommitment[]
+  status: MarketStatus
+  createdAt: string
+  unlockedAt?: string
+  routeId?: string
+  farmerOrderIds?: string[]
+  bulkOrderId?: string
+  consumerOrderId?: string
+  pickupIds?: string[]
+  deliveryIds?: string[]
 }

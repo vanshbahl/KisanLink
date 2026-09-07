@@ -7,6 +7,7 @@ import type { DemoScenario } from '../types'
 
 const scenarios: Array<{ id: DemoScenario; en: string; hi: string }> = [
   { id: 'full', en: 'Seed Full Demo Scenario', hi: 'पूरा डेमो डेटा भरें' },
+  { id: 'market', en: 'Seed Market Maker Corridor', hi: 'मार्केट मेकर कॉरिडोर बनाएं' },
   { id: 'empty', en: 'Seed Empty State', hi: 'खाली स्थिति बनाएं' },
   { id: 'consumer', en: 'Seed Active Consumer Order', hi: 'सक्रिय ग्राहक ऑर्डर बनाएं' },
   { id: 'bulk', en: 'Seed Active Bulk RFQ', hi: 'सक्रिय थोक RFQ बनाएं' },

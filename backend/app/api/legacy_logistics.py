@@ -83,6 +83,9 @@ class StatePayload(BaseModel):
     logisticsProfile: dict[str, Any] = Field(default_factory=dict)
     savedListingIds: list[str] = Field(default_factory=list)
     savedFarmNames: list[str] = Field(default_factory=list)
+    # Market Maker corridors. Kept in the same envelope so a board that a role unlocks
+    # survives the state round-trip instead of being stripped by extra="ignore".
+    markets: list[dict[str, Any]] = Field(default_factory=list)
 
 
 router = APIRouter(tags=["Legacy Logistics Prototype (Temporary)"])

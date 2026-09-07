@@ -1,4 +1,4 @@
-import type { BulkOrder, BulkProfileData, BulkRfq, ConsumerOrder, ConsumerProfileData, Delivery, DemoScenario, EarningsTransaction, FarmerListing, FarmerOrder, FarmerProfileData, ListingStatus, LogisticsPickup, LogisticsProfileData, LogisticsRoute, OrderStatus, Pickup, PrototypeNotification, Role, Vehicle } from '../types'
+import type { BulkOrder, BulkProfileData, BulkRfq, ConsumerOrder, ConsumerProfileData, Delivery, DemoScenario, EarningsTransaction, FarmerListing, FarmerOrder, FarmerProfileData, ListingStatus, LogisticsPickup, LogisticsProfileData, LogisticsRoute, MarketMakerBoard, OrderStatus, Pickup, PrototypeNotification, Role, Vehicle } from '../types'
 import { apiClient } from './apiClient'
 
 export interface PrototypeState {
@@ -20,9 +20,10 @@ export interface PrototypeState {
   logisticsProfile: LogisticsProfileData
   savedListingIds: string[]
   savedFarmNames: string[]
+  markets: MarketMakerBoard[]
 }
 
-const STORAGE_KEY = 'kisanlink_phase1_state_v1'
+const STORAGE_KEY = 'kisanlink_phase1_state_v2'
 const API_URL = import.meta.env.VITE_API_URL ?? '/api'
 const today = new Date()
 const iso = (offset: number) => new Date(today.getFullYear(), today.getMonth(), today.getDate() + offset).toISOString().slice(0, 10)
@@ -80,10 +81,45 @@ const seedState: PrototypeState = {
     { id: 'VEH-02', registration: 'DL 1L AC 9082', type: 'Medium truck', typeHi: 'मध्यम ट्रक', capacityKg: 2000, driver: 'Imran Khan', currentAssignment: 'RTE-POOL-01', status: 'in_transit' },
     { id: 'VEH-03', registration: 'HR 69 D 3104', type: 'Pickup', typeHi: 'पिकअप', capacityKg: 900, driver: 'Meena Devi', status: 'available' },
     { id: 'VEH-04', registration: 'UP 17 BT 6610', type: 'Electric cargo van', typeHi: 'इलेक्ट्रिक कार्गो वैन', capacityKg: 600, driver: 'Amit Pal', status: 'maintenance' },
+    { id: 'VEH-05', registration: 'HR 26 CX 7741', type: 'Light tempo', typeHi: 'छोटा टेम्पो', capacityKg: 400, driver: 'Balwinder Singh', status: 'available' },
   ],
   logisticsProfile: { name: 'Kavita Sharma', phone: '9877004455', hub: 'KisanLink Sonipat Hub', shift: 'Morning · 6 AM–3 PM', language: 'en', notifications: { pickups: true, deliveries: true, issues: true, delays: true } },
   savedListingIds: ['listing_011'],
   savedFarmNames: ['Green Field Farm'],
+  markets: [
+    {
+      id: 'MM-TOM-SONIPAT',
+      crop: 'Fresh Tomatoes',
+      cropHi: 'ताज़े टमाटर',
+      grade: 'Grade A+',
+      corridor: 'Sonipat → Delhi NCR',
+      corridorHi: 'सोनीपत → दिल्ली NCR',
+      destination: 'Dwarka & Okhla, New Delhi',
+      deliveryWindow: 'Tomorrow · 6–10 AM',
+      imageSrc: '/assets/produce/tomato.webp',
+      visual: 'tomato',
+      farmerFloorPerKg: 31,
+      mandiPricePerKg: 24,
+      buyerCeilingPerKg: 38,
+      buyerCurrentPerKg: 42,
+      platformFeePct: 0.02,
+      routeDistanceKm: 92,
+      vehicleId: 'VEH-05',
+      lots: [
+        { id: 'lot_green_field', listingId: 'listing_001', farmer: 'Ramesh Kumar', farm: 'Green Field Farm', location: 'Murthal, Sonipat', offeredKg: 180, detourKm: 0, own: true },
+        { id: 'lot_nandi', farmer: 'Sunita Devi', farm: 'Nandi Organic Plot', location: 'Bahalgarh, Sonipat', offeredKg: 84, detourKm: 5 },
+        { id: 'lot_rana', farmer: 'Jaswant Rana', farm: 'Rana Vegetable Farm', location: 'Kharkhoda, Sonipat', offeredKg: 96, detourKm: 9 },
+      ],
+      commitments: [
+        { id: 'mmc_freshkart', source: 'bulk', party: 'FreshKart Foods', detail: 'Okhla Distribution Centre', quantityKg: 200, committedAt: iso(-1) },
+        { id: 'mmc_dwarka12', source: 'consumer', party: 'Dwarka Sector 12 pool', detail: '11 households', quantityKg: 62, committedAt: iso(-1) },
+        { id: 'mmc_dwarka19', source: 'consumer', party: 'Dwarka Sector 19 pool', detail: '7 households', quantityKg: 38, committedAt: iso(0) },
+        { id: 'mmc_aarav', source: 'consumer', party: 'Aarav Mehta', detail: 'Sector 12, Dwarka', quantityKg: 15, committedAt: iso(0), own: true },
+      ],
+      status: 'forming',
+      createdAt: iso(-2),
+    },
+  ],
 }
 
 const cloneSeed = () => JSON.parse(JSON.stringify(seedState)) as PrototypeState
@@ -94,6 +130,14 @@ const normalize = (value: Partial<PrototypeState>): PrototypeState => {
     ...value,
     consumerProfile: value.consumerProfile?.addresses ? value.consumerProfile : base.consumerProfile,
     bulkProfile: value.bulkProfile?.businessName ? value.bulkProfile : base.bulkProfile,
+    // A payload that predates Market Maker (older localStorage, or a backend that dropped the
+    // key) must fall back to the seeded board rather than leaving the module with no market.
+    markets: Array.isArray(value.markets) && value.markets.length ? value.markets : base.markets,
+    // The corridor vehicle is part of feasibility, so an older fleet payload is topped up
+    // rather than silently leaving the market with nothing to quote against.
+    vehicles: value.vehicles?.length
+      ? [...value.vehicles, ...base.vehicles.filter((vehicle) => !value.vehicles!.some((item) => item.id === vehicle.id))]
+      : base.vehicles,
   }
   for (const pickup of state.pickups) if (!state.logisticsPickups.some((item) => item.id === pickup.id)) state.logisticsPickups.unshift({ id: pickup.id, farmer: state.profile.name, farm: state.profile.farmName, farmLocation: pickup.farmAddress, crop: pickup.crop, cropHi: pickup.cropHi, quantityKg: pickup.quantityKg, pickupWindow: `${pickup.date} · ${pickup.timeWindow}`, orderRefs: [pickup.orderId], status: pickup.status === 'driver_assigned' ? 'assigned' : pickup.status === 'arriving' ? 'en_route' : pickup.status === 'collected' ? 'loaded' : pickup.status === 'completed' ? 'completed' : 'unassigned', notes: '', checklist: { arrived: false, quantityVerified: false, qualityChecked: false, loadSecured: false, pickupCompleted: false }, timeline: [{ label: 'Pickup created', labelHi: 'पिकअप बनाया गया', at: new Date().toISOString() }] })
   const addDelivery = (orderRef: string, buyer: string, buyerType: 'Consumer' | 'Bulk Buyer', destination: string, produce: string, produceHi: string, quantityKg: number, eta: string) => { if (!state.deliveries.some((item) => item.orderRefs.includes(orderRef))) state.deliveries.unshift({ id: `DLV-${orderRef.replace(/\D/g, '').slice(-5) || 'NEW'}`, origin: 'KisanLink Sonipat Hub', destination, buyer, buyerType, shipment: `${produce} shipment`, produce, produceHi, quantityKg, eta, orderRefs: [orderRef], status: 'scheduled', handlingNotes: 'Handle produce with care.', issues: [], timeline: [{ label: 'Delivery scheduled', labelHi: 'डिलीवरी तय हुई', at: new Date().toISOString() }] }) }
@@ -104,7 +148,17 @@ const normalize = (value: Partial<PrototypeState>): PrototypeState => {
 const readLocal = (): PrototypeState => {
   try { return normalize(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '') as Partial<PrototypeState>) } catch { const state = cloneSeed(); localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); return state }
 }
-const writeLocal = (state: PrototypeState) => { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); window.dispatchEvent(new Event('kisanlink-state')) }
+/**
+ * Persists shared state and announces it only when it actually changed. `readState()` also
+ * writes through this (it caches the remote snapshot locally), so announcing unconditionally
+ * would make any live subscriber re-read, re-write and re-announce forever.
+ */
+const writeLocal = (state: PrototypeState) => {
+  const serialized = JSON.stringify(state)
+  const changed = localStorage.getItem(STORAGE_KEY) !== serialized
+  localStorage.setItem(STORAGE_KEY, serialized)
+  if (changed) window.dispatchEvent(new Event('kisanlink-state'))
+}
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const controller = new AbortController()
@@ -123,6 +177,17 @@ async function persist(state: PrototypeState) {
   const synchronized = normalize(state)
   writeLocal(synchronized)
   try { return await api<PrototypeState>('/state', { method: 'PUT', body: JSON.stringify(synchronized) }) } catch { return synchronized }
+}
+
+/**
+ * The canonical backend only knows about rows it created. Anything the prototype itself wrote
+ * into shared state — a Market Maker order, its earning, its pickup — has no Postgres row, so
+ * taking the canonical list verbatim would silently hide it. Merging by id keeps the canonical
+ * records authoritative while local-only records stay visible.
+ */
+const mergeLocalOnly = <T extends { id: string }>(canonical: T[], local: T[]): T[] => {
+  const known = new Set(canonical.map((item) => item.id))
+  return [...local.filter((item) => !known.has(item.id)), ...canonical]
 }
 
 export const prototypeService = {
@@ -175,7 +240,7 @@ export const prototypeService = {
   async getOrders() {
     try {
       const canonical = await apiClient.getMyOrders('farmer')
-      if (canonical && canonical.length > 0) return canonical
+      if (canonical && canonical.length > 0) return mergeLocalOnly(canonical, (await readState()).orders)
     } catch (e) {
       console.warn('Backend orders fallback:', e)
     }
@@ -212,7 +277,7 @@ export const prototypeService = {
   async getPickups() {
     try {
       const canonical = await apiClient.getFarmerPickups()
-      if (canonical && canonical.length > 0) return canonical
+      if (canonical && canonical.length > 0) return mergeLocalOnly(canonical, (await readState()).pickups)
     } catch (e) {
       console.warn('Backend pickups fallback:', e)
     }
@@ -221,7 +286,7 @@ export const prototypeService = {
   async getEarnings() {
     try {
       const canonical = await apiClient.getFarmerEarnings()
-      if (canonical && canonical.length > 0) return canonical
+      if (canonical && canonical.length > 0) return mergeLocalOnly(canonical, (await readState()).earnings)
     } catch (e) {
       console.warn('Backend earnings fallback:', e)
     }
@@ -238,6 +303,16 @@ export const prototypeService = {
     if (scenario === 'consumer') { state.listings = [{ ...state.listings[0], id: 'listing_demo_tomato', quantityKg: 100, remainingKg: 90, allocatedKg: 10 }]; state.orders = [{ id: 'KL-C-DEMO-1', buyerName: state.consumerProfile.name, buyerType: 'Consumer', crop: 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', listingId: 'listing_demo_tomato', quantityKg: 10, ratePerKg: 31, total: 310, farmerPayout: 301, platformFee: 9, logisticsFee: 35, orderedAt: iso(0), status: 'accepted', paymentStatus: 'paid', pickupId: 'PK-C-DEMO' }]; state.pickups = [{ id: 'PK-C-DEMO', orderId: 'KL-C-DEMO-1', crop: 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', quantityKg: 10, date: iso(0), timeWindow: '2–4 PM', driver: 'Assigning shortly', vehicle: 'To be assigned', farmAddress: 'Green Field Farm, Murthal', status: 'scheduled' }]; state.consumerOrders = [{ id: 'KL-C-DEMO', items: [{ listingId: 'listing_demo_tomato', crop: 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', farm: 'Green Field Farm', imageSrc: '/assets/produce/tomato.webp', quantityKg: 10, ratePerKg: 31 }], subtotal: 310, logisticsFee: 35, platformFee: 9, farmerShare: 301, total: 345, address: state.consumerProfile.addresses[0], deliverySlot: 'Tomorrow · 9–11 AM', eta: iso(1), note: '', paymentMethod: 'UPI', paymentStatus: 'Mock paid', status: 'farmer_preparing', orderedAt: new Date().toISOString(), timeline: [{ status: 'confirmed', label: 'Order confirmed', at: new Date().toISOString() }, { status: 'farmer_preparing', label: 'Farmer accepted', at: new Date().toISOString() }] }]; state.earnings = [{ id: 'TX-C-DEMO', orderId: 'KL-C-DEMO-1', crop: 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', gross: 310, deductions: 9, net: 301, mandiEquivalent: 240, date: iso(0), status: 'pending' }]; state.logisticsPickups = []; state.deliveries = []; state.logisticsRoutes = [] }
     if (scenario === 'bulk') { const contributions = [{ farmer: 'Ramesh Kumar', farm: 'Green Field Farm', listingId: 'listing_001', quantityKg: 700, ratePerKg: 30 }, { farmer: 'Harpreet Singh', farm: 'Sunehri Khet', listingId: 'network_tomato_1', quantityKg: 500, ratePerKg: 31 }, { farmer: 'Rajesh Yadav', farm: 'Yadav Fresh Fields', listingId: 'network_tomato_2', quantityKg: 800, ratePerKg: 32 }]; state.rfqs = [{ id: 'RFQ-DEMO-2T', crop: 'Tomatoes', grade: 'Grade A+', requiredQuantityKg: 2000, targetPrice: 32, deliveryLocation: 'Okhla Distribution Centre, New Delhi', deliveryWindow: 'Tomorrow · 4–6 PM', frequency: 'one-time', notes: 'Retail grade', status: 'converted', createdAt: new Date().toISOString(), matches: contributions }]; state.bulkOrders = [{ id: 'KL-B-DEMO', rfqId: 'RFQ-DEMO-2T', crop: 'Tomatoes', grade: 'Grade A+', orderedQuantityKg: 2000, suppliedQuantityKg: 2000, contributions, produceValue: 62600, logisticsFee: 2817, platformFee: 1252, total: 66669, traditionalEstimate: 76003, deliveryLocation: 'Okhla Distribution Centre, New Delhi', deliveryWindow: 'Tomorrow · 4–6 PM', status: 'pickup_scheduled', invoiceStatus: 'Mock invoice generated', orderedAt: new Date().toISOString() }]
       state.orders.unshift({ id: 'KL-B-DEMO-1', buyerName: state.bulkProfile.businessName, buyerType: 'Bulk Buyer', crop: 'Tomatoes', cropHi: 'टमाटर', listingId: 'listing_001', quantityKg: 700, ratePerKg: 30, total: 21000, farmerPayout: 19950, platformFee: 420, logisticsFee: 630, orderedAt: iso(0), status: 'pickup_scheduled', paymentStatus: 'processing', pickupId: 'PK-2051' }); state.earnings.unshift({ id: 'TX-B-DEMO-1', orderId: 'KL-B-DEMO-1', crop: 'Tomatoes', cropHi: 'टमाटर', gross: 21000, deductions: 1050, net: 19950, mandiEquivalent: 16800, date: iso(0), status: 'pending' }); const pickup = state.logisticsPickups.find((item) => item.id === 'PK-2051'); if (pickup) pickup.orderRefs = ['KL-B-DEMO-1']; const delivery = state.deliveries.find((item) => item.id === 'DLV-302'); if (delivery) delivery.orderRefs = ['KL-B-DEMO']
+    }
+    if (scenario === 'market') {
+      // Rewinds the flagship corridor to the moment before it becomes viable, and points
+      // every role at it. Deliberately leaves the rest of the prototype untouched.
+      const board = state.markets[0]
+      const note = (role: Role, title: string, titleHi: string, body: string, bodyHi: string, href: string) => state.notifications.unshift({ id: `note_mm_${role}_${Date.now()}`, role, title, titleHi, body, bodyHi, timestamp: new Date().toISOString(), read: false, href })
+      note('farmer', 'Your tomatoes are close to a direct market', 'आपके टमाटर सीधे बाज़ार के करीब हैं', `${board.crop} in ${board.corridor} needs a little more demand.`, 'थोड़ी और मांग चाहिए।', '/farmer/market')
+      note('consumer', 'A farm-direct market is nearly open', 'सीधा बाज़ार लगभग खुल गया है', `${board.crop} from ${board.corridor} is close to unlocking.`, 'सीधा बाज़ार खुलने वाला है।', '/consumer/market')
+      note('bulk', 'Pooled corridor is close to viable', 'साझा कॉरिडोर लगभग व्यवहार्य है', `${board.crop} · ${board.destination}`, 'साझा कॉरिडोर लगभग तैयार है।', '/bulk/market')
+      note('logistics', 'Corridor waiting on demand', 'कॉरिडोर मांग का इंतज़ार कर रहा है', `${board.corridor} · ${board.routeDistanceKm} km · vehicle held`, 'कॉरिडोर मांग का इंतज़ार कर रहा है।', '/logistics/market')
     }
     if (scenario === 'issue') { state.logisticsPickups[0].status = 'issue'; state.logisticsPickups[0].notes = 'Crate count differs from manifest by 2.'; state.deliveries[0].status = 'issue'; state.deliveries[0].issues = ['Traffic delay near Kundli · ETA +25 min']; state.notifications.unshift({ id: 'note-logistics-issue', role: 'logistics', title: 'Priority issue requires action', titleHi: 'ज़रूरी समस्या पर कार्रवाई चाहिए', body: 'PK-2048 crate count needs verification.', bodyHi: 'PK-2048 के क्रेट की संख्या जांचें।', timestamp: new Date().toISOString(), read: false, href: '/logistics/pickups/PK-2048' }) }
     await persist(normalize(state)); return state

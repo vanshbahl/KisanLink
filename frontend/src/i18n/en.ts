@@ -1,5 +1,5 @@
 export const en = {
-  home: 'Home', produce: 'Produce', sell: 'Sell', orders: 'Orders', profile: 'Profile', explore: 'Explore', cart: 'Cart', saved: 'Saved', overview: 'Overview', supply: 'Supply', requests: 'Requests', pickups: 'Pickups', deliveries: 'Deliveries', routes: 'Routes', vehicles: 'Vehicles',
+  marketMakerNav: 'Market', home: 'Home', produce: 'Produce', sell: 'Sell', orders: 'Orders', profile: 'Profile', explore: 'Explore', cart: 'Cart', saved: 'Saved', overview: 'Overview', supply: 'Supply', requests: 'Requests', pickups: 'Pickups', deliveries: 'Deliveries', routes: 'Routes', vehicles: 'Vehicles',
   farmer: 'Farmer', consumer: 'Consumer', bulkBuyer: 'Bulk Buyer', logisticsOperator: 'Logistics Operator', verifiedRole: 'Verified {role}', current: 'Current',
   continue: 'Continue', back: 'Back', notifications: 'Notifications', selectLanguage: 'Select language', logoHome: 'KisanLink home', dismiss: 'Dismiss', loading: 'Loading content', locationLabel: 'Location', dwarkaLocation: 'Dwarka, New Delhi', tomorrowPickup: 'Tomorrow, 7:30 AM',
   greeting: 'Namaste, Ramesh ji', location: 'Sonipat, Haryana', deliveringTo: 'Delivering to', clear: 'Clear', todayFarm: 'Today on your farm',

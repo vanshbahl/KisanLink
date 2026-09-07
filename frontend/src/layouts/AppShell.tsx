@@ -1,6 +1,6 @@
 import {
   BarChart3, Boxes, ClipboardList, Heart, HelpCircle, Home,
-  LayoutDashboard, ListChecks, MapPinned, PackageCheck, Search, ShoppingBag, Sprout, Truck, UserRound,
+  LayoutDashboard, ListChecks, MapPinned, PackageCheck, Radar, Search, ShoppingBag, Sprout, Truck, UserRound,
 } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { LanguageSwitcher } from '../components/LanguageSwitcher'
@@ -27,6 +27,7 @@ const navByRole: Record<Role, NavItemConfig[]> = {
     { labelKey: 'produce', to: '/farmer/produce', icon: Sprout },
     { labelKey: 'sell', to: '/farmer/sell', icon: ShoppingBag, primary: true },
     { labelKey: 'orders', to: '/farmer/orders', icon: PackageCheck },
+    { labelKey: 'marketMakerNav', to: '/farmer/market', icon: Radar },
     { labelKey: 'earnings', to: '/farmer/earnings', icon: BarChart3, desktopOnly: true },
     { labelKey: 'demandInsights', to: '/farmer/insights', icon: BarChart3, desktopOnly: true },
     { labelKey: 'pickupSupport', to: '/farmer/pickups', icon: Boxes, desktopOnly: true },
@@ -37,6 +38,7 @@ const navByRole: Record<Role, NavItemConfig[]> = {
     { labelKey: 'explore', to: '/consumer/explore', icon: Search },
     { labelKey: 'cart', to: '/consumer/cart', icon: ShoppingBag, primary: true },
     { labelKey: 'orders', to: '/consumer/orders', icon: PackageCheck },
+    { labelKey: 'marketMakerNav', to: '/consumer/market', icon: Radar },
     { labelKey: 'saved', to: '/consumer/saved', icon: Heart, desktopOnly: true },
     { labelKey: 'profile', to: '/consumer/profile', icon: UserRound },
   ],
@@ -45,12 +47,14 @@ const navByRole: Record<Role, NavItemConfig[]> = {
     { labelKey: 'supply', to: '/bulk/supply', icon: Boxes },
     { labelKey: 'requests', to: '/bulk/requests', icon: ClipboardList },
     { labelKey: 'orders', to: '/bulk/orders', icon: ListChecks },
+    { labelKey: 'marketMakerNav', to: '/bulk/market', icon: Radar },
     { labelKey: 'profile', to: '/bulk/profile', icon: UserRound },
   ],
   logistics: [
     { labelKey: 'overview', to: '/logistics', icon: LayoutDashboard, end: true },
     { labelKey: 'pickups', to: '/logistics/pickups', icon: Boxes },
     { labelKey: 'deliveries', to: '/logistics/deliveries', icon: PackageCheck },
+    { labelKey: 'marketMakerNav', to: '/logistics/market', icon: Radar },
     { labelKey: 'routes', to: '/logistics/routes', icon: MapPinned },
     { labelKey: 'vehicles', to: '/logistics/vehicles', icon: Truck },
     { labelKey: 'profile', to: '/logistics/profile', icon: UserRound },

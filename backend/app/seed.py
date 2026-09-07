@@ -53,10 +53,47 @@ SEED_STATE = {
         {"id": "VEH-02", "registration": "DL 1L AC 9082", "type": "Medium truck", "typeHi": "मध्यम ट्रक", "capacityKg": 2000, "driver": "Imran Khan", "currentAssignment": "RTE-POOL-01", "status": "in_transit"},
         {"id": "VEH-03", "registration": "HR 69 D 3104", "type": "Pickup", "typeHi": "पिकअप", "capacityKg": 900, "driver": "Meena Devi", "status": "available"},
         {"id": "VEH-04", "registration": "UP 17 BT 6610", "type": "Electric cargo van", "typeHi": "इलेक्ट्रिक कार्गो वैन", "capacityKg": 600, "driver": "Amit Pal", "status": "maintenance"},
+        {"id": "VEH-05", "registration": "HR 26 CX 7741", "type": "Light tempo", "typeHi": "छोटा टेम्पो", "capacityKg": 400, "driver": "Balwinder Singh", "status": "available"},
     ],
     "logisticsProfile": {"name": "Kavita Sharma", "phone": "9877004455", "hub": "KisanLink Sonipat Hub", "shift": "Morning · 6 AM–3 PM", "language": "en", "notifications": {"pickups": True, "deliveries": True, "issues": True, "delays": True}},
     "savedListingIds": ["listing_011"],
     "savedFarmNames": ["Green Field Farm"],
+    # Market Maker corridor. Mirrors the frontend seed so both sides of the prototype
+    # state agree on the flagship scenario before any role touches it.
+    "markets": [
+        {
+            "id": "MM-TOM-SONIPAT",
+            "crop": "Fresh Tomatoes",
+            "cropHi": "ताज़े टमाटर",
+            "grade": "Grade A+",
+            "corridor": "Sonipat → Delhi NCR",
+            "corridorHi": "सोनीपत → दिल्ली NCR",
+            "destination": "Dwarka & Okhla, New Delhi",
+            "deliveryWindow": "Tomorrow · 6–10 AM",
+            "imageSrc": "/assets/produce/tomato.webp",
+            "visual": "tomato",
+            "farmerFloorPerKg": 31,
+            "mandiPricePerKg": 24,
+            "buyerCeilingPerKg": 38,
+            "buyerCurrentPerKg": 42,
+            "platformFeePct": 0.02,
+            "routeDistanceKm": 92,
+            "vehicleId": "VEH-05",
+            "lots": [
+                {"id": "lot_green_field", "listingId": "listing_001", "farmer": "Ramesh Kumar", "farm": "Green Field Farm", "location": "Murthal, Sonipat", "offeredKg": 180, "detourKm": 0, "own": True},
+                {"id": "lot_nandi", "farmer": "Sunita Devi", "farm": "Nandi Organic Plot", "location": "Bahalgarh, Sonipat", "offeredKg": 84, "detourKm": 5},
+                {"id": "lot_rana", "farmer": "Jaswant Rana", "farm": "Rana Vegetable Farm", "location": "Kharkhoda, Sonipat", "offeredKg": 96, "detourKm": 9},
+            ],
+            "commitments": [
+                {"id": "mmc_freshkart", "source": "bulk", "party": "FreshKart Foods", "detail": "Okhla Distribution Centre", "quantityKg": 200, "committedAt": _day(-1)},
+                {"id": "mmc_dwarka12", "source": "consumer", "party": "Dwarka Sector 12 pool", "detail": "11 households", "quantityKg": 62, "committedAt": _day(-1)},
+                {"id": "mmc_dwarka19", "source": "consumer", "party": "Dwarka Sector 19 pool", "detail": "7 households", "quantityKg": 38, "committedAt": _day(0)},
+                {"id": "mmc_aarav", "source": "consumer", "party": "Aarav Mehta", "detail": "Sector 12, Dwarka", "quantityKg": 15, "committedAt": _day(0), "own": True},
+            ],
+            "status": "forming",
+            "createdAt": _day(-2),
+        },
+    ],
 }
 
 

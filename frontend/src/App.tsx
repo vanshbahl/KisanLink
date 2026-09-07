@@ -12,6 +12,7 @@ import { FarmerDashboard } from './pages/FarmerDashboard'
 import { FarmerEarningsPage, FarmerInsightsPage, FarmerOrderDetailPage, FarmerOrdersPage, FarmerPickupsPage, FarmerProduceDetailPage, FarmerProfilePage, SellProducePage } from './pages/FarmerExperience'
 import { FarmerProducePage } from './pages/FarmerProducePage'
 import { ListingDetailPage } from './pages/ListingDetailPage'
+import { MarketMakerPage } from './pages/MarketMakerPage'
 import { LogisticsDashboard, LogisticsDeliveriesPage, LogisticsDeliveryDetailPage, LogisticsPickupsPage, LogisticsPickupDetailPage, LogisticsProfilePage, LogisticsRoutesPage, LogisticsVehiclesPage } from './pages/LogisticsExperience'
 import { OtpPage } from './pages/OtpPage'
 import { WelcomePage } from './pages/WelcomePage'
@@ -52,6 +53,7 @@ export default function App() {
           <Route path="earnings" element={<RoleGuard role="farmer"><FarmerEarningsPage /></RoleGuard>} />
           <Route path="insights" element={<RoleGuard role="farmer"><FarmerInsightsPage /></RoleGuard>} />
           <Route path="pickups" element={<RoleGuard role="farmer"><FarmerPickupsPage /></RoleGuard>} />
+          <Route path="market" element={<RoleGuard role="farmer"><MarketMakerPage /></RoleGuard>} />
           <Route path="profile" element={<RoleGuard role="farmer"><FarmerProfilePage /></RoleGuard>} />
         </Route>
 
@@ -65,6 +67,7 @@ export default function App() {
           <Route path="orders/:id" element={<RoleGuard role="consumer"><ConsumerOrderDetailPage /></RoleGuard>} />
           <Route path="saved" element={<RoleGuard role="consumer"><ConsumerSavedPage /></RoleGuard>} />
           <Route path="how-it-works" element={<RoleGuard role="consumer"><ConsumerHowItWorksPage /></RoleGuard>} />
+          <Route path="market" element={<RoleGuard role="consumer"><MarketMakerPage /></RoleGuard>} />
           <Route path="profile" element={<RoleGuard role="consumer"><ConsumerProfilePage /></RoleGuard>} />
         </Route>
 
@@ -76,6 +79,7 @@ export default function App() {
           <Route path="requests/:id" element={<RoleGuard role="bulk"><BulkRequestDetailPage /></RoleGuard>} />
           <Route path="orders" element={<RoleGuard role="bulk"><BulkOrdersPage /></RoleGuard>} />
           <Route path="orders/:id" element={<RoleGuard role="bulk"><BulkOrderDetailPage /></RoleGuard>} />
+          <Route path="market" element={<RoleGuard role="bulk"><MarketMakerPage /></RoleGuard>} />
           <Route path="profile" element={<RoleGuard role="bulk"><BulkProfilePage /></RoleGuard>} />
         </Route>
 
@@ -87,6 +91,7 @@ export default function App() {
           <Route path="deliveries/:id" element={<RoleGuard role="logistics"><LogisticsDeliveryDetailPage /></RoleGuard>} />
           <Route path="routes" element={<RoleGuard role="logistics"><LogisticsRoutesPage /></RoleGuard>} />
           <Route path="vehicles" element={<RoleGuard role="logistics"><LogisticsVehiclesPage /></RoleGuard>} />
+          <Route path="market" element={<RoleGuard role="logistics"><MarketMakerPage /></RoleGuard>} />
           <Route path="profile" element={<RoleGuard role="logistics"><LogisticsProfilePage /></RoleGuard>} />
         </Route>
       </Route>
