@@ -1,6 +1,6 @@
 from app.models.base import Base, TimestampMixin
 from app.models.user import UserRoleEnum, User, FarmerProfile, BuyerProfile, LogisticsProfile
-from app.models.crop import QualityGradeEnum, ListingStatusEnum, CropType, CropListing
+from app.models.crop import QualityGradeEnum, ListingStatusEnum, PackagingTypeEnum, CropType, CropListing
 from app.models.requirement import RequirementStatusEnum, BuyerRequirement
 from app.models.cluster import ClusterStatusEnum, DynamicCluster, ClusterItem
 from app.models.order import OrderStatusEnum, Order, OrderFarmerAllocation
@@ -10,6 +10,7 @@ from app.models.intelligence import PriceObservation, DemandForecast, ImpactMetr
 from app.models.review import Review, Dispute
 from app.models.audit import OperatorAuditLog
 from app.models.inspection import ProduceInspection
+from app.models.sampling import InspectionSampleAssignment
 
 __all__ = [
     "Base",
@@ -21,6 +22,7 @@ __all__ = [
     "LogisticsProfile",
     "QualityGradeEnum",
     "ListingStatusEnum",
+    "PackagingTypeEnum",
     "CropType",
     "CropListing",
     "RequirementStatusEnum",
@@ -43,4 +45,5 @@ __all__ = [
     "Dispute",
     "OperatorAuditLog",
     "ProduceInspection",
+    "InspectionSampleAssignment",
 ]

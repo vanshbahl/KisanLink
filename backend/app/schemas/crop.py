@@ -2,7 +2,7 @@ from datetime import date, datetime
 from typing import List, Optional
 from uuid import UUID
 from pydantic import BaseModel, Field, ConfigDict
-from app.models.crop import QualityGradeEnum, ListingStatusEnum
+from app.models.crop import QualityGradeEnum, ListingStatusEnum, PackagingTypeEnum
 
 
 class CropTypeOut(BaseModel):
@@ -29,6 +29,11 @@ class CropListingCreate(BaseModel):
     latitude: Optional[float] = Field(None, ge=-90.0, le=90.0)
     longitude: Optional[float] = Field(None, ge=-180.0, le=180.0)
     photos: Optional[List[str]] = Field(default_factory=list)
+    # Bulk-lot packaging - how a large quantity is physically divided into
+    # inspectable containers. Optional so single-crate/small listings are unaffected.
+    packaging_type: Optional[PackagingTypeEnum] = None
+    container_count: Optional[int] = Field(None, gt=0)
+    unit_weight_kg: Optional[float] = Field(None, gt=0)
 
 
 class CropListingUpdate(BaseModel):
@@ -41,6 +46,9 @@ class CropListingUpdate(BaseModel):
     harvest_date: Optional[date] = None
     status: Optional[ListingStatusEnum] = None
     photos: Optional[List[str]] = None
+    packaging_type: Optional[PackagingTypeEnum] = None
+    container_count: Optional[int] = Field(None, gt=0)
+    unit_weight_kg: Optional[float] = Field(None, gt=0)
 
 
 class CropListingOut(BaseModel):
@@ -68,6 +76,10 @@ class CropListingOut(BaseModel):
     photos: Optional[List[str]] = None
     is_urgent_rescue: bool = False
     rescue_discount_price_per_kg: Optional[float] = None
+    lot_code: Optional[str] = None
+    packaging_type: Optional[PackagingTypeEnum] = None
+    container_count: Optional[int] = None
+    unit_weight_kg: Optional[float] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

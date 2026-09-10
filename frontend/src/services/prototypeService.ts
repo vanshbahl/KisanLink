@@ -1,4 +1,4 @@
-import type { BulkOrder, BulkProfileData, BulkRfq, ConsumerOrder, ConsumerProfileData, Delivery, DemoScenario, EarningsTransaction, FarmerListing, FarmerOrder, FarmerProfileData, ListingStatus, LogisticsPickup, LogisticsProfileData, LogisticsRoute, MarketMakerBoard, OrderStatus, Pickup, PrototypeNotification, Role, Vehicle } from '../types'
+import type { BulkOrder, BulkProfileData, BulkRfq, ConsumerOrder, ConsumerProfileData, Delivery, DemoScenario, EarningsTransaction, FarmerListing, FarmerOrder, FarmerProfileData, ListingStatus, LogisticsPickup, LogisticsProfileData, LogisticsRoute, LotInspectionState, MarketMakerBoard, OrderStatus, Pickup, PrototypeNotification, Role, Vehicle } from '../types'
 import { apiClient } from './apiClient'
 import { localDay } from '../utils/dates'
 
@@ -24,6 +24,8 @@ export interface PrototypeState {
   savedListingIds: string[]
   savedFarmNames: string[]
   markets: MarketMakerBoard[]
+  /** Lot quality inspection + chain-of-custody evidence, keyed by lotCode. */
+  inspectionLots: Record<string, LotInspectionState>
 }
 
 const API_URL = import.meta.env.VITE_API_URL ?? '/api'
@@ -33,7 +35,7 @@ const iso = localDay
  * Seed version. Bumping it invalidates any previously persisted snapshot — local or
  * remote — so a demo build never boots into a half-updated story from an older run.
  */
-const SEED_VERSION = 4
+const SEED_VERSION = 5
 
 /**
  * ONE STORY, TOLD FOUR TIMES.
@@ -58,15 +60,15 @@ const seedState: PrototypeState = {
   seedVersion: SEED_VERSION,
   listings: [
     // --- Green Field Farm · Ramesh Kumar · the demo farmer's own produce ---
-    { id: 'listing_001', crop: 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', category: 'Vegetables', imageSrc: '/assets/produce/tomato.webp', visual: 'tomato', quantityKg: 900, remainingKg: 600, allocatedKg: 300, unit: 'kg', grade: 'Grade A+', harvestDate: iso(-1), availableFrom: iso(0), farmingMethod: 'Natural farming', notes: 'Firm, hand-sorted tomatoes.', pricePerKg: 31, mandiPricePerKg: 24, retailPricePerKg: 38, farmerId: 'farmer_001', farm: 'Green Field Farm', pickupDate: iso(1), pickupWindow: 'Morning · 7–10 AM', fulfillment: 'pickup', status: 'active', assisted: false, views: 126, inquiries: 9, createdAt: iso(-5) },
+    { id: 'listing_001', crop: 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', category: 'Vegetables', imageSrc: '/assets/produce/tomato.webp', visual: 'tomato', quantityKg: 900, remainingKg: 600, allocatedKg: 300, unit: 'kg', grade: 'Grade A+', harvestDate: iso(-1), availableFrom: iso(0), farmingMethod: 'Natural farming', notes: 'Firm, hand-sorted tomatoes.', pricePerKg: 31, mandiPricePerKg: 24, retailPricePerKg: 38, farmerId: 'farmer_001', farm: 'Green Field Farm', pickupDate: iso(1), pickupWindow: 'Morning · 7–10 AM', fulfillment: 'pickup', status: 'active', assisted: false, views: 126, inquiries: 9, createdAt: iso(-5), lotCode: 'KL-TOM-1048', packagingType: 'CRATE', unitWeightKg: 25, overviewPhotos: ['/assets/produce/tomato.webp'] },
     { id: 'listing_011', crop: 'Baby Spinach', cropHi: 'बेबी पालक', category: 'Vegetables', imageSrc: '/assets/produce/spinach.webp', visual: 'leafy', quantityKg: 140, remainingKg: 126, allocatedKg: 14, unit: 'kg', grade: 'Grade A+', harvestDate: iso(0), availableFrom: iso(0), farmingMethod: 'Organic', notes: 'Washed and bundled.', pricePerKg: 42, mandiPricePerKg: 35, retailPricePerKg: 52, farmerId: 'farmer_001', farm: 'Green Field Farm', pickupDate: iso(2), pickupWindow: 'Morning · 7–10 AM', fulfillment: 'pickup', status: 'active', assisted: true, views: 83, inquiries: 5, createdAt: iso(-2) },
     { id: 'listing_draft_1', crop: 'Sharbati Wheat', cropHi: 'शरबती गेहूं', category: 'Grains', imageSrc: '/assets/produce/wheat.webp', visual: 'grain', quantityKg: 900, remainingKg: 900, allocatedKg: 0, unit: 'kg', grade: 'Grade A', harvestDate: iso(-8), availableFrom: iso(3), farmingMethod: 'Conventional', notes: '', pricePerKg: 36, mandiPricePerKg: 31, retailPricePerKg: 44, farmerId: 'farmer_001', farm: 'Green Field Farm', pickupDate: iso(4), pickupWindow: 'Afternoon · 1–4 PM', fulfillment: 'pickup', status: 'draft', assisted: false, views: 0, inquiries: 0, createdAt: iso(-1) },
     { id: 'listing_sold_1', crop: 'New Potatoes', cropHi: 'नए आलू', category: 'Staples', imageSrc: '/assets/produce/potato.webp', visual: 'potato', quantityKg: 500, remainingKg: 0, allocatedKg: 500, unit: 'kg', grade: 'Grade A', harvestDate: iso(-18), availableFrom: iso(-17), farmingMethod: 'Conventional', notes: '', pricePerKg: 25, mandiPricePerKg: 21, retailPricePerKg: 32, farmerId: 'farmer_001', farm: 'Green Field Farm', pickupDate: iso(-12), pickupWindow: 'Morning · 7–10 AM', fulfillment: 'pickup', status: 'sold', assisted: false, views: 210, inquiries: 18, createdAt: iso(-20) },
 
     // --- Network farms. Same corridor, other growers: this is the supply the Market Maker
     //     assembles from, and the reason the consumer marketplace is not a one-farm shop. ---
-    { id: 'listing_101', crop: 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', category: 'Vegetables', imageSrc: '/assets/produce/tomato.webp', visual: 'tomato', quantityKg: 1000, remainingKg: 500, allocatedKg: 500, unit: 'kg', grade: 'Grade A+', harvestDate: iso(-1), availableFrom: iso(0), farmingMethod: 'Natural farming', notes: 'Machine-graded, retail sorted.', pricePerKg: 29, mandiPricePerKg: 24, retailPricePerKg: 36, farmerId: 'farmer_002', farm: 'Sunehri Khet', pickupDate: iso(1), pickupWindow: 'Afternoon · 4–5 PM', fulfillment: 'pickup', status: 'active', assisted: false, views: 94, inquiries: 7, createdAt: iso(-4) },
-    { id: 'listing_102', crop: 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', category: 'Vegetables', imageSrc: '/assets/produce/tomato.webp', visual: 'tomato', quantityKg: 1300, remainingKg: 500, allocatedKg: 800, unit: 'kg', grade: 'Grade A+', harvestDate: iso(0), availableFrom: iso(0), farmingMethod: 'Conventional', notes: 'Large-lot supplier, crate packed.', pricePerKg: 30, mandiPricePerKg: 24, retailPricePerKg: 37, farmerId: 'farmer_003', farm: 'Yadav Fresh Fields', pickupDate: iso(1), pickupWindow: 'Evening · 5–6 PM', fulfillment: 'pickup', status: 'active', assisted: false, views: 141, inquiries: 12, createdAt: iso(-3) },
+    { id: 'listing_101', crop: 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', category: 'Vegetables', imageSrc: '/assets/produce/tomato.webp', visual: 'tomato', quantityKg: 1000, remainingKg: 500, allocatedKg: 500, unit: 'kg', grade: 'Grade A+', harvestDate: iso(-1), availableFrom: iso(0), farmingMethod: 'Natural farming', notes: 'Machine-graded, retail sorted.', pricePerKg: 29, mandiPricePerKg: 24, retailPricePerKg: 36, farmerId: 'farmer_002', farm: 'Sunehri Khet', pickupDate: iso(1), pickupWindow: 'Afternoon · 4–5 PM', fulfillment: 'pickup', status: 'active', assisted: false, views: 94, inquiries: 7, createdAt: iso(-4), lotCode: 'KL-TOM-7731', packagingType: 'CRATE', unitWeightKg: 25 },
+    { id: 'listing_102', crop: 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', category: 'Vegetables', imageSrc: '/assets/produce/tomato.webp', visual: 'tomato', quantityKg: 1300, remainingKg: 500, allocatedKg: 800, unit: 'kg', grade: 'Grade A+', harvestDate: iso(0), availableFrom: iso(0), farmingMethod: 'Conventional', notes: 'Large-lot supplier, crate packed.', pricePerKg: 30, mandiPricePerKg: 24, retailPricePerKg: 37, farmerId: 'farmer_003', farm: 'Yadav Fresh Fields', pickupDate: iso(1), pickupWindow: 'Evening · 5–6 PM', fulfillment: 'pickup', status: 'active', assisted: false, views: 141, inquiries: 12, createdAt: iso(-3), lotCode: 'KL-TOM-5820', packagingType: 'CRATE', unitWeightKg: 25 },
     { id: 'listing_103', crop: 'Red Onions', cropHi: 'लाल प्याज़', category: 'Staples', imageSrc: '/assets/produce/onion.webp', visual: 'onion', quantityKg: 540, remainingKg: 540, allocatedKg: 0, unit: 'kg', grade: 'Grade A', harvestDate: iso(-2), availableFrom: iso(0), farmingMethod: 'Conventional', notes: 'Cured and bagged.', pricePerKg: 29, mandiPricePerKg: 23, retailPricePerKg: 36, farmerId: 'farmer_004', farm: 'Malik Family Farm', pickupDate: iso(2), pickupWindow: 'Morning · 7–10 AM', fulfillment: 'pickup', status: 'active', assisted: false, views: 67, inquiries: 4, createdAt: iso(-6) },
     { id: 'listing_104', crop: 'Sweet Carrots', cropHi: 'मीठी गाजर', category: 'Vegetables', imageSrc: '/assets/produce/carrot.webp', visual: 'root', quantityKg: 260, remainingKg: 260, allocatedKg: 0, unit: 'kg', grade: 'Grade A+', harvestDate: iso(-1), availableFrom: iso(0), farmingMethod: 'Organic', notes: 'Topped and washed.', pricePerKg: 36, mandiPricePerKg: 29, retailPricePerKg: 45, farmerId: 'farmer_005', farm: 'Doaba Harvests', pickupDate: iso(2), pickupWindow: 'Morning · 7–10 AM', fulfillment: 'pickup', status: 'active', assisted: false, views: 58, inquiries: 3, createdAt: iso(-3) },
     { id: 'listing_105', crop: 'Green Capsicum', cropHi: 'हरी शिमला मिर्च', category: 'Vegetables', imageSrc: '/assets/produce/capsicum.webp', visual: 'green', quantityKg: 180, remainingKg: 180, allocatedKg: 0, unit: 'kg', grade: 'Grade A', harvestDate: iso(0), availableFrom: iso(0), farmingMethod: 'Natural farming', notes: 'Picked this morning.', pricePerKg: 52, mandiPricePerKg: 44, retailPricePerKg: 64, farmerId: 'farmer_006', farm: 'Ganga Plains Farm', pickupDate: iso(1), pickupWindow: 'Morning · 7–10 AM', fulfillment: 'pickup', status: 'active', assisted: false, views: 45, inquiries: 2, createdAt: iso(-1) },
@@ -111,9 +113,9 @@ const seedState: PrototypeState = {
       packaging: '25 kg crates', recurring: false, frequency: 'one-time', notes: 'Firm produce, sorted for retail distribution.',
       status: 'converted', createdAt: new Date(Date.now() - 172800000).toISOString(),
       matches: [
-        { farmer: 'Harpreet Singh', farm: 'Sunehri Khet', listingId: 'listing_101', quantityKg: 500, ratePerKg: 29 },
-        { farmer: 'Rajesh Yadav', farm: 'Yadav Fresh Fields', listingId: 'listing_102', quantityKg: 800, ratePerKg: 30 },
-        { farmer: 'Ramesh Kumar', farm: 'Green Field Farm', listingId: 'listing_001', quantityKg: 300, ratePerKg: 31 },
+        { farmer: 'Harpreet Singh', farm: 'Sunehri Khet', listingId: 'listing_101', quantityKg: 500, ratePerKg: 29, lotCode: 'KL-TOM-7731' },
+        { farmer: 'Rajesh Yadav', farm: 'Yadav Fresh Fields', listingId: 'listing_102', quantityKg: 800, ratePerKg: 30, lotCode: 'KL-TOM-5820' },
+        { farmer: 'Ramesh Kumar', farm: 'Green Field Farm', listingId: 'listing_001', quantityKg: 300, ratePerKg: 31, lotCode: 'KL-TOM-1048' },
       ],
     },
     {
@@ -128,9 +130,9 @@ const seedState: PrototypeState = {
     {
       id: 'KL-B-2412', rfqId: 'RFQ-2412', crop: 'Fresh Tomatoes', grade: 'Grade A+', orderedQuantityKg: 1600, suppliedQuantityKg: 1600,
       contributions: [
-        { farmer: 'Harpreet Singh', farm: 'Sunehri Khet', listingId: 'listing_101', quantityKg: 500, ratePerKg: 29 },
-        { farmer: 'Rajesh Yadav', farm: 'Yadav Fresh Fields', listingId: 'listing_102', quantityKg: 800, ratePerKg: 30 },
-        { farmer: 'Ramesh Kumar', farm: 'Green Field Farm', listingId: 'listing_001', quantityKg: 300, ratePerKg: 31 },
+        { farmer: 'Harpreet Singh', farm: 'Sunehri Khet', listingId: 'listing_101', quantityKg: 500, ratePerKg: 29, lotCode: 'KL-TOM-7731' },
+        { farmer: 'Rajesh Yadav', farm: 'Yadav Fresh Fields', listingId: 'listing_102', quantityKg: 800, ratePerKg: 30, lotCode: 'KL-TOM-5820' },
+        { farmer: 'Ramesh Kumar', farm: 'Green Field Farm', listingId: 'listing_001', quantityKg: 300, ratePerKg: 31, lotCode: 'KL-TOM-1048' },
       ],
       produceValue: 47800, logisticsFee: 4715, platformFee: 956, total: 53471, traditionalEstimate: 59520,
       deliveryLocation: 'Okhla Distribution Centre, New Delhi', deliveryWindow: `${iso(1)} · 6–10 AM`,
@@ -141,13 +143,13 @@ const seedState: PrototypeState = {
   bulkProfile: { businessName: 'FreshKart Foods Pvt. Ltd.', representative: 'Neha Kapoor', phone: '9899001122', gst: '07AABCF1234M1Z5 (mock)', language: 'en', procurementLocations: ['Delhi NCR', 'Gurugram'], deliveryAddresses: ['Okhla Distribution Centre, New Delhi', 'Gurugram Cold Store, Sector 37'], notifications: { matches: true, orders: true, deliveries: true } },
   logisticsPickups: [
     // The pooled run, in the order the truck drives it: Karnal -> Panipat -> Murthal -> hub.
-    { id: 'PK-POOL-B', farmer: 'Harpreet Singh', farm: 'Sunehri Khet', farmLocation: 'Karnal, Haryana', crop: 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', quantityKg: 500, pickupWindow: 'Today · 4–5 PM', orderRefs: ['KL-B-2412'], vehicleId: 'VEH-02', driver: 'Imran Khan', status: 'completed', notes: 'Stop 1 of 3 · 25 kg crates, 20 crates.', routeId: 'RTE-POOL-01', checklist: { arrived: true, quantityVerified: true, qualityChecked: true, loadSecured: true, pickupCompleted: true }, timeline: [{ label: 'Vehicle assigned', labelHi: 'वाहन तय हुआ', at: new Date(Date.now() - 14400000).toISOString() }, { label: 'Driver arrived', labelHi: 'ड्राइवर पहुंच गया', at: new Date(Date.now() - 9000000).toISOString() }, { label: 'Pickup completed', labelHi: 'पिकअप पूरा हुआ', at: new Date(Date.now() - 7200000).toISOString() }] },
-    { id: 'PK-POOL-C', farmer: 'Rajesh Yadav', farm: 'Yadav Fresh Fields', farmLocation: 'Panipat, Haryana', crop: 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', quantityKg: 800, pickupWindow: 'Today · 5–6 PM', orderRefs: ['KL-B-2412'], vehicleId: 'VEH-02', driver: 'Imran Khan', status: 'en_route', notes: 'Stop 2 of 3 · 32 crates, verify count against manifest.', routeId: 'RTE-POOL-01', checklist: { arrived: false, quantityVerified: false, qualityChecked: false, loadSecured: false, pickupCompleted: false }, timeline: [{ label: 'Vehicle assigned', labelHi: 'वाहन तय हुआ', at: new Date(Date.now() - 14400000).toISOString() }, { label: 'Driver en route', labelHi: 'ड्राइवर रास्ते में', at: new Date(Date.now() - 3600000).toISOString() }] },
-    { id: 'PK-2051', farmer: 'Ramesh Kumar', farm: 'Green Field Farm', farmLocation: 'Murthal, Sonipat, Haryana', crop: 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', quantityKg: 300, pickupWindow: 'Today · 6–7 PM', orderRefs: ['KL-ORD-1042'], vehicleId: 'VEH-02', driver: 'Imran Khan', status: 'assigned', notes: 'Stop 3 of 3 · Grade A+ crates. Verify count before loading.', routeId: 'RTE-POOL-01', checklist: { arrived: false, quantityVerified: false, qualityChecked: false, loadSecured: false, pickupCompleted: false }, timeline: [{ label: 'Pickup created', labelHi: 'पिकअप बनाया गया', at: new Date(Date.now() - 18000000).toISOString() }, { label: 'Vehicle assigned', labelHi: 'वाहन तय हुआ', at: new Date(Date.now() - 14400000).toISOString() }] },
-    { id: 'PK-2048', farmer: 'Ramesh Kumar', farm: 'Green Field Farm', farmLocation: 'Murthal, Sonipat, Haryana', crop: 'Baby Spinach', cropHi: 'बेबी पालक', quantityKg: 8, pickupWindow: 'Tomorrow · 7–10 AM', orderRefs: ['KL-C-2201-1'], vehicleId: 'VEH-01', driver: 'Suresh Kumar', status: 'assigned', notes: 'Use ventilated crates.', routeId: 'RTE-101', checklist: { arrived: false, quantityVerified: false, qualityChecked: false, loadSecured: false, pickupCompleted: false }, timeline: [{ label: 'Pickup created', labelHi: 'पिकअप बनाया गया', at: new Date(Date.now() - 7200000).toISOString() }, { label: 'Vehicle assigned', labelHi: 'वाहन सौंपा गया', at: new Date(Date.now() - 3600000).toISOString() }] },
+    { id: 'PK-POOL-B', farmer: 'Harpreet Singh', farm: 'Sunehri Khet', farmLocation: 'Karnal, Haryana', crop: 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', quantityKg: 500, pickupWindow: 'Today · 4–5 PM', orderRefs: ['KL-B-2412'], vehicleId: 'VEH-02', driver: 'Imran Khan', status: 'completed', notes: 'Stop 1 of 3 · 25 kg crates, 20 crates.', routeId: 'RTE-POOL-01', checklist: { arrived: true, quantityVerified: true, qualityChecked: true, loadSecured: true, pickupCompleted: true }, timeline: [{ label: 'Vehicle assigned', labelHi: 'वाहन तय हुआ', at: new Date(Date.now() - 14400000).toISOString() }, { label: 'Driver arrived', labelHi: 'ड्राइवर पहुंच गया', at: new Date(Date.now() - 9000000).toISOString() }, { label: 'Pickup completed', labelHi: 'पिकअप पूरा हुआ', at: new Date(Date.now() - 7200000).toISOString() }], lotCode: 'KL-TOM-7731', packagingType: 'CRATE', containerCount: 20, unitWeightKg: 25 },
+    { id: 'PK-POOL-C', farmer: 'Rajesh Yadav', farm: 'Yadav Fresh Fields', farmLocation: 'Panipat, Haryana', crop: 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', quantityKg: 800, pickupWindow: 'Today · 5–6 PM', orderRefs: ['KL-B-2412'], vehicleId: 'VEH-02', driver: 'Imran Khan', status: 'en_route', notes: 'Stop 2 of 3 · 32 crates, verify count against manifest.', routeId: 'RTE-POOL-01', checklist: { arrived: false, quantityVerified: false, qualityChecked: false, loadSecured: false, pickupCompleted: false }, timeline: [{ label: 'Vehicle assigned', labelHi: 'वाहन तय हुआ', at: new Date(Date.now() - 14400000).toISOString() }, { label: 'Driver en route', labelHi: 'ड्राइवर रास्ते में', at: new Date(Date.now() - 3600000).toISOString() }], lotCode: 'KL-TOM-5820', packagingType: 'CRATE', containerCount: 32, unitWeightKg: 25 },
+    { id: 'PK-2051', farmer: 'Ramesh Kumar', farm: 'Green Field Farm', farmLocation: 'Murthal, Sonipat, Haryana', crop: 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', quantityKg: 300, pickupWindow: 'Today · 6–7 PM', orderRefs: ['KL-ORD-1042'], vehicleId: 'VEH-02', driver: 'Imran Khan', status: 'assigned', notes: 'Stop 3 of 3 · Grade A+ crates. Verify count before loading.', routeId: 'RTE-POOL-01', checklist: { arrived: false, quantityVerified: false, qualityChecked: false, loadSecured: false, pickupCompleted: false }, timeline: [{ label: 'Pickup created', labelHi: 'पिकअप बनाया गया', at: new Date(Date.now() - 18000000).toISOString() }, { label: 'Vehicle assigned', labelHi: 'वाहन तय हुआ', at: new Date(Date.now() - 14400000).toISOString() }], lotCode: 'KL-TOM-1048', packagingType: 'CRATE', containerCount: 12, unitWeightKg: 25 },
+    { id: 'PK-2048', farmer: 'Ramesh Kumar', farm: 'Green Field Farm', farmLocation: 'Murthal, Sonipat, Haryana', crop: 'Baby Spinach', cropHi: 'बेबी पालक', quantityKg: 8, pickupWindow: 'Tomorrow · 7–10 AM', orderRefs: ['KL-C-2201-1'], vehicleId: 'VEH-01', driver: 'Suresh Kumar', status: 'assigned', notes: 'Use ventilated crates.', routeId: 'RTE-101', checklist: { arrived: false, quantityVerified: false, qualityChecked: false, loadSecured: false, pickupCompleted: false }, timeline: [{ label: 'Pickup created', labelHi: 'पिकअप बनाया गया', at: new Date(Date.now() - 7200000).toISOString() }, { label: 'Vehicle assigned', labelHi: 'वाहन सौंपा गया', at: new Date(Date.now() - 3600000).toISOString() }], packagingType: 'LOOSE' },
   ],
   deliveries: [
-    { id: 'DLV-302', origin: 'KisanLink Sonipat Hub', destination: 'Okhla Distribution Centre, New Delhi', buyer: 'FreshKart Foods Pvt. Ltd.', buyerType: 'Bulk Buyer', shipment: 'Pooled tomato lot B-2412', produce: 'Fresh Tomatoes', produceHi: 'ताज़े टमाटर', quantityKg: 1600, eta: `${iso(1)} · 6–10 AM`, vehicleId: 'VEH-02', orderRefs: ['KL-B-2412'], status: 'scheduled', handlingNotes: 'Do not stack above four crates.', issues: [], timeline: [{ label: 'Delivery scheduled', labelHi: 'डिलीवरी तय हुई', at: new Date(Date.now() - 18000000).toISOString() }] },
+    { id: 'DLV-302', origin: 'KisanLink Sonipat Hub', destination: 'Okhla Distribution Centre, New Delhi', buyer: 'FreshKart Foods Pvt. Ltd.', buyerType: 'Bulk Buyer', shipment: 'Pooled tomato lot B-2412', produce: 'Fresh Tomatoes', produceHi: 'ताज़े टमाटर', quantityKg: 1600, eta: `${iso(1)} · 6–10 AM`, vehicleId: 'VEH-02', orderRefs: ['KL-B-2412'], status: 'scheduled', handlingNotes: 'Do not stack above four crates.', issues: [], timeline: [{ label: 'Delivery scheduled', labelHi: 'डिलीवरी तय हुई', at: new Date(Date.now() - 18000000).toISOString() }], lotCode: 'KL-TOM-1048' },
     { id: 'DLV-301', origin: 'KisanLink Sonipat Hub', destination: 'Sector 12, Dwarka, New Delhi', buyer: 'Aarav Mehta', buyerType: 'Consumer', shipment: 'Fresh crate C-301', produce: 'Baby Spinach', produceHi: 'बेबी पालक', quantityKg: 8, eta: `${iso(1)} · 8–11 AM`, vehicleId: 'VEH-01', orderRefs: ['KL-C-2201'], status: 'scheduled', handlingNotes: 'Keep shaded and ventilated.', issues: [], timeline: [{ label: 'Delivery scheduled', labelHi: 'डिलीवरी तय हुई', at: new Date(Date.now() - 7200000).toISOString() }] },
   ],
   logisticsRoutes: [
@@ -220,6 +222,46 @@ const seedState: PrototypeState = {
       createdAt: iso(-2),
     },
   ],
+  inspectionLots: {
+    // KL-TOM-1048 - Ramesh's own lot (see listing_001 / PK-2051). Declared at the farm gate;
+    // the pickup sample inspection is still open, so this is the primary flow to walk
+    // through live: Logistics -> pickups -> PK-2051 -> random sample -> capture -> complete.
+    'KL-TOM-1048': {
+      lotCode: 'KL-TOM-1048', cropName: 'Fresh Tomatoes', quantityKg: 300, packagingType: 'CRATE', containerCount: 12, unitWeightKg: 25,
+      declaredAt: new Date(Date.now() - 18000000).toISOString(),
+      farmerPhotos: ['/assets/produce/tomato.webp'],
+      sampleAssignments: {},
+      captures: [
+        { id: 'cap-seed-farmer-1048', lotCode: 'KL-TOM-1048', checkpoint: 'FARMER_GATE', imageUrl: '/assets/produce/tomato.webp', status: 'fresh', capturedAt: new Date(Date.now() - 18000000).toISOString(), capturedBy: 'Ramesh Kumar (Farmer)' },
+      ],
+    },
+    // KL-TOM-7731 - Harpreet's lot (PK-POOL-B), already picked up and inspected: a
+    // fully-browsable example of a completed random-sample inspection + custody trail.
+    'KL-TOM-7731': {
+      lotCode: 'KL-TOM-7731', cropName: 'Fresh Tomatoes', quantityKg: 500, packagingType: 'CRATE', containerCount: 20, unitWeightKg: 25,
+      declaredAt: new Date(Date.now() - 28800000).toISOString(),
+      farmerPhotos: ['/assets/produce/tomato.webp'],
+      sampleAssignments: {
+        LOGISTICS_PICKUP: {
+          id: 'sa-seed-7731-pickup', lotCode: 'KL-TOM-7731', checkpoint: 'LOGISTICS_PICKUP', containerCount: 20, sampleSize: 4, selectedContainers: [2, 7, 13, 18],
+          instructions: [
+            { containerNumber: 2, position: 'Upper / outer layer', note: 'Open container 2 and capture 4-6 representative pieces from the upper / outer layer.' },
+            { containerNumber: 7, position: 'Middle / interior section', note: 'Open container 7 and capture 4-6 representative pieces from the middle / interior section.' },
+            { containerNumber: 13, position: 'Lower / interior section', note: 'Open container 13 and capture 4-6 representative pieces from the lower / interior section.' },
+            { containerNumber: 18, position: 'Upper / outer layer', note: 'Open container 18 and capture 4-6 representative pieces from the upper / outer layer.' },
+          ],
+          method: 'seed_demo_v1', createdAt: new Date(Date.now() - 9000000).toISOString(), serverGenerated: false,
+        },
+      },
+      captures: [
+        { id: 'cap-seed-farmer-7731', lotCode: 'KL-TOM-7731', checkpoint: 'FARMER_GATE', imageUrl: '/assets/produce/tomato.webp', status: 'fresh', capturedAt: new Date(Date.now() - 28800000).toISOString(), capturedBy: 'Harpreet Singh (Farmer)' },
+        { id: 'cap-seed-7731-c2', lotCode: 'KL-TOM-7731', checkpoint: 'LOGISTICS_PICKUP', containerNumber: 2, sampleAssignmentId: 'sa-seed-7731-pickup', imageUrl: '/assets/produce/tomato.webp', status: 'fresh', capturedAt: new Date(Date.now() - 9000000).toISOString(), capturedBy: 'Imran Khan (Logistics)' },
+        { id: 'cap-seed-7731-c7', lotCode: 'KL-TOM-7731', checkpoint: 'LOGISTICS_PICKUP', containerNumber: 7, sampleAssignmentId: 'sa-seed-7731-pickup', imageUrl: '/assets/produce/tomato.webp', status: 'fresh', capturedAt: new Date(Date.now() - 8940000).toISOString(), capturedBy: 'Imran Khan (Logistics)' },
+        { id: 'cap-seed-7731-c13', lotCode: 'KL-TOM-7731', checkpoint: 'LOGISTICS_PICKUP', containerNumber: 13, sampleAssignmentId: 'sa-seed-7731-pickup', imageUrl: '/assets/produce/tomato.webp', status: 'fresh', capturedAt: new Date(Date.now() - 8880000).toISOString(), capturedBy: 'Imran Khan (Logistics)' },
+        { id: 'cap-seed-7731-c18', lotCode: 'KL-TOM-7731', checkpoint: 'LOGISTICS_PICKUP', containerNumber: 18, sampleAssignmentId: 'sa-seed-7731-pickup', imageUrl: '/assets/produce/tomato.webp', status: 'fresh', capturedAt: new Date(Date.now() - 8820000).toISOString(), capturedBy: 'Imran Khan (Logistics)' },
+      ],
+    },
+  },
 }
 const STORAGE_KEY = `kisanlink_state_v${SEED_VERSION}`
 const cloneSeed = () => JSON.parse(JSON.stringify(seedState)) as PrototypeState

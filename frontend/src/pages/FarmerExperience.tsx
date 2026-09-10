@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties, type FormEvent } from 'react'
-import { AlertTriangle, ArrowLeft, ArrowRight, BadgeIndianRupee, BarChart3, Building2, CalendarDays, Check, CheckCircle2, ChevronDown, ChevronRight, CircleHelp, ClipboardCheck, Clock3, Edit3, Eye, IndianRupee, Leaf, LogOut, MapPin, Mic, PackageCheck, Radar, Phone, Plus, Route, Save, ShoppingBasket, Sparkles, Sprout, Store, Trash2, TrendingUp, Truck, UserRound, WalletCards, XCircle } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, ArrowRight, BadgeIndianRupee, BarChart3, Boxes, Building2, CalendarDays, Check, CheckCircle2, ChevronDown, ChevronRight, CircleHelp, ClipboardCheck, Clock3, Edit3, Eye, IndianRupee, Leaf, LogOut, MapPin, Mic, Minus, PackageCheck, Radar, Phone, Plus, Route, Save, ShoppingBasket, Sparkles, Sprout, Store, Trash2, TrendingUp, Truck, UserRound, WalletCards, XCircle } from 'lucide-react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { FarmerInsightCard } from '../components/ai/FarmerInsightCard'
 import { FarmerAiTrigger } from '../components/ai/FarmerAiTrigger'
@@ -7,6 +7,8 @@ import { DashboardSkeleton } from '../components/LoadingSkeleton'
 import { ProductImage } from '../components/ProductImage'
 import { StatusBadge } from '../components/StatusBadge'
 import { VoiceInputModal } from '../components/voice/VoiceInputModal'
+import { EvidenceCapture, EvidenceCaptureError, type EvidencePreview } from '../components/inspection/EvidenceCapture'
+import { LotQualityCard } from '../components/inspection/LotQualityCard'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useToast } from '../contexts/ToastContext'
 import { useAuth } from '../contexts/AuthContext'
@@ -15,8 +17,9 @@ import { roleKey } from '../i18n'
 import { aiText } from '../i18n/farmerAi'
 import { farmerText, type FarmerFeatureKey } from '../i18n/farmerFeature'
 import { analyseMarket, buildEarningsStory, FARMER_CROPS, fetchLivePriceOptions, getCropIntel, rankOrders, type FarmerCrop } from '../services/farmerAiService'
+import { inspectionService, type LotContext } from '../services/inspectionService'
 import { prototypeService } from '../services/prototypeService'
-import type { FarmerListing, FarmerOrder, FarmerProfileData, ListingStatus, OrderStatus, Pickup } from '../types'
+import type { CustodyStage, FarmerListing, FarmerOrder, FarmerProfileData, ListingStatus, OrderStatus, PackagingType, Pickup } from '../types'
 import { roleHome } from '../utils/routes'
 import { localDay } from '../utils/dates'
 
@@ -31,6 +34,14 @@ const crops = [
 const day = localDay
 const money = (value: number) => `₹${Math.round(value).toLocaleString('en-IN')}`
 const deduction = (value: number) => value > 0 ? `−${money(value)}` : money(0)
+
+/** Client-side placeholder, same shape as the backend's real generator - only used when a
+ * listing never round-trips through the live API (see prototypeService.saveListing). */
+function clientLotCode(cropName: string): string {
+  const letters = cropName.replace(/[^A-Za-z]/g, '').toUpperCase()
+  const prefix = (letters.slice(0, 3) || 'LOT').padEnd(3, 'X')
+  return `KL-${prefix}-${Math.floor(1000 + Math.random() * 9000)}`
+}
 
 function useFeatureText() {
   const { language } = useLanguage()
@@ -60,6 +71,8 @@ export function SellProducePage() {
   const [search, setSearch] = useState('')
   const [saving, setSaving] = useState(false)
   const [voiceOpen, setVoiceOpen] = useState(false)
+  const [photoPreviews, setPhotoPreviews] = useState<EvidencePreview[]>([])
+  const [photoError, setPhotoError] = useState<string | null>(null)
   const [form, setForm] = useState<FarmerListing>(() => ({ id: `listing_${Date.now()}`, crop: params.get('crop') ?? 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', category: 'Vegetables', imageSrc: '/assets/produce/tomato.webp', visual: 'tomato', quantityKg: 100, remainingKg: 100, allocatedKg: 0, unit: 'kg', grade: 'Grade A', harvestDate: day(0), availableFrom: day(1), farmingMethod: '', notes: '', pricePerKg: 32, mandiPricePerKg: 24, retailPricePerKg: 38, farmerId: 'farmer_001', farm: 'Green Field Farm', pickupDate: day(2), pickupWindow: 'Morning · 7–10 AM', fulfillment: 'pickup', status: 'draft', assisted: false, views: 0, inquiries: 0, createdAt: day(0) }))
 
   useEffect(() => { if (editId) prototypeService.getListing(editId).then((item) => item && setForm(item)) }, [editId])
@@ -109,8 +122,23 @@ export function SellProducePage() {
   const save = async (status: ListingStatus) => {
     if (!validate()) { showToast(f('requiredFields')); return }
     setSaving(true)
-    const next = { ...form, status, remainingKg: form.quantityKg - form.allocatedKg, assisted }
+    const lotCode = form.lotCode ?? clientLotCode(form.crop)
+    const next = { ...form, status, lotCode, remainingKg: form.quantityKg - form.allocatedKg, assisted }
     await prototypeService.saveListing(next)
+
+    // Declaration evidence, not a quality verdict — see LotQualityCard / product brief.
+    if (photoPreviews.length) {
+      const lot: LotContext = { lotCode: next.lotCode!, cropName: next.crop, quantityKg: next.quantityKg, cropListingId: next.cropListingId, packagingType: next.packagingType, containerCount: next.containerCount, unitWeightKg: next.unitWeightKg }
+      const uploaded: string[] = []
+      for (const preview of photoPreviews) {
+        try {
+          const capture = await inspectionService.submitCapture({ lot, checkpoint: 'FARMER_GATE', file: preview.file, capturedBy: 'Farmer' })
+          uploaded.push(capture.imageUrl)
+        } catch { /* evidence capture already handles/report its own failures internally */ }
+      }
+      if (uploaded.length) { next.overviewPhotos = uploaded; await prototypeService.saveListing(next) }
+    }
+
     setSaving(false)
     showToast(status === 'draft' ? f('draftSaved') : f('listingPublished'))
     navigate(status === 'draft' ? '/farmer/produce?tab=draft' : `/farmer/produce/${next.id}`)
@@ -125,7 +153,7 @@ export function SellProducePage() {
     {assisted ? <section className="feature-card assisted-form"><div className="assisted-head"><span><Phone size={24} /></span><div><h2>{f('needHelpListing')}</h2><p>{f('assistedHint')}</p></div><StatusBadge tone="amber">{f('callCenterBadge')}</StatusBadge></div><ListingFields form={form} update={update} compact /><a className="btn btn-secondary" href="tel:18001234567"><Phone size={18} />{f('callSupport')}</a></section> :
       <section className="feature-card wizard-panel">
         {step === 1 && <><h2>{f('selectCrop')}</h2><label className="field full"><span>{f('search')}</span><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={f('searchCrop')} /></label><p className="field-note">{f('recentCrops')}</p><div className="crop-picker">{filtered.map((crop) => <button key={crop.en} className={form.crop === crop.en ? 'active' : ''} onClick={() => chooseCrop(crop)}><img src={crop.image} alt="" /><strong>{language === 'hi' ? crop.hi : crop.en}</strong>{form.crop === crop.en && <CheckCircle2 size={18} />}</button>)}<button onClick={() => update('crop', '')}><Plus size={28} /><strong>{f('otherCrop')}</strong></button></div>{!selectedCrop && <label className="field full"><span>{f('otherCrop')}</span><input value={form.crop} onChange={(event) => update('crop', event.target.value)} required /></label>}</>}
-        {step === 2 && <ListingFields form={form} update={update} />}
+        {step === 2 && <ListingFields form={form} update={update} photoPreviews={photoPreviews} setPhotoPreviews={setPhotoPreviews} photoError={photoError} setPhotoError={setPhotoError} />}
         {step === 3 && <PriceStep form={form} update={update} />}
         {step === 4 && <PickupStep form={form} update={update} />}
         {step === 5 && <ReviewStep form={form} assisted={assisted} onEdit={setStep} />}
@@ -134,15 +162,86 @@ export function SellProducePage() {
   </div>
 }
 
-function ListingFields({ form, update, compact = false }: { form: FarmerListing; update: <K extends keyof FarmerListing>(key: K, value: FarmerListing[K]) => void; compact?: boolean }) {
-  const { f } = useFeatureText()
+function ListingFields({ form, update, compact = false, photoPreviews, setPhotoPreviews, photoError, setPhotoError }: {
+  form: FarmerListing
+  update: <K extends keyof FarmerListing>(key: K, value: FarmerListing[K]) => void
+  compact?: boolean
+  photoPreviews?: EvidencePreview[]
+  setPhotoPreviews?: (updater: (current: EvidencePreview[]) => EvidencePreview[]) => void
+  photoError?: string | null
+  setPhotoError?: (message: string | null) => void
+}) {
+  const { language, f } = useFeatureText()
+  const packagingTypes: { value: PackagingType; en: string; hi: string }[] = [
+    { value: 'CRATE', en: 'Crates', hi: 'क्रेट' },
+    { value: 'SACK', en: 'Sacks', hi: 'बोरी' },
+    { value: 'BASKET', en: 'Baskets', hi: 'टोकरी' },
+    { value: 'LOOSE', en: 'Loose', hi: 'ढीला' },
+  ]
   return <div className="form-grid">
     {compact && <label className="field full"><span>{f('crop')} *</span><select value={form.crop} onChange={(e) => { const crop = crops.find((item) => item.en === e.target.value); if (crop) { update('crop', crop.en); update('cropHi', crop.hi); update('imageSrc', crop.image); update('visual', crop.visual); update('category', crop.category); update('mandiPricePerKg', crop.mandi); update('retailPricePerKg', crop.retail) } }}>{crops.map((crop) => <option key={crop.en} value={crop.en}>{crop.en}</option>)}</select></label>}
     <label className="field"><span>{f('quantity')} *</span><input type="number" min="1" value={form.quantityKg} onChange={(e) => update('quantityKg', Number(e.target.value))} /></label>
     <label className="field"><span>{f('unit')}</span><select value={form.unit} onChange={(e) => update('unit', e.target.value as FarmerListing['unit'])}><option value="kg">kg</option><option value="quintal">quintal</option><option value="tonne">tonne</option></select></label>
     <label className="field"><span>{f('grade')}</span><select value={form.grade} onChange={(e) => update('grade', e.target.value as FarmerListing['grade'])}><option>Grade A</option><option>Grade A+</option></select></label>
     <label className="field"><span>{f('harvestDate')} *</span><input type="date" value={form.harvestDate} onChange={(e) => update('harvestDate', e.target.value)} /></label>
-    {!compact && <><label className="field"><span>{f('availableFrom')} *</span><input type="date" value={form.availableFrom} onChange={(e) => update('availableFrom', e.target.value)} /></label><label className="field"><span>{f('farmingMethod')}</span><select value={form.farmingMethod} onChange={(e) => update('farmingMethod', e.target.value)}><option value="">—</option><option value="Conventional">{f('conventional')}</option><option value="Organic">{f('organic')}</option><option value="Natural farming">{f('natural')}</option></select></label><label className="field full"><span>{f('notes')}</span><textarea rows={3} value={form.notes} onChange={(e) => update('notes', e.target.value)} /></label></>}
+    {!compact && <><label className="field"><span>{f('availableFrom')} *</span><input type="date" value={form.availableFrom} onChange={(e) => update('availableFrom', e.target.value)} /></label><label className="field"><span>{f('farmingMethod')}</span><select value={form.farmingMethod} onChange={(e) => update('farmingMethod', e.target.value)}><option value="">—</option><option value="Conventional">{f('conventional')}</option><option value="Organic">{f('organic')}</option><option value="Natural farming">{f('natural')}</option></select></label><label className="field full"><span>{f('notes')}</span><textarea rows={3} value={form.notes} onChange={(e) => update('notes', e.target.value)} /></label>
+
+      <label className="field full">
+        <span>{language === 'hi' ? 'पैकेजिंग' : 'Packaging'}</span>
+        <div className="packaging-type-chips">
+          {packagingTypes.map((p) => (
+            <button key={p.value} type="button" className={form.packagingType === p.value ? 'active' : ''} onClick={() => update('packagingType', p.value)}>
+              {language === 'hi' ? p.hi : p.en}
+            </button>
+          ))}
+        </div>
+      </label>
+      {form.packagingType && form.packagingType !== 'LOOSE' && (
+        <div className="packaging-grid full-row">
+          <label className="field">
+            <span>{language === 'hi' ? 'क्रेट/बोरी संख्या' : 'Number of containers'}</span>
+            <div className="crate-stepper">
+              <button type="button" onClick={() => update('containerCount', Math.max(1, (form.containerCount ?? 1) - 1))}><Minus size={14} /></button>
+              <span>{form.containerCount ?? 1}</span>
+              <button type="button" onClick={() => update('containerCount', (form.containerCount ?? 1) + 1)}><Plus size={14} /></button>
+            </div>
+          </label>
+          <label className="field">
+            <span>{language === 'hi' ? 'अनुमानित वज़न/क्रेट (kg)' : 'Approx. weight / container (kg)'}</span>
+            <input type="number" min="1" value={form.unitWeightKg ?? ''} onChange={(e) => update('unitWeightKg', Number(e.target.value))} />
+          </label>
+        </div>
+      )}
+
+      {setPhotoPreviews && (
+        <label className="field full">
+          <span><Boxes size={13} style={{ verticalAlign: -2 }} /> {language === 'hi' ? 'लॉट की फ़ोटो (1-2)' : 'Lot overview photos (1-2)'}</span>
+          <div className="lot-photo-row">
+            {(photoPreviews ?? []).map((p, i) => (
+              <div className="evidence-capture evidence-capture-filled compact" key={i} style={{ width: 120 }}>
+                <img src={p.previewUrl} alt="Lot overview" />
+                <div className="evidence-capture-actions">
+                  <button type="button" className="btn btn-ghost btn-sm evidence-remove" onClick={() => setPhotoPreviews((cur) => { URL.revokeObjectURL(cur[i].previewUrl); return cur.filter((_, idx) => idx !== i) })}><Trash2 size={13} /></button>
+                </div>
+              </div>
+            ))}
+            {(photoPreviews ?? []).length < 2 && (
+              <div style={{ width: 140 }}>
+                <EvidenceCapture
+                  preview={null}
+                  compact
+                  onCapture={(p) => { setPhotoPreviews((cur) => [...cur, p]); setPhotoError?.(null) }}
+                  onRemove={() => {}}
+                  onError={(msg) => setPhotoError?.(msg)}
+                />
+              </div>
+            )}
+          </div>
+          {photoError && <EvidenceCaptureError message={photoError} />}
+          <small className="field-note">{language === 'hi' ? 'ये फ़ोटो घोषणा प्रमाण हैं — पिकअप पर स्वतंत्र जांच अलग से होगी।' : 'These are declaration evidence - independent sample inspection happens separately at pickup.'}</small>
+        </label>
+      )}
+    </>}
     {compact && <><label className="field"><span>{f('yourPrice')} *</span><input type="number" min="1" value={form.pricePerKg} onChange={(e) => update('pricePerKg', Number(e.target.value))} /></label><label className="field"><span>{f('pickupDate')}</span><input type="date" value={form.pickupDate} onChange={(e) => update('pickupDate', e.target.value)} /></label></>}
   </div>
 }
@@ -180,7 +279,10 @@ function ReviewStep({ form, assisted, onEdit }: { form: FarmerListing; assisted:
 
 export function FarmerProduceDetailPage() {
   const { id } = useParams(); const { language, f } = useFeatureText(); const { showToast } = useToast(); const [item, setItem] = useState<FarmerListing | null | undefined>(undefined); const [rescuing, setRescuing] = useState(false)
-  useEffect(() => { if (id) prototypeService.getListing(id).then(setItem) }, [id]); if (item === undefined) return <LoadState />; if (!item) return <Empty message={f('noResults')} />
+  const [pickupStage, setPickupStage] = useState<CustodyStage | undefined>(undefined)
+  useEffect(() => { if (id) prototypeService.getListing(id).then(setItem) }, [id])
+  useEffect(() => { if (item?.lotCode) inspectionService.getLotTrail(item.lotCode).then((trail) => setPickupStage(trail?.stages.find((s) => s.checkpoint === 'LOGISTICS_PICKUP'))) }, [item?.lotCode])
+  if (item === undefined) return <LoadState />; if (!item) return <Empty message={f('noResults')} />
   const isRescue = Boolean(item.isUrgentRescue || item.rescueStatus === 'RESCUE_ACTIVE')
   const rescuePrice = item.rescueDiscountPricePerKg ?? Math.round(item.pricePerKg * 0.8)
   const discountPct = Math.round(((item.pricePerKg - rescuePrice) / item.pricePerKg) * 100)
@@ -208,7 +310,9 @@ export function FarmerProduceDetailPage() {
     <div className="listing-facts"><span><small>{f('stock')}</small><b>{item.remainingKg} kg</b></span><span><small>{f('allocated')}</small><b>{item.allocatedKg} kg</b></span><span><small>{f('mandiBenchmark')}</small><b>₹{item.mandiPricePerKg}/kg</b></span></div><Link className="btn btn-primary" to={`/farmer/sell?edit=${item.id}`}><Edit3 size={17} />{f('edit')}</Link>
     {!isRescue && item.status === 'active' && <div className="rescue-prompt-card"><div><strong><AlertTriangle size={15} />{f('urgentRescueTitle')}</strong><p>{f('urgentRescueDesc')}</p></div><button type="button" className="btn btn-secondary" disabled={rescuing} onClick={handleTagRescue}>{rescuing ? f('loading') : f('tagUrgentRescueBtn')}</button></div>}
     {isRescue && <div className="rescue-active-note"><span><Check size={15} /></span><div><strong>{f('urgentRescueActiveBadge')}</strong><small>{f('urgentRescueDesc')}</small></div></div>}
-  </div></section><section className="feature-card"><h2>{f('activityTimeline')}</h2><div className="activity-list"><div><span><Check size={15} /></span><div><strong>{f('publish')}</strong><small>{item.createdAt}</small></div></div>{item.views > 0 && <div><span><Eye size={15} /></span><div><strong>{item.views} {f('views')} · {item.inquiries} {f('inquiries')}</strong><small>{f('nearbyInterest')}</small></div></div>}{item.allocatedKg > 0 && <div><span><PackageCheck size={15} /></span><div><strong>{f('orderReceived')}</strong><small>{item.allocatedKg} kg</small></div></div>}<div><span><Edit3 size={15} /></span><div><strong>{f('quantityAdjusted')}</strong><small>{item.remainingKg} kg {f('remaining')}</small></div></div></div></section></div>
+  </div></section>
+  {item.lotCode && <LotQualityCard quantityKg={item.quantityKg} containerCount={item.containerCount} photoCount={item.overviewPhotos?.length ?? 0} pickupStage={pickupStage} />}
+  <section className="feature-card"><h2>{f('activityTimeline')}</h2><div className="activity-list"><div><span><Check size={15} /></span><div><strong>{f('publish')}</strong><small>{item.createdAt}</small></div></div>{item.views > 0 && <div><span><Eye size={15} /></span><div><strong>{item.views} {f('views')} · {item.inquiries} {f('inquiries')}</strong><small>{f('nearbyInterest')}</small></div></div>}{item.allocatedKg > 0 && <div><span><PackageCheck size={15} /></span><div><strong>{f('orderReceived')}</strong><small>{item.allocatedKg} kg</small></div></div>}<div><span><Edit3 size={15} /></span><div><strong>{f('quantityAdjusted')}</strong><small>{item.remainingKg} kg {f('remaining')}</small></div></div></div></section></div>
 }
 
 export function FarmerOrdersPage() {

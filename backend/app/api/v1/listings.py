@@ -1,3 +1,5 @@
+import re
+import secrets
 from typing import List, Optional
 from uuid import UUID
 
@@ -23,6 +25,20 @@ from fastapi.concurrency import run_in_threadpool
 logger = logging.getLogger("VoiceParse")
 
 router = APIRouter(prefix="/listings", tags=["Listings"])
+
+
+async def _generate_lot_code(db: AsyncSession, crop_name: str) -> str:
+    """Human-readable lot identifier, e.g. KL-TOM-1048. Not a security token - just a
+    demo-friendly label operators/farmers can read off a crate or a screen."""
+    letters = re.sub(r"[^A-Za-z]", "", crop_name).upper() or "LOT"
+    prefix = (letters[:3] or "LOT").ljust(3, "X")
+    for _ in range(5):
+        candidate = f"KL-{prefix}-{secrets.randbelow(9000) + 1000}"
+        exists = await db.execute(select(CropListing.id).where(CropListing.lot_code == candidate))
+        if exists.scalar_one_or_none() is None:
+            return candidate
+    # Extremely unlikely fallback - widen the suffix instead of failing the listing.
+    return f"KL-{prefix}-{secrets.randbelow(90000) + 10000}"
 
 
 @router.post("/parse-voice", response_model=VoiceParseResponse)
@@ -89,6 +105,8 @@ async def create_listing(
         farmer_lon, farmer_lat = res_loc.first()
         lon, lat = float(farmer_lon), float(farmer_lat)
 
+    lot_code = await _generate_lot_code(db, payload.crop_name)
+
     listing = CropListing(
         farmer_id=current_user.farmer_profile.id,
         crop_type_id=crop_type.id,
@@ -102,6 +120,10 @@ async def create_listing(
         status=ListingStatusEnum.ACTIVE,
         location=WKTElement(f"POINT({lon} {lat})", srid=4326),
         photos=payload.photos or [],
+        lot_code=lot_code,
+        packaging_type=payload.packaging_type.value if payload.packaging_type else None,
+        container_count=payload.container_count,
+        unit_weight_kg=payload.unit_weight_kg,
     )
     db.add(listing)
     await db.commit()
@@ -131,6 +153,10 @@ async def create_listing(
         photos=listing.photos,
         is_urgent_rescue=listing.is_urgent_rescue,
         rescue_discount_price_per_kg=float(listing.rescue_discount_price_per_kg) if listing.rescue_discount_price_per_kg is not None else None,
+        lot_code=listing.lot_code,
+        packaging_type=listing.packaging_type,
+        container_count=listing.container_count,
+        unit_weight_kg=float(listing.unit_weight_kg) if listing.unit_weight_kg is not None else None,
         created_at=listing.created_at,
     )
 
@@ -228,6 +254,10 @@ async def list_listings(
                 photos=listing.photos,
                 is_urgent_rescue=listing.is_urgent_rescue,
                 rescue_discount_price_per_kg=float(listing.rescue_discount_price_per_kg) if listing.rescue_discount_price_per_kg is not None else None,
+                lot_code=listing.lot_code,
+                packaging_type=listing.packaging_type,
+                container_count=listing.container_count,
+                unit_weight_kg=float(listing.unit_weight_kg) if listing.unit_weight_kg is not None else None,
                 created_at=listing.created_at,
             )
         )
@@ -285,6 +315,10 @@ async def get_listing(id: UUID, db: AsyncSession = Depends(get_db)):
         photos=listing.photos,
         is_urgent_rescue=listing.is_urgent_rescue,
         rescue_discount_price_per_kg=float(listing.rescue_discount_price_per_kg) if listing.rescue_discount_price_per_kg is not None else None,
+        lot_code=listing.lot_code,
+        packaging_type=listing.packaging_type,
+        container_count=listing.container_count,
+        unit_weight_kg=float(listing.unit_weight_kg) if listing.unit_weight_kg is not None else None,
         created_at=listing.created_at,
     )
 
@@ -331,6 +365,12 @@ async def update_listing(
         listing.status = payload.status
     if payload.photos is not None:
         listing.photos = payload.photos
+    if payload.packaging_type is not None:
+        listing.packaging_type = payload.packaging_type.value
+    if payload.container_count is not None:
+        listing.container_count = payload.container_count
+    if payload.unit_weight_kg is not None:
+        listing.unit_weight_kg = payload.unit_weight_kg
 
     await db.commit()
     return await get_listing(id=listing.id, db=db)

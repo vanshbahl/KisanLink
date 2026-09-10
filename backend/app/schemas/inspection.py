@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import Enum
-from typing import Literal
+from typing import Literal, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -28,3 +28,6 @@ class LocalCVAnalysisOut(BaseModel):
     source: Literal["local_cv"]
     sample_image_url: str
     analyzed_at: datetime
+    crop_listing_id: Optional[UUID] = None
+    sample_assignment_id: Optional[UUID] = None
+    container_number: Optional[int] = None

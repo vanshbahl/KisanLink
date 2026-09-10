@@ -2,6 +2,8 @@
 
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.concurrency import run_in_threadpool
@@ -28,11 +30,21 @@ ALLOWED_DECLARED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 @router.post(
     "/analyze",
     response_model=LocalCVAnalysisOut,
+    response_model_exclude_none=True,
     summary="Store image evidence and run the local binary CV provider",
 )
 async def analyze_inspection_image(
     sample: UploadFile = File(..., description="JPEG, PNG, or WebP evidence image"),
     checkpoint: InspectionCheckpoint = Form(InspectionCheckpoint.FARMER_GATE),
+    crop_listing_id: Optional[UUID] = Form(
+        None, description="Lot this evidence belongs to, if known."
+    ),
+    sample_assignment_id: Optional[UUID] = Form(
+        None, description="Random sample assignment this capture fulfils, if any."
+    ),
+    container_number: Optional[int] = Form(
+        None, description="Which sampled container/crate this photo documents, if any."
+    ),
     current_user: User | None = Depends(require_inspection_actor_or_local_demo),
     db: AsyncSession = Depends(get_db),
 ) -> LocalCVAnalysisOut:
@@ -89,6 +101,9 @@ async def analyze_inspection_image(
         )
     except (InspectionProviderUnavailable, InspectionInferenceError) as exc:
         record = ProduceInspection(
+            crop_listing_id=crop_listing_id,
+            sample_assignment_id=sample_assignment_id,
+            container_number=container_number,
             created_by_user_id=actor_id,
             checkpoint=checkpoint.value,
             image_url=sample_image_url,
@@ -116,6 +131,9 @@ async def analyze_inspection_image(
 
     persisted_confidence = round(prediction.confidence, 5)
     record = ProduceInspection(
+        crop_listing_id=crop_listing_id,
+        sample_assignment_id=sample_assignment_id,
+        container_number=container_number,
         created_by_user_id=actor_id,
         checkpoint=checkpoint.value,
         image_url=sample_image_url,
@@ -138,4 +156,7 @@ async def analyze_inspection_image(
         source=prediction.source,
         sample_image_url=sample_image_url,
         analyzed_at=analyzed_at,
+        crop_listing_id=crop_listing_id,
+        sample_assignment_id=sample_assignment_id,
+        container_number=container_number,
     )

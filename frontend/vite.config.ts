@@ -12,6 +12,11 @@ export default defineConfig({
         target: `http://127.0.0.1:${backendPort}`,
         changeOrigin: true,
       },
+      // Locally-stored inspection evidence images (see backend app/main.py static mount).
+      '/uploads': {
+        target: `http://127.0.0.1:${backendPort}`,
+        changeOrigin: true,
+      },
     },
   },
 })

@@ -24,6 +24,12 @@ class ProduceInspection(Base, TimestampMixin):
         ForeignKey("crop_listings.id", ondelete="SET NULL"),
         nullable=True,
     )
+    sample_assignment_id: Mapped[Optional[UUID]] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("inspection_sample_assignments.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    container_number: Mapped[Optional[int]] = mapped_column(nullable=True)
     created_by_user_id: Mapped[Optional[UUID]] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
@@ -63,4 +69,5 @@ class ProduceInspection(Base, TimestampMixin):
         ),
         Index("ix_produce_inspections_listing", "crop_listing_id"),
         Index("ix_produce_inspections_checkpoint_created", "checkpoint", "created_at"),
+        Index("ix_produce_inspections_sample_assignment", "sample_assignment_id"),
     )

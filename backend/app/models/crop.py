@@ -84,9 +84,33 @@ class CropListing(Base, TimestampMixin):
     is_urgent_rescue: Mapped[bool] = mapped_column(Boolean, default=False)
     rescue_discount_price_per_kg: Mapped[Optional[float]] = mapped_column(Numeric(10, 2))
 
+    # Bulk-lot packaging. A single photo can't certify 200-300kg of produce, so a
+    # farmer selling in bulk declares how the lot is physically divided into
+    # inspectable containers; logistics/warehouse checkpoints later draw a random
+    # sample of these container numbers (see InspectionSampleAssignment).
+    lot_code: Mapped[Optional[str]] = mapped_column(String(32), unique=True, nullable=True)
+    packaging_type: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    container_count: Mapped[Optional[int]] = mapped_column(nullable=True)
+    unit_weight_kg: Mapped[Optional[float]] = mapped_column(Numeric(8, 2), nullable=True)
+
     farmer: Mapped["FarmerProfile"] = relationship("FarmerProfile", back_populates="crop_listings")
     crop_type: Mapped["CropType"] = relationship("CropType", back_populates="crop_listings")
 
     __table_args__ = (
         Index("idx_listings_composite_search", "crop_type_id", "status", "is_pre_harvest", "harvest_date"),
+        CheckConstraint(
+            "packaging_type IS NULL OR packaging_type IN ('CRATE', 'SACK', 'BASKET', 'LOOSE')",
+            name="ck_crop_listings_packaging_type",
+        ),
+        CheckConstraint(
+            "container_count IS NULL OR container_count > 0",
+            name="ck_crop_listings_container_count",
+        ),
     )
+
+
+class PackagingTypeEnum(str, enum.Enum):
+    CRATE = "CRATE"
+    SACK = "SACK"
+    BASKET = "BASKET"
+    LOOSE = "LOOSE"

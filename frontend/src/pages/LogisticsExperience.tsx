@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowLeft, Boxes, Building2, Check, ChevronRight, CircleGauge, Clock3, LogOut, MapPinned, PackageCheck, RefreshCw, Route, Save, ShieldCheck, ShoppingBasket, Sprout, Truck, UserRound, Warehouse } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Boxes, Building2, Camera, Check, ChevronRight, CircleGauge, Clock3, Dices, LogOut, MapPinned, PackageCheck, RefreshCw, Route, Save, ShieldCheck, ShoppingBasket, Sprout, Truck, UserRound, Warehouse } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { DemoControlCenter } from '../components/DemoControlCenter'
@@ -7,13 +7,18 @@ import { EmptyState } from '../components/EmptyState'
 import { MarketPulseCard } from '../components/market/MarketPulseCard'
 import { DashboardSkeleton } from '../components/LoadingSkeleton'
 import { StatusBadge } from '../components/StatusBadge'
+import { CaptureInspectionModal, type CaptureTarget } from '../components/inspection/CaptureInspectionModal'
+import { EvidenceCapture, type EvidencePreview } from '../components/inspection/EvidenceCapture'
+import { InspectionStatusBadge } from '../components/inspection/InspectionStatusBadge'
+import { SampleSelectionCard } from '../components/inspection/SampleSelectionCard'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../contexts/ToastContext'
 import { useAsyncData } from '../hooks/useAsyncData'
 import { apiClient } from '../services/apiClient'
 import { logisticsService } from '../services/logisticsService'
-import type { Delivery, DeliveryStatus, LogisticsPickup, LogisticsPickupStatus, LogisticsProfileData, VehicleStatus } from '../types'
+import { inspectionService, type LotContext } from '../services/inspectionService'
+import type { Delivery, DeliveryStatus, DropoffCondition, LogisticsPickup, LogisticsPickupStatus, LogisticsProfileData, LotTrail, SampleAssignment, VehicleStatus } from '../types'
 import { roleHome } from '../utils/routes'
 
 import { CorridorRouteMap, prettyWhen } from '../components/maps/CorridorRouteMap'
@@ -267,12 +272,20 @@ export function LogisticsPickupsPage() {
 export function LogisticsPickupDetailPage() {
   const { id = '' } = useParams(); const { l, language } = useCopy(); const { showToast } = useToast()
   const [version, setVersion] = useState(0); const [issue, setIssue] = useState(''); const [otp, setOtp] = useState(''); const [busy, setBusy] = useState(false)
+  const [trail, setTrail] = useState<LotTrail | undefined>(undefined)
+  const [assignment, setAssignment] = useState<SampleAssignment | null>(null)
+  const [captureOpen, setCaptureOpen] = useState(false)
+  const [samplingBusy, setSamplingBusy] = useState(false)
   const { data, loading, error } = useAsyncData(async () => {
     const [pickup, vehicles, routes, pickups, deliveries] = await Promise.all([
       logisticsService.pickup(id), logisticsService.vehicles(), logisticsService.routes(), logisticsService.pickups(), logisticsService.deliveries(),
     ])
     return { pickup, vehicles, routes, pickups, deliveries }
   }, [id, version])
+
+  const lotCode = data?.pickup?.lotCode
+  useEffect(() => { if (lotCode) inspectionService.getLotTrail(lotCode).then(setTrail) }, [lotCode, version])
+  useEffect(() => { if (lotCode) inspectionService.getSampleAssignment(lotCode, 'LOGISTICS_PICKUP').then((a) => a && setAssignment(a)) }, [lotCode])
 
   if (loading) return <DashboardSkeleton />
   if (!data?.pickup || error) return <ErrorState title={l('Pickup not found', 'पिकअप नहीं मिला')} />
@@ -294,6 +307,55 @@ export function LogisticsPickupDetailPage() {
   }
   const update = (status: LogisticsPickupStatus) => guard(() => logisticsService.updatePickup(item.id, status), l('Pickup status synchronized across roles', 'पिकअप स्थिति सभी जगह बदल गई'))
   const verifyOtp = () => guard(async () => { const res = await logisticsService.verifyPickupOtp(item.id, otp); setOtp(''); return res }, l('Pickup OTP verified · produce loaded', 'OTP सत्यापित · माल लोड हुआ'))
+
+  // --- Lot quality inspection: random sample selection + guided capture ---
+  const lot: LotContext | null = item.lotCode ? { lotCode: item.lotCode, cropName: item.crop, quantityKg: item.quantityKg, cropListingId: item.cropListingId, packagingType: item.packagingType, containerCount: item.containerCount, unitWeightKg: item.unitWeightKg } : null
+  const hasContainers = Boolean(lot?.containerCount && lot.packagingType && lot.packagingType !== 'LOOSE')
+  const pickupStage = trail?.stages.find((s) => s.checkpoint === 'LOGISTICS_PICKUP')
+
+  const startSampling = async () => {
+    if (!lot) return
+    setSamplingBusy(true)
+    try {
+      const drawn = await inspectionService.getOrCreateSampleAssignment(lot, 'LOGISTICS_PICKUP')
+      setAssignment(drawn)
+      setCaptureOpen(true)
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : l('Could not draw a random sample.', 'नमूना नहीं बन सका।'))
+    } finally {
+      setSamplingBusy(false)
+    }
+  }
+
+  const capturedContainers = new Set((pickupStage?.captures ?? []).map((c) => c.containerNumber))
+  const captureTargets: CaptureTarget[] = hasContainers && assignment
+    ? assignment.instructions
+        .filter((inst) => !capturedContainers.has(inst.containerNumber))
+        .map((inst) => ({
+          key: String(inst.containerNumber),
+          title: l(`Crate ${inst.containerNumber} of ${assignment.containerCount}`, `क्रेट ${inst.containerNumber} / ${assignment.containerCount}`),
+          instruction: inst.position,
+          note: l(`Open the selected crate and expose produce from the ${inst.position.toLowerCase()}.`, 'चुने गए क्रेट को खोलें और अंदर की उपज दिखाएं।'),
+          containerNumber: inst.containerNumber,
+        }))
+    : (pickupStage?.photoCount ?? 0) > 0
+      ? []
+      : [{ key: 'single', title: l('Lot photo', 'लॉट फ़ोटो'), note: l('Capture the produce clearly before loading.', 'लोड करने से पहले उपज की स्पष्ट फ़ोटो लें।') }]
+  // Inspection is only "done" once every sampled crate has a photo (or, for un-packaged
+  // small lots, at least one photo) - not merely once a sample has been drawn.
+  const inspectionComplete = hasContainers
+    ? Boolean(assignment) && capturedContainers.size >= (assignment?.sampleSize ?? Infinity)
+    : (pickupStage?.photoCount ?? 0) > 0
+
+  const handleCaptureSubmit = async (target: CaptureTarget, file: File) => {
+    if (!lot) throw new Error('Lot information missing for this pickup.')
+    const capture = await inspectionService.submitCapture({ lot, checkpoint: 'LOGISTICS_PICKUP', file, containerNumber: target.containerNumber, sampleAssignmentId: hasContainers ? assignment?.id : undefined, capturedBy: `${item.driver ?? l('Operator', 'ऑपरेटर')} (Logistics)` })
+    return { status: capture.status }
+  }
+  const handleCaptureComplete = async () => {
+    if (!item.checklist.qualityChecked) await logisticsService.toggleChecklist(item.id, 'qualityChecked')
+    refresh()
+  }
 
   // The single thing this pickup needs next, so the operator is never reading a wall of
   // equally-weighted controls to find the button that matters.
@@ -353,13 +415,68 @@ export function LogisticsPickupDetailPage() {
           ]} />
           <h2 className="section-title">{l('Pickup checklist', 'पिकअप चेकलिस्ट')} <small>{checklistDone}/{checklistTotal}</small></h2>
           <div className="checklist">
-            {(Object.entries(item.checklist) as Array<[keyof LogisticsPickup['checklist'], boolean]>).map(([key, checked]) => (
+            {(Object.entries(item.checklist) as Array<[keyof LogisticsPickup['checklist'], boolean]>).map(([key, checked]) => key === 'qualityChecked' ? (
+              <div className="checklist-quality-row" key={key}>
+                <label>
+                  <input type="checkbox" checked={checked} readOnly disabled />
+                  <span>{l('Quality checked', 'गुणवत्ता जांची')}</span>
+                </label>
+                {!inspectionComplete && (
+                  <button type="button" className="btn btn-secondary btn-sm" disabled={samplingBusy || busy} onClick={hasContainers && !assignment ? startSampling : () => setCaptureOpen(true)}>
+                    {hasContainers ? <Dices size={14} /> : <Camera size={14} />} {assignment && capturedContainers.size > 0 ? l('Continue inspection', 'जांच जारी रखें') : hasContainers ? l('Random sample', 'रैंडम नमूना') : l('Add photo', 'फ़ोटो जोड़ें')}
+                  </button>
+                )}
+              </div>
+            ) : (
               <label key={key}>
                 <input type="checkbox" checked={checked} onChange={() => guard(() => logisticsService.toggleChecklist(item.id, key), l('Checklist updated', 'चेकलिस्ट अपडेट हुई'))} />
-                <span>{l(key.replace(/([A-Z])/g, ' $1').toLowerCase(), ({ arrived: 'पहुंच गया', quantityVerified: 'मात्रा सत्यापित', qualityChecked: 'गुणवत्ता जांची', loadSecured: 'लोड सुरक्षित', pickupCompleted: 'पिकअप पूरा' } as Record<string, string>)[key])}</span>
+                <span>{l(key.replace(/([A-Z])/g, ' $1').toLowerCase(), ({ arrived: 'पहुंच गया', quantityVerified: 'मात्रा सत्यापित', loadSecured: 'लोड सुरक्षित', pickupCompleted: 'पिकअप पूरा' } as Record<string, string>)[key])}</span>
               </label>
             ))}
           </div>
+
+          {hasContainers && assignment && <SampleSelectionCard assignment={assignment} quantityKg={item.quantityKg} />}
+
+          {pickupStage && pickupStage.photoCount > 0 && (
+            <div className="pickup-sample-summary">
+              <div className="pickup-sample-summary-head">
+                <span>{l('Sample inspection', 'नमूना जांच')}</span>
+                <InspectionStatusBadge status={pickupStage.status} />
+              </div>
+              {hasContainers && <p>{capturedContainers.size} {l('of', '/')} {pickupStage.totalContainers} {l('crates inspected', 'क्रेट जांचे गए')}</p>}
+              <div className="pickup-sample-rows">
+                {pickupStage.captures.map((c) => (
+                  <div key={c.id}>
+                    <span>{c.containerNumber !== undefined ? `${l('Crate', 'क्रेट')} ${c.containerNumber}` : l('Lot photo', 'लॉट फ़ोटो')}</span>
+                    <InspectionStatusBadge status={c.status === 'saved_ai_unavailable' ? 'unable_to_assess' : c.status} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {inspectionComplete && pickupStage && (
+            <div className="pickup-verified-card">
+              <h3><ShieldCheck size={16} /> {l('Pickup verified', 'पिकअप सत्यापित')}</h3>
+              <p>{l('Lot', 'लॉट')} {item.lotCode}</p>
+              <div className="pickup-verified-grid">
+                <div><span>{l('Quantity', 'मात्रा')}</span><strong>{item.quantityKg} kg</strong></div>
+                {hasContainers && <div><span>{l('Crates', 'क्रेट')}</span><strong>{item.containerCount}</strong></div>}
+                {hasContainers && <div><span>{l('Randomly sampled', 'रैंडम जांचे')}</span><strong>{pickupStage.sampledContainers}</strong></div>}
+                <div><span>{l('Photos', 'फ़ोटो')}</span><strong>{pickupStage.photoCount} {l('evidence images', 'प्रमाण फ़ोटो')}</strong></div>
+              </div>
+            </div>
+          )}
+
+          <CaptureInspectionModal
+            isOpen={captureOpen}
+            onClose={() => setCaptureOpen(false)}
+            title={l('Sample Inspection', 'नमूना जांच')}
+            targets={captureTargets}
+            onSubmit={handleCaptureSubmit}
+            onComplete={handleCaptureComplete}
+          />
+
           <Timeline items={item.timeline} language={language} />
         </section>
 
@@ -414,7 +531,72 @@ export function LogisticsDeliveriesPage() {
 export function LogisticsDeliveryDetailPage() {
   const { id = '' } = useParams(); const { l, language } = useCopy(); const { showToast } = useToast(); const [version, setVersion] = useState(0); const [issue, setIssue] = useState(''); const [otp, setOtp] = useState(''); const { data, loading, error } = useAsyncData(() => logisticsService.delivery(id), [id, version]); if (loading) return <DashboardSkeleton />; if (!data || error) return <ErrorState title={l('Delivery not found', 'डिलीवरी नहीं मिली')} />; const item: Delivery = data; const refresh = () => setVersion((value) => value + 1)
   const verifyOtp = async () => { try { const res = await logisticsService.verifyDeliveryOtp(item.id, otp); showToast(res.message); setOtp(''); refresh() } catch (err) { showToast(err instanceof Error ? err.message : l('OTP verification failed', 'OTP सत्यापन विफल')) } }
-  return <div className="page logistics-page"><Link className="back-link" to="/logistics/deliveries"><ArrowLeft size={16} /> {l('All deliveries', 'सभी डिलीवरी')}</Link><div className="page-title-row"><div><span className="eyebrow">{item.id} · {item.buyerType}</span><h1>{language === 'hi' ? item.produceHi : item.produce} · {item.quantityKg.toLocaleString('en-IN')} kg</h1><p>{item.buyer} · ETA {prettyWhen(item.eta)}</p></div><StatusBadge tone={tone(item.status)}>{labels.delivery[item.status][language === 'hi' ? 1 : 0]}</StatusBadge></div><div className="logistics-detail-grid"><section className="feature-card"><InfoGrid items={[[l('Origin', 'मूल स्थान'), item.origin], [l('Destination', 'गंतव्य'), item.destination], [l('Order references', 'ऑर्डर संदर्भ'), item.orderRefs.join(', ')], [l('Shipment', 'शिपमेंट'), item.shipment], [l('Vehicle', 'वाहन'), item.vehicleId ?? '—'], [l('Handling notes', 'हैंडलिंग नोट्स'), item.handlingNotes]]} />{item.issues.length > 0 && <div className="issue-box"><AlertTriangle size={19} /><div><strong>{l('Reported issues', 'दर्ज समस्याएं')}</strong>{item.issues.map((value) => <p key={value}>{value}</p>)}</div></div>}<Timeline items={item.timeline} language={language} /></section><aside className="summary-card sticky"><h2>{l('Delivery controls', 'डिलीवरी नियंत्रण')}</h2><label className="field"><span>{l('Buyer delivery OTP', 'खरीदार डिलीवरी OTP')}</span><div className="otp-field-row"><input value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} placeholder={l('6-digit OTP', '6-अंकों का OTP')} inputMode="numeric" autoComplete="one-time-code" maxLength={6} /><button type="button" className="btn btn-primary" disabled={!otp.trim()} onClick={verifyOtp}>{l('Verify', 'सत्यापित करें')}</button></div></label><div className="status-controls">{deliverySteps.filter((status) => status !== 'issue').map((status) => <button className={item.status === status ? 'active' : ''} disabled={item.status === status} onClick={async () => { await logisticsService.updateDelivery(item.id, status); showToast(l('Buyer and farmer views synchronized', 'खरीदार और किसान स्थिति बदल गई')); refresh() }} key={status}>{labels.delivery[status][language === 'hi' ? 1 : 0]}</button>)}</div><label className="field"><span>{l('Report issue or delay', 'समस्या या देरी दर्ज करें')}</span><textarea value={issue} onChange={(event) => setIssue(event.target.value)} placeholder={l('Example: ETA delayed by 25 minutes', 'उदाहरण: ETA में 25 मिनट की देरी')} /></label><button className="btn btn-secondary btn-full danger" disabled={!issue.trim()} onClick={async () => { await logisticsService.reportDeliveryIssue(item.id, issue.trim()); setIssue(''); refresh() }}><AlertTriangle size={16} /> {l('Report issue', 'समस्या दर्ज करें')}</button></aside></div></div>
+  return <div className="page logistics-page"><Link className="back-link" to="/logistics/deliveries"><ArrowLeft size={16} /> {l('All deliveries', 'सभी डिलीवरी')}</Link><div className="page-title-row"><div><span className="eyebrow">{item.id} · {item.buyerType}</span><h1>{language === 'hi' ? item.produceHi : item.produce} · {item.quantityKg.toLocaleString('en-IN')} kg</h1><p>{item.buyer} · ETA {prettyWhen(item.eta)}</p></div><StatusBadge tone={tone(item.status)}>{labels.delivery[item.status][language === 'hi' ? 1 : 0]}</StatusBadge></div><div className="logistics-detail-grid"><section className="feature-card"><InfoGrid items={[[l('Origin', 'मूल स्थान'), item.origin], [l('Destination', 'गंतव्य'), item.destination], [l('Order references', 'ऑर्डर संदर्भ'), item.orderRefs.join(', ')], [l('Shipment', 'शिपमेंट'), item.shipment], [l('Vehicle', 'वाहन'), item.vehicleId ?? '—'], [l('Handling notes', 'हैंडलिंग नोट्स'), item.handlingNotes]]} />{item.issues.length > 0 && <div className="issue-box"><AlertTriangle size={19} /><div><strong>{l('Reported issues', 'दर्ज समस्याएं')}</strong>{item.issues.map((value) => <p key={value}>{value}</p>)}</div></div>}<DropoffConditionCard item={item} l={l} onSaved={refresh} /><Timeline items={item.timeline} language={language} /></section><aside className="summary-card sticky"><h2>{l('Delivery controls', 'डिलीवरी नियंत्रण')}</h2><label className="field"><span>{l('Buyer delivery OTP', 'खरीदार डिलीवरी OTP')}</span><div className="otp-field-row"><input value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} placeholder={l('6-digit OTP', '6-अंकों का OTP')} inputMode="numeric" autoComplete="one-time-code" maxLength={6} /><button type="button" className="btn btn-primary" disabled={!otp.trim()} onClick={verifyOtp}>{l('Verify', 'सत्यापित करें')}</button></div></label><div className="status-controls">{deliverySteps.filter((status) => status !== 'issue').map((status) => <button className={item.status === status ? 'active' : ''} disabled={item.status === status} onClick={async () => { await logisticsService.updateDelivery(item.id, status); showToast(l('Buyer and farmer views synchronized', 'खरीदार और किसान स्थिति बदल गई')); refresh() }} key={status}>{labels.delivery[status][language === 'hi' ? 1 : 0]}</button>)}</div><label className="field"><span>{l('Report issue or delay', 'समस्या या देरी दर्ज करें')}</span><textarea value={issue} onChange={(event) => setIssue(event.target.value)} placeholder={l('Example: ETA delayed by 25 minutes', 'उदाहरण: ETA में 25 मिनट की देरी')} /></label><button className="btn btn-secondary btn-full danger" disabled={!issue.trim()} onClick={async () => { await logisticsService.reportDeliveryIssue(item.id, issue.trim()); setIssue(''); refresh() }}><AlertTriangle size={16} /> {l('Report issue', 'समस्या दर्ज करें')}</button></aside></div></div>
+}
+
+/**
+ * Lightweight condition check at a handoff — never a re-inspection of produce quality.
+ * "If no goods are opened, do NOT pretend internal quality has been inspected."
+ */
+function DropoffConditionCard({ item, l, onSaved }: { item: Delivery; l: (en: string, hi: string) => string; onSaved: () => void }) {
+  const [existing, setExisting] = useState<DropoffCondition | undefined>(undefined)
+  const [sealed, setSealed] = useState(true)
+  const [intact, setIntact] = useState(true)
+  const [preview, setPreview] = useState<EvidencePreview | null>(null)
+  const [photoError, setPhotoError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (!item.lotCode) return
+    inspectionService.getLotState(item.lotCode).then((entry) => setExisting(entry?.dropoffCondition))
+  }, [item.lotCode])
+
+  if (!item.lotCode) return null
+
+  const save = async () => {
+    setSaving(true)
+    try {
+      const condition: DropoffCondition = { sealed, packagingIntact: intact, photoUrl: preview?.previewUrl, capturedAt: new Date().toISOString(), capturedBy: `${item.vehicleId ?? 'Operator'} (Logistics)` }
+      await inspectionService.recordDropoffCondition(item.lotCode!, condition)
+      setExisting(condition)
+      onSaved()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="dropoff-condition-card">
+      <h2 className="section-title">{l('Condition at handoff', 'हैंडओवर पर स्थिति')}</h2>
+      {existing ? (
+        <>
+          <div className="dropoff-toggle-row"><span>{l('Load condition', 'लोड की स्थिति')}</span><strong>{existing.sealed ? l('Good', 'ठीक') : l('Review needed', 'जांच ज़रूरी')}</strong></div>
+          <div className="dropoff-toggle-row"><span>{l('Packaging', 'पैकेजिंग')}</span><strong>{existing.packagingIntact ? l('Intact', 'सुरक्षित') : l('Damaged', 'क्षतिग्रस्त')}</strong></div>
+          <div className="dropoff-toggle-row"><span>{l('Visual evidence', 'दृश्य प्रमाण')}</span><strong>{existing.photoUrl ? l('Captured', 'लिया गया') : l('Not captured', 'नहीं लिया गया')}</strong></div>
+        </>
+      ) : (
+        <>
+          <div className="dropoff-toggle-row">
+            <span>{l('Load still sealed?', 'लोड अभी भी सील है?')}</span>
+            <div className="chip-toggle">
+              <button type="button" className={sealed ? 'active is-good' : ''} onClick={() => setSealed(true)}>{l('Yes', 'हां')}</button>
+              <button type="button" className={!sealed ? 'active is-bad' : ''} onClick={() => setSealed(false)}>{l('No', 'नहीं')}</button>
+            </div>
+          </div>
+          <div className="dropoff-toggle-row">
+            <span>{l('Packaging intact?', 'पैकेजिंग सुरक्षित है?')}</span>
+            <div className="chip-toggle">
+              <button type="button" className={intact ? 'active is-good' : ''} onClick={() => setIntact(true)}>{l('Yes', 'हां')}</button>
+              <button type="button" className={!intact ? 'active is-bad' : ''} onClick={() => setIntact(false)}>{l('No', 'नहीं')}</button>
+            </div>
+          </div>
+          <EvidenceCapture compact preview={preview} onCapture={setPreview} onRemove={() => setPreview(null)} onError={setPhotoError} />
+          {photoError && <small className="field-hint">{photoError}</small>}
+          <button type="button" className="btn btn-primary btn-full" disabled={saving} onClick={save}>{saving ? l('Saving…', 'सहेज रहे हैं…') : l('Save handoff condition', 'हैंडओवर स्थिति सहेजें')}</button>
+        </>
+      )}
+    </div>
+  )
 }
 
 export function LogisticsRoutesPage() {

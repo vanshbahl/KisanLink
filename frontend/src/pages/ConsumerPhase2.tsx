@@ -56,6 +56,7 @@ export function ConsumerListingCard({ listing }: { listing: FarmerListing }) {
           <div><h3>{language === 'hi' ? listing.cropHi : listing.crop}</h3><p>{listing.farm}</p></div>
           <StatusBadge tone={isRescue ? 'red' : 'neutral'}>{isRescue ? 'Rescue sale' : listing.grade}</StatusBadge>
         </div>
+        {Boolean(listing.overviewPhotos?.length) && <span className="quality-indicator-pill">Quality checked</span>}
         <p className="product-location"><MapPin size={15} />{origin.label} · {origin.km} km away</p>
         <div className="product-price-row">
           <ConsumerPriceBlock listing={{ pricePerKg: listing.pricePerKg, retailPricePerKg: listing.retailPricePerKg, rescuePricePerKg: isRescue ? rescuePrice : undefined }} />

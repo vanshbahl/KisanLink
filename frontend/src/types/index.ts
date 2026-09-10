@@ -70,6 +70,9 @@ export type ListingStatus = 'active' | 'draft' | 'paused' | 'sold' | 'unavailabl
 export type OrderStatus = 'new' | 'accepted' | 'preparing' | 'pickup_scheduled' | 'in_transit' | 'delivered' | 'cancelled'
 export type PickupStatus = 'scheduled' | 'driver_assigned' | 'arriving' | 'collected' | 'in_transit' | 'completed'
 
+/** How a bulk lot is physically divided into inspectable containers. */
+export type PackagingType = 'CRATE' | 'SACK' | 'BASKET' | 'LOOSE'
+
 export interface FarmerListing {
   id: string
   crop: string
@@ -87,6 +90,17 @@ export interface FarmerListing {
   farmingMethod: string
   notes: string
   pricePerKg: number
+  /** Human-readable lot identifier, e.g. "KL-TOM-1048". Set once, at listing creation. */
+  lotCode?: string
+  packagingType?: PackagingType
+  /** Number of crates/sacks/baskets the lot is split into. Unset for LOOSE/small listings. */
+  containerCount?: number
+  unitWeightKg?: number
+  /** Declaration-only overview photos of the prepared lot (not an independent quality verdict). */
+  overviewPhotos?: string[]
+  /** Real backend CropListing UUID, when this listing round-tripped through the API — see
+   * services/inspectionService.ts. Falls back to client-side simulation when absent. */
+  cropListingId?: string
   /** Wholesale reference. Farmer- and buyer-facing only — never shown to consumers. */
   mandiPricePerKg: number
   /**
@@ -200,7 +214,7 @@ export interface ConsumerOrder {
 export interface ConsumerProfileData { name: string; phone: string; language: Language; defaultLocation: string; addresses: Address[]; notifications: { orders: boolean; freshness: boolean; offers: boolean } }
 
 export type RfqStatus = 'open' | 'matching' | 'partially_matched' | 'fully_matched' | 'converted' | 'closed'
-export interface SupplyContribution { farmer: string; farm: string; listingId: string; quantityKg: number; ratePerKg: number }
+export interface SupplyContribution { farmer: string; farm: string; listingId: string; quantityKg: number; ratePerKg: number; lotCode?: string }
 export type RfqPackaging = 'Loose crates' | '10 kg crates' | '25 kg crates' | '50 kg jute sacks'
 export type RfqFrequency = 'one-time' | 'weekly' | 'twice-weekly' | 'fortnightly' | 'monthly'
 export interface BulkRfq {
@@ -282,8 +296,24 @@ export type LogisticsPickupStatus = 'unassigned' | 'assigned' | 'en_route' | 'ar
 export type DeliveryStatus = 'scheduled' | 'loaded' | 'in_transit' | 'at_hub' | 'out_for_delivery' | 'delivered' | 'issue'
 export type VehicleStatus = 'available' | 'assigned' | 'in_transit' | 'maintenance'
 export interface LogisticsTimelineItem { label: string; labelHi: string; at: string }
-export interface LogisticsPickup { id: string; farmer: string; farm: string; farmLocation: string; crop: string; cropHi: string; quantityKg: number; pickupWindow: string; orderRefs: string[]; vehicleId?: string; driver?: string; status: LogisticsPickupStatus; notes: string; routeId?: string; checklist: { arrived: boolean; quantityVerified: boolean; qualityChecked: boolean; loadSecured: boolean; pickupCompleted: boolean }; timeline: LogisticsTimelineItem[] }
-export interface Delivery { id: string; origin: string; destination: string; buyer: string; buyerType: 'Consumer' | 'Bulk Buyer'; shipment: string; produce: string; produceHi: string; quantityKg: number; eta: string; vehicleId?: string; orderRefs: string[]; status: DeliveryStatus; handlingNotes: string; issues: string[]; timeline: LogisticsTimelineItem[] }
+export interface LogisticsPickup {
+  id: string; farmer: string; farm: string; farmLocation: string; crop: string; cropHi: string; quantityKg: number; pickupWindow: string; orderRefs: string[]; vehicleId?: string; driver?: string; status: LogisticsPickupStatus; notes: string; routeId?: string; checklist: { arrived: boolean; quantityVerified: boolean; qualityChecked: boolean; loadSecured: boolean; pickupCompleted: boolean }; timeline: LogisticsTimelineItem[]
+  /** Lot this pickup is collecting - key into the shared inspection/custody state. */
+  lotCode?: string
+  cropListingId?: string
+  packagingType?: PackagingType
+  containerCount?: number
+  unitWeightKg?: number
+}
+export interface Delivery {
+  id: string; origin: string; destination: string; buyer: string; buyerType: 'Consumer' | 'Bulk Buyer'; shipment: string; produce: string; produceHi: string; quantityKg: number; eta: string; vehicleId?: string; orderRefs: string[]; status: DeliveryStatus; handlingNotes: string; issues: string[]; timeline: LogisticsTimelineItem[]
+  lotCode?: string
+  cropListingId?: string
+  packagingType?: PackagingType
+  containerCount?: number
+  unitWeightKg?: number
+}
+// (DropoffCondition is declared further below, with the rest of the inspection types.)
 export interface RouteStop {
   /** Key into `data/geo.ts`. */
   placeId: string
@@ -411,4 +441,116 @@ export interface MarketMakerBoard {
   consumerOrderId?: string
   pickupIds?: string[]
   deliveryIds?: string[]
+}
+
+/* ===================== Lot quality inspection & chain of custody =====================
+ * Bulk produce (200-300kg+) can't be certified by one photo, so a lot is declared with its
+ * packaging (crates/sacks), and each handoff checkpoint draws a server-generated random
+ * sample of containers to open and photograph. The AI signal is a binary, restrained
+ * classification only - never a fabricated freshness percentage or grade.
+ */
+export const INSPECTION_CHECKPOINTS = [
+  'FARMER_GATE',
+  'LOGISTICS_PICKUP',
+  'LOGISTICS_DROPOFF',
+  'WAREHOUSE_ENTRY',
+  'WAREHOUSE_EXIT',
+] as const
+export type InspectionCheckpoint = (typeof INSPECTION_CHECKPOINTS)[number]
+
+/** Produce-condition vocabulary. Never mixed with workflow words like "Pending"/"Declared". */
+export type InspectionConditionStatus = 'fresh' | 'needs_review' | 'quality_concern' | 'unable_to_assess'
+/** Full stage vocabulary shown on a custody timeline, condition + workflow states combined. */
+export type InspectionStageStatus = 'pending' | 'declared' | InspectionConditionStatus
+
+export interface SampleInstruction {
+  containerNumber: number
+  position: string
+  note: string
+}
+
+/** A server-drawn random sample for one lot at one checkpoint. Persisted - reloading the
+ * screen must return the same containers, never a fresh draw (anti-fraud requirement). */
+export interface SampleAssignment {
+  id: string
+  lotCode: string
+  checkpoint: InspectionCheckpoint
+  containerCount: number
+  sampleSize: number
+  selectedContainers: number[]
+  instructions: SampleInstruction[]
+  method: string
+  createdAt: string
+  /** True when this came from the real backend's cryptographic RNG; false for the
+   * client-side deterministic fallback used when the backend/lot UUID is unavailable. */
+  serverGenerated: boolean
+}
+
+export type InspectionCaptureStatus = InspectionConditionStatus | 'saved_ai_unavailable'
+
+export interface InspectionCapture {
+  id: string
+  lotCode: string
+  checkpoint: InspectionCheckpoint
+  containerNumber?: number
+  sampleAssignmentId?: string
+  imageUrl: string
+  status: InspectionCaptureStatus
+  capturedAt: string
+  capturedBy?: string
+}
+
+export interface DropoffCondition {
+  sealed: boolean
+  packagingIntact: boolean
+  photoUrl?: string
+  capturedAt: string
+  capturedBy?: string
+  notes?: string
+}
+
+export interface CustodyStage {
+  checkpoint: InspectionCheckpoint
+  status: InspectionStageStatus
+  photoCount: number
+  sampledContainers?: number
+  totalContainers?: number
+  selectedContainers?: number[]
+  firstCapturedAt?: string
+  lastCapturedAt?: string
+  captures: InspectionCapture[]
+  /** Only set on LOGISTICS_DROPOFF - a condition check, not a produce re-inspection. */
+  condition?: DropoffCondition
+}
+
+/** Everything needed to render "QUALITY & PICKUP" / "QUALITY ASSURANCE" / the custody
+ * timeline for one lot, assembled client-side from local + (when available) backend state. */
+export interface LotTrail {
+  lotCode: string
+  cropListingId?: string
+  cropName: string
+  quantityKg: number
+  packagingType?: PackagingType
+  containerCount?: number
+  unitWeightKg?: number
+  declaredAt: string
+  stages: CustodyStage[]
+}
+
+/** Client-side source of truth for one lot's evidence, keyed by lotCode in shared prototype
+ * state. inspectionService assembles this into a LotTrail and opportunistically mirrors
+ * reads/writes to the real backend when `cropListingId` is a genuine CropListing UUID. */
+export interface LotInspectionState {
+  lotCode: string
+  cropListingId?: string
+  cropName: string
+  quantityKg: number
+  packagingType?: PackagingType
+  containerCount?: number
+  unitWeightKg?: number
+  declaredAt: string
+  farmerPhotos: string[]
+  sampleAssignments: Partial<Record<InspectionCheckpoint, SampleAssignment>>
+  captures: InspectionCapture[]
+  dropoffCondition?: DropoffCondition
 }

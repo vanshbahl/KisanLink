@@ -139,7 +139,10 @@ class ApiClient {
       quality_grade: listing.grade === 'Grade A+' ? 'GRADE_A' : 'GRADE_A',
       is_pre_harvest: false,
       harvest_date: listing.harvestDate || new Date().toISOString().slice(0, 10),
-      photos: listing.imageSrc ? [listing.imageSrc] : [],
+      photos: [...(listing.imageSrc ? [listing.imageSrc] : []), ...(listing.overviewPhotos ?? [])],
+      ...(listing.packagingType ? { packaging_type: listing.packagingType } : {}),
+      ...(listing.containerCount ? { container_count: listing.containerCount } : {}),
+      ...(listing.unitWeightKg ? { unit_weight_kg: listing.unitWeightKg } : {}),
     }
     const raw = await this.request<any>('/listings', { method: 'POST', body: JSON.stringify(payload) }, 'farmer')
     return this.mapBackendListing(raw)
@@ -425,6 +428,72 @@ class ApiClient {
     )
   }
 
+  // --- Lot quality inspection & randomized sampling API ---
+  /** Multipart upload - bypasses `request()`'s JSON content-type so the browser can set the
+   * correct multipart boundary itself. */
+  async analyzeInspectionImage(params: {
+    file: Blob
+    checkpoint: string
+    cropListingId?: string
+    sampleAssignmentId?: string
+    containerNumber?: number
+  }): Promise<{
+    inspection_id: string
+    checkpoint: string
+    predicted_class: 'fresh' | 'not_fresh'
+    confidence: number
+    model: string
+    source: string
+    sample_image_url: string
+    analyzed_at: string
+    crop_listing_id?: string
+    sample_assignment_id?: string
+    container_number?: number
+  }> {
+    const token = await this.ensureToken('farmer')
+    const form = new FormData()
+    form.append('sample', params.file, 'evidence.jpg')
+    form.append('checkpoint', params.checkpoint)
+    if (params.cropListingId) form.append('crop_listing_id', params.cropListingId)
+    if (params.sampleAssignmentId) form.append('sample_assignment_id', params.sampleAssignmentId)
+    if (params.containerNumber !== undefined) form.append('container_number', String(params.containerNumber))
+
+    const headers: Record<string, string> = {}
+    if (token) headers['Authorization'] = `Bearer ${token}`
+    const res = await fetch(`${API_BASE}/freshness/analyze`, { method: 'POST', headers, body: form })
+    if (!res.ok) {
+      let detail = `Inspection upload failed: ${res.status}`
+      try {
+        const errJson = await res.json()
+        detail = (typeof errJson.detail === 'string' ? errJson.detail : errJson.detail?.message) || detail
+      } catch { /* use default detail */ }
+      throw new Error(detail)
+    }
+    return res.json()
+  }
+
+  async createOrGetSampleAssignment(cropListingId: string, checkpoint: string): Promise<{
+    id: string
+    crop_listing_id: string
+    checkpoint: string
+    container_count: number
+    sample_size: number
+    selected_containers: number[]
+    instructions: Array<{ container_number: number; position: string; note: string }>
+    method: string
+    created_at: string
+  }> {
+    return this.request(
+      '/inspections/sample-assignment',
+      { method: 'POST', body: JSON.stringify({ crop_listing_id: cropListingId, checkpoint }) },
+      'farmer'
+    )
+  }
+
+  async getLotTrail(cropListingId: string): Promise<any> {
+    return this.request(`/inspections/trail?crop_listing_id=${encodeURIComponent(cropListingId)}`, {}, 'farmer')
+  }
+
   // --- Bulk Buyer Procurement, Matching & Escrow API ---
   async getRequirements(): Promise<any[]> {
     return this.request<any[]>('/requirements', {}, 'bulk')
@@ -506,6 +575,11 @@ class ApiClient {
       rescueDiscountPricePerKg: item.rescue_discount_price_per_kg ? Number(item.rescue_discount_price_per_kg) : undefined,
       rescueStatus: String(item.status || ''),
       createdAt: item.created_at ? String(item.created_at).slice(0, 10) : new Date().toISOString().slice(0, 10),
+      lotCode: item.lot_code || undefined,
+      packagingType: item.packaging_type || undefined,
+      containerCount: item.container_count ?? undefined,
+      unitWeightKg: item.unit_weight_kg ?? undefined,
+      cropListingId: item.id,
     }
   }
 
