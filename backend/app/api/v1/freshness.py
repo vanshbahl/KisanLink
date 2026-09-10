@@ -114,13 +114,14 @@ async def analyze_inspection_image(
             },
         ) from exc
 
+    persisted_confidence = round(prediction.confidence, 5)
     record = ProduceInspection(
         created_by_user_id=actor_id,
         checkpoint=checkpoint.value,
         image_url=sample_image_url,
         analysis_status="COMPLETED",
         predicted_class=prediction.predicted_class,
-        local_model_confidence=prediction.confidence,
+        local_model_confidence=persisted_confidence,
         model_name=prediction.model,
         provider=prediction.source,
         provider_output={"probabilities": dict(prediction.probabilities)},
@@ -132,7 +133,7 @@ async def analyze_inspection_image(
         inspection_id=record.id,
         checkpoint=checkpoint,
         predicted_class=prediction.predicted_class,
-        confidence=prediction.confidence,
+        confidence=persisted_confidence,
         model=prediction.model,
         source=prediction.source,
         sample_image_url=sample_image_url,

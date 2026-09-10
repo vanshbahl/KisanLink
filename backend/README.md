@@ -161,9 +161,10 @@ Create `backend/.env` (or copy from `backend/.env.example`):
 DATABASE_URL=postgresql+asyncpg://kisanlink_user:kisanlink_secure_password@localhost:5432/kisanlink_db
 SYNC_DATABASE_URL=postgresql+psycopg2://kisanlink_user:kisanlink_secure_password@localhost:5432/kisanlink_db
 JWT_SECRET_KEY=kisanlink_dev_super_secret_jwt_key_2026_change_in_prod
-ALGORITHM=HS256
+JWT_ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=1440
 ENVIRONMENT=development
+DEMO_AUTH_ENABLED=false
 ALLOWED_CORS_ORIGINS=["http://localhost:5173","http://127.0.0.1:5173","http://localhost:3000"]
 ```
 

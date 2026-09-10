@@ -93,7 +93,11 @@ async def test_valid_image_analysis_is_categorical_and_persisted(
 ):
     client, fake_db, upload_dir = inspection_client
     image_bytes = make_jpeg()
-    monkeypatch.setattr(freshness_api, "local_freshness_provider", StaticProvider())
+    monkeypatch.setattr(
+        freshness_api,
+        "local_freshness_provider",
+        StaticProvider(confidence=0.91234567),
+    )
 
     response = await client.post(
         "/api/v1/freshness/analyze",
@@ -104,7 +108,7 @@ async def test_valid_image_analysis_is_categorical_and_persisted(
     assert response.status_code == 200
     data = response.json()
     assert data["predicted_class"] == "fresh"
-    assert data["confidence"] == pytest.approx(0.91)
+    assert data["confidence"] == pytest.approx(0.91235)
     assert data["confidence_semantics"] == "model_confidence_only"
     assert data["model"] == "efficientnet_b2"
     assert data["source"] == "local_cv"
@@ -114,7 +118,7 @@ async def test_valid_image_analysis_is_categorical_and_persisted(
     assert saved_path.read_bytes() == image_bytes
     assert saved_path.name != "farmer-supplied-name.jpg"
     assert fake_db.added[0].analysis_status == "COMPLETED"
-    assert fake_db.added[0].local_model_confidence == pytest.approx(0.91)
+    assert fake_db.added[0].local_model_confidence == pytest.approx(0.91235)
 
 
 @pytest.mark.asyncio
