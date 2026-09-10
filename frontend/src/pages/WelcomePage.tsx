@@ -36,7 +36,7 @@ export function WelcomePage() {
           <div className="farmer-photo-card" aria-hidden="true" />
           <img className="farmer-cutout" src="/assets/hero/farmer-cutout.webp" alt="" />
           <div className="hero-float hero-float-top"><Leaf size={18} /><span><strong>90%</strong> {t('reachesFarmers')}</span></div>
-          <div className="hero-float hero-float-bottom"><span className="avatar-stack"><i>RK</i><i>HS</i><i>+4</i></span><span><strong>{t('verifiedFarms')}</strong> {t('nearDelhi')}</span></div>
+          <div className="hero-float hero-float-bottom"><span className="avatar-stack"><i>RK</i><i>HS</i><i>+5</i></span><span><strong>{t('verifiedFarms')}</strong> {t('nearDelhi')}</span></div>
           <span className="hero-shape hero-shape-one" /><span className="hero-shape hero-shape-two" />
         </div>
       </section>

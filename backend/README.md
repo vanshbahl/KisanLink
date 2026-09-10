@@ -135,7 +135,7 @@ backend/
 5. **Migrations**:
    - Generate migration: `alembic revision --autogenerate -m "describe_change"`
    - Apply migration: `alembic upgrade head`
-6. **Authentication**: Passwordless phone OTP with demo code `123456`. Header format: `Authorization: Bearer <token>`.
+6. **Authentication**: Passwordless phone OTP. The demo code `123456` works only when `DEMO_AUTH_ENABLED=true` and `ENVIRONMENT` is `development`, `demo`, or `test`; production always fails closed. Header format: `Authorization: Bearer <token>`.
 7. **Frontend Adapter**: Centralized in `frontend/src/services/apiClient.ts` which handles JWT tokens, camelCase to snake_case field mapping, and unified error handling.
 
 ---
@@ -176,6 +176,63 @@ pip install -r requirements.txt
 alembic upgrade head
 python seed_demo_data.py
 ```
+
+To run the optional local EfficientNet-B2 provider, install the isolated CV
+dependencies instead:
+
+```bash
+pip install -r requirements-cv.txt
+```
+
+`torch`, `torchvision`, and `timm` are kept out of the normal backend dependency
+set because their platform wheels are large and materially increase deploy and
+cold-start cost. Pillow stays in the normal set because the API must safely
+decode and validate evidence images even when local inference is unavailable.
+
+### Local image inspection foundation
+
+The checkpoint and its explicit class/preprocessing metadata live in
+`backend/models/`:
+
+- `best_freshness_model.pth` — `timm` EfficientNet-B2 checkpoint
+- `model_config.json` — RGB input, aspect-ratio-preserving resize, center crop,
+  and ImageNet normalization
+- `class_names.json` — binary `fresh` / `not_fresh` mapping
+
+`POST /api/v1/freshness/analyze` accepts a multipart `sample` image and optional
+`checkpoint` (`FARMER_GATE`, `LOGISTICS_PICKUP`, `LOGISTICS_DROPOFF`,
+`WAREHOUSE_ENTRY`, or `WAREHOUSE_EXIT`). It validates the bounded upload and
+actual decoded image, saves the original evidence under `uploads/freshness/`,
+then runs the lazy singleton local provider. The response contains
+`predicted_class`, `confidence`, `model`, and `source`.
+
+`confidence` is the softmax confidence of the predicted binary class, stored as
+`local_model_confidence` on `produce_inspections`. It is not a freshness
+percentage, rot percentage, grade, shelf-life estimate, or whole-lot quality
+measurement. The API never blocks a crop listing because of this signal.
+Provider probabilities remain in the internal `provider_output` JSON for later
+auditing and decision logic.
+
+The migration creates a reusable `produce_inspections` evidence table rather
+than putting model semantics directly on `crop_listings`:
+
+```bash
+cd backend
+alembic upgrade head
+```
+
+The current endpoint leaves `crop_listing_id` nullable. A later custody phase can
+link inspections to lots/containers while retaining checkpoint history without
+redesigning the inference provider. Local images are publicly mounted at
+`/uploads/freshness` only in development/demo/test when
+`SERVE_LOCAL_INSPECTION_UPLOADS=true`. Local disk is acceptable for the SIH demo
+but is ephemeral and publicly guessable by URL; production should use private
+object storage, signed access, retention rules, and malware scanning.
+
+If the model or CV dependencies are unavailable, the decoded original image is
+still saved and a failed inspection record is retained; the API returns `503`
+with the evidence URL and inspection ID. Restart the backend after repairing a
+model-load failure because that process caches the failed lazy-load state.
 
 ### 4. Run Backend API Server
 ```bash

@@ -16,6 +16,7 @@ from app.api.v1.intelligence import router as intelligence_router
 from app.api.v1.reviews import router as reviews_router
 from app.api.v1.disputes import router as disputes_router
 from app.api.v1.audit import router as audit_router
+from app.api.v1.freshness import router as freshness_router
 
 api_v1_router = APIRouter(prefix="/api/v1")
 
@@ -24,6 +25,7 @@ api_v1_router.include_router(users_router)
 api_v1_router.include_router(farmers_router)
 api_v1_router.include_router(buyers_router)
 api_v1_router.include_router(listings_router)
+api_v1_router.include_router(freshness_router)
 api_v1_router.include_router(requirements_router)
 api_v1_router.include_router(matches_router)
 api_v1_router.include_router(clusters_router)

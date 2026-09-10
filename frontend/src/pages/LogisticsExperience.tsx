@@ -1,5 +1,5 @@
 import { AlertTriangle, ArrowLeft, Boxes, Building2, Check, ChevronRight, CircleGauge, Clock3, LogOut, MapPinned, PackageCheck, RefreshCw, Route, Save, ShieldCheck, ShoppingBasket, Sprout, Truck, UserRound, Warehouse } from 'lucide-react'
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { DemoControlCenter } from '../components/DemoControlCenter'
 import { DeliveryRiskCard, DispatchPulseCard, PickupSequenceCard, RouteReviewCard } from '../components/ai/LogisticsIntelligenceCards'
@@ -16,9 +16,44 @@ import { logisticsService } from '../services/logisticsService'
 import type { Delivery, DeliveryStatus, LogisticsPickup, LogisticsPickupStatus, LogisticsProfileData, VehicleStatus } from '../types'
 import { roleHome } from '../utils/routes'
 
-// The map pulls in maplibre-gl (a sizeable dependency), so it's only loaded when the
-// logistics dashboard actually renders, not as part of the main bundle.
-const DigitalTwinCorridorMap = lazy(() => import('../components/maps/DigitalTwinCorridorMap').then((m) => ({ default: m.DigitalTwinCorridorMap })))
+import { CorridorRouteMap, prettyWhen } from '../components/maps/CorridorRouteMap'
+import type { RouteStop } from '../types'
+import { resolvePlace } from '../data/geo'
+
+/**
+ * Derives map geometry for a route that predates `routeStops`, or one written by a flow that
+ * only recorded stop names. Falls back to resolving the place from the stop text, so a route
+ * is drawn whenever its stops are somewhere the corridor knows about.
+ */
+function stopsForRoute(route: { routeStops?: RouteStop[]; stops: string[]; pickups: string[]; loadKg: number } | undefined, pickups: LogisticsPickup[], deliveries: Delivery[]): RouteStop[] {
+  if (!route) return []
+  if (route.routeStops?.length) {
+    // Statuses live on the pickup records, which the operator is actively changing.
+    return route.routeStops.map((stop) => {
+      const pickup = stop.refId ? pickups.find((item) => item.id === stop.refId) : undefined
+      if (!pickup) return stop
+      const status: RouteStop['status'] = ['completed', 'loaded'].includes(pickup.status) ? 'done' : pickup.status === 'en_route' || pickup.status === 'arrived' ? 'current' : 'upcoming'
+      return { ...stop, status, quantityKg: pickup.quantityKg }
+    })
+  }
+  const derived: RouteStop[] = []
+  for (const name of route.stops) {
+    const place = resolvePlace(name)
+    if (!place) continue
+    const pickup = pickups.find((item) => resolvePlace(item.farm)?.id === place.id)
+    const delivery = deliveries.find((item) => resolvePlace(item.destination)?.id === place.id)
+    derived.push({
+      placeId: place.id,
+      label: place.label,
+      kind: place.id === 'sonipat_hub' ? 'hub' : delivery ? 'drop' : 'pickup',
+      refId: pickup?.id ?? delivery?.id,
+      quantityKg: pickup?.quantityKg ?? delivery?.quantityKg ?? route.loadKg,
+      window: pickup?.pickupWindow ?? delivery?.eta,
+      status: pickup && ['completed', 'loaded'].includes(pickup.status) ? 'done' : 'upcoming',
+    })
+  }
+  return derived
+}
 
 const pickupSteps: LogisticsPickupStatus[] = ['unassigned', 'assigned', 'en_route', 'arrived', 'loaded', 'completed', 'issue']
 const deliverySteps: DeliveryStatus[] = ['scheduled', 'loaded', 'in_transit', 'at_hub', 'out_for_delivery', 'delivered', 'issue']
@@ -30,7 +65,6 @@ const labels = {
 
 function useCopy() { const { language } = useLanguage(); return { language, l: (en: string, hi: string) => language === 'hi' ? hi : en } }
 const tone = (status: string) => status === 'issue' ? 'red' : ['completed', 'delivered', 'available'].includes(status) ? 'green' : 'amber'
-const formatTime = (minutes: number) => `${Math.floor(minutes / 60)}h ${minutes % 60}m`
 
 export function LogisticsDashboard() {
   const { l, language } = useCopy(); const { data, loading, error } = useAsyncData(() => logisticsService.overview())
@@ -51,6 +85,12 @@ export function LogisticsDashboard() {
   const loadKg = activePickups.reduce((sum, item) => sum + item.quantityKg, 0)
   const issues = data.logisticsPickups.filter((item) => item.status === 'issue').length + data.deliveries.filter((item) => item.status === 'issue').length
   const pooled = data.logisticsRoutes.find((item) => item.pooled)
+  // The run an operator cares about right now: an active pooled route, then any pooled one,
+  // then whatever route exists at all — so the map is never empty while work is on the floor.
+  const mapRoute = data.logisticsRoutes.find((item) => item.status === 'active')
+    ?? pooled
+    ?? data.logisticsRoutes[0]
+  const mapStops = stopsForRoute(mapRoute, data.logisticsPickups, data.deliveries)
 
   // Four numbers an operator acts on, in the order they act on them. Everything else is
   // secondary and lives further down the page.
@@ -82,7 +122,7 @@ export function LogisticsDashboard() {
       from: item.origin,
       to: item.destination,
       load: `${language === 'hi' ? item.produceHi : item.produce} · ${item.quantityKg} kg`,
-      timing: `ETA ${item.eta}`,
+      timing: `ETA ${prettyWhen(item.eta)}`,
       status: item.status as string,
       statusLabel: labels.delivery[item.status][language === 'hi' ? 1 : 0],
       action: l('Open delivery', 'डिलीवरी खोलें'),
@@ -116,8 +156,30 @@ export function LogisticsDashboard() {
       </section>
 
       <section className="logi-section">
-        <div className="logi-section-head"><div><h2>{l('Corridor map', 'कॉरिडोर मैप')}</h2><p>{l('Pickup points, hub and buyer drops on the active corridor.', 'सक्रिय कॉरिडोर पर पिकअप, हब और खरीदार डिलीवरी।')}</p></div></div>
-        <Suspense fallback={<div className="corridor-map-placeholder" />}><DigitalTwinCorridorMap /></Suspense>
+        <div className="logi-section-head">
+          <div>
+            <h2>{l('Live corridor', 'लाइव कॉरिडोर')}</h2>
+            <p>{l('Farm pickups, consolidation and the buyer drop on the run being driven now.', 'अभी चल रहे रूट पर खेत पिकअप, एकत्रीकरण और खरीदार डिलीवरी।')}</p>
+          </div>
+          {mapRoute && <Link className="logi-section-link" to="/logistics/routes">{l('All routes', 'सभी रूट')} <ChevronRight size={15} /></Link>}
+        </div>
+        <CorridorRouteMap
+          title={mapRoute ? (language === 'hi' ? mapRoute.nameHi : mapRoute.name) : l('Collection corridor', 'संग्रह कॉरिडोर')}
+          subtitle={l(
+            `${mapStops.filter((stop) => stop.kind === 'pickup').length} farm pickups pooled into one consolidated delivery`,
+            'कई खेत पिकअप एक साझा डिलीवरी में',
+          )}
+          stops={mapStops}
+          meta={mapRoute ? {
+            routeId: mapRoute.id,
+            vehicle: data.vehicles.find((vehicle) => vehicle.id === mapRoute.vehicleId)?.registration ?? mapRoute.vehicleId,
+            distanceKm: mapRoute.distanceKm,
+            durationMinutes: mapRoute.durationMinutes,
+            loadKg: mapRoute.loadKg,
+            capacityKg: mapRoute.capacityKg,
+            eta: data.deliveries.find((delivery) => mapRoute.deliveries.includes(delivery.id))?.eta,
+          } : undefined}
+        />
       </section>
 
       <section className="logi-section">
@@ -203,37 +265,254 @@ export function LogisticsPickupsPage() {
 }
 
 export function LogisticsPickupDetailPage() {
-  const { id = '' } = useParams(); const { l, language } = useCopy(); const { showToast } = useToast(); const [version, setVersion] = useState(0); const [issue, setIssue] = useState(''); const [otp, setOtp] = useState(''); const { data, loading, error } = useAsyncData(async () => ({ pickup: await logisticsService.pickup(id), vehicles: await logisticsService.vehicles() }), [id, version])
-  if (loading) return <DashboardSkeleton />; if (!data?.pickup || error) return <ErrorState title={l('Pickup not found', 'पिकअप नहीं मिला')} />; const item = data.pickup
-  const refresh = () => setVersion((value) => value + 1); const update = async (status: LogisticsPickupStatus) => { await logisticsService.updatePickup(item.id, status); showToast(l('Pickup status synchronized', 'पिकअप स्थिति सभी जगह बदल गई')); refresh() }
-  const verifyOtp = async () => { try { const res = await logisticsService.verifyPickupOtp(item.id, otp); showToast(res.message); setOtp(''); refresh() } catch (err) { showToast(err instanceof Error ? err.message : l('OTP verification failed', 'OTP सत्यापन विफल')) } }
-  return <div className="page logistics-page"><Link className="back-link" to="/logistics/pickups"><ArrowLeft size={16} /> {l('All pickups', 'सभी पिकअप')}</Link><div className="page-title-row"><div><span className="eyebrow">{item.id}</span><h1>{language === 'hi' ? item.cropHi : item.crop} · {item.quantityKg} kg</h1><p>{item.farmer} · {item.farmLocation}</p></div><StatusBadge tone={tone(item.status)}>{labels.pickup[item.status][language === 'hi' ? 1 : 0]}</StatusBadge></div><div className="logistics-detail-grid"><section className="feature-card"><InfoGrid items={[[l('Farmer / farm', 'किसान / खेत'), `${item.farmer} · ${item.farm}`], [l('Location', 'स्थान'), item.farmLocation], [l('Time window', 'समय'), item.pickupWindow], [l('Linked orders', 'जुड़े ऑर्डर'), item.orderRefs.join(', ')], [l('Vehicle', 'वाहन'), item.vehicleId ?? l('Unassigned', 'तय नहीं')], [l('Driver', 'ड्राइवर'), item.driver ?? l('Awaiting assignment', 'असाइनमेंट बाकी')], [l('Notes', 'नोट्स'), item.notes || '—']]} /><h2 className="section-title">{l('Pickup checklist', 'पिकअप चेकलिस्ट')}</h2><div className="checklist">{(Object.entries(item.checklist) as Array<[keyof LogisticsPickup['checklist'], boolean]>).map(([key, checked]) => <label key={key}><input type="checkbox" checked={checked} onChange={async () => { await logisticsService.toggleChecklist(item.id, key); refresh() }} /><span>{l(key.replace(/([A-Z])/g, ' $1').toLowerCase(), ({ arrived: 'पहुंच गया', quantityVerified: 'मात्रा सत्यापित', qualityChecked: 'गुणवत्ता जांची', loadSecured: 'लोड सुरक्षित', pickupCompleted: 'पिकअप पूरा' } as Record<string, string>)[key])}</span></label>)}</div><Timeline items={item.timeline} language={language} /></section><aside className="summary-card sticky"><h2>{l('Pickup controls', 'पिकअप नियंत्रण')}</h2><label className="field"><span>{l('Farmgate pickup OTP', 'फार्मगेट पिकअप OTP')}</span><div className="otp-field-row"><input value={otp} onChange={(e) => setOtp(e.target.value)} placeholder={l('6-digit OTP', '6-अंकों का OTP')} maxLength={6} /><button type="button" className="btn btn-primary" disabled={!otp.trim()} onClick={verifyOtp}>{l('Verify', 'सत्यापित करें')}</button></div></label><label className="field"><span>{l('Assign vehicle', 'वाहन तय करें')}</span><select aria-label={l('Assign vehicle', 'वाहन तय करें')} value={item.vehicleId ?? ''} onChange={async (event) => { if (event.target.value) { await logisticsService.assignPickup(item.id, event.target.value); refresh() } }}><option value="">{l('Select available vehicle', 'उपलब्ध वाहन चुनें')}</option>{data.vehicles.filter((vehicle) => vehicle.status !== 'maintenance').map((vehicle) => <option value={vehicle.id} key={vehicle.id}>{vehicle.registration} · {vehicle.driver}</option>)}</select></label><div className="status-controls">{pickupSteps.filter((status) => status !== 'issue').map((status) => <button className={item.status === status ? 'active' : ''} disabled={item.status === status} onClick={() => update(status)} key={status}>{labels.pickup[status][language === 'hi' ? 1 : 0]}</button>)}</div><label className="field"><span>{l('Report issue', 'समस्या दर्ज करें')}</span><textarea value={issue} onChange={(event) => setIssue(event.target.value)} placeholder={l('Describe the operational issue', 'संचालन समस्या लिखें')} /></label><button className="btn btn-secondary btn-full danger" disabled={!issue.trim()} onClick={async () => { await logisticsService.reportPickupIssue(item.id, issue.trim()); setIssue(''); refresh() }}><AlertTriangle size={16} /> {l('Report issue', 'समस्या दर्ज करें')}</button></aside></div></div>
+  const { id = '' } = useParams(); const { l, language } = useCopy(); const { showToast } = useToast()
+  const [version, setVersion] = useState(0); const [issue, setIssue] = useState(''); const [otp, setOtp] = useState(''); const [busy, setBusy] = useState(false)
+  const { data, loading, error } = useAsyncData(async () => {
+    const [pickup, vehicles, routes, pickups, deliveries] = await Promise.all([
+      logisticsService.pickup(id), logisticsService.vehicles(), logisticsService.routes(), logisticsService.pickups(), logisticsService.deliveries(),
+    ])
+    return { pickup, vehicles, routes, pickups, deliveries }
+  }, [id, version])
+
+  if (loading) return <DashboardSkeleton />
+  if (!data?.pickup || error) return <ErrorState title={l('Pickup not found', 'पिकअप नहीं मिला')} />
+  const item = data.pickup
+  const route = data.routes.find((entry) => entry.id === item.routeId)
+  const stops = stopsForRoute(route, data.pickups, data.deliveries)
+  const vehicle = data.vehicles.find((entry) => entry.id === item.vehicleId)
+  const position = route ? route.pickups.indexOf(item.id) + 1 : 0
+  const checklistDone = Object.values(item.checklist).filter(Boolean).length
+  const checklistTotal = Object.keys(item.checklist).length
+
+  const refresh = () => setVersion((value) => value + 1)
+  const guard = async (action: () => Promise<unknown>, message: string) => {
+    if (busy) return
+    setBusy(true)
+    try { await action(); showToast(message) }
+    catch (reason) { showToast(reason instanceof Error ? reason.message : l('That change could not be applied.', 'यह बदलाव लागू नहीं हो सका।')) }
+    finally { setBusy(false); refresh() }
+  }
+  const update = (status: LogisticsPickupStatus) => guard(() => logisticsService.updatePickup(item.id, status), l('Pickup status synchronized across roles', 'पिकअप स्थिति सभी जगह बदल गई'))
+  const verifyOtp = () => guard(async () => { const res = await logisticsService.verifyPickupOtp(item.id, otp); setOtp(''); return res }, l('Pickup OTP verified · produce loaded', 'OTP सत्यापित · माल लोड हुआ'))
+
+  // The single thing this pickup needs next, so the operator is never reading a wall of
+  // equally-weighted controls to find the button that matters.
+  const nextAction: { label: string; status: LogisticsPickupStatus } | null =
+    item.status === 'unassigned' ? null
+      : item.status === 'assigned' ? { label: l('Start driving to farm', 'खेत के लिए निकलें'), status: 'en_route' }
+        : item.status === 'en_route' ? { label: l('Mark arrived at farm', 'खेत पर पहुंचे'), status: 'arrived' }
+          : item.status === 'arrived' ? { label: l('Confirm produce loaded', 'माल लोड हुआ'), status: 'loaded' }
+            : item.status === 'loaded' ? { label: l('Complete this pickup', 'पिकअप पूरा करें'), status: 'completed' }
+              : null
+
+  return (
+    <div className="page logistics-page">
+      <Link className="back-link" to="/logistics/pickups"><ArrowLeft size={16} /> {l('All pickups', 'सभी पिकअप')}</Link>
+      <div className="page-title-row">
+        <div>
+          <span className="eyebrow">{item.id}{route ? ` · ${route.id}${position ? ` · ${l('stop', 'स्टॉप')} ${position}/${route.pickups.length}` : ''}` : ''}</span>
+          <h1>{language === 'hi' ? item.cropHi : item.crop} · {item.quantityKg.toLocaleString('en-IN')} kg</h1>
+          <p>{item.farm} · {item.farmLocation}</p>
+        </div>
+        <StatusBadge tone={tone(item.status)}>{labels.pickup[item.status][language === 'hi' ? 1 : 0]}</StatusBadge>
+      </div>
+
+      {/* What to do next, before any of the reference detail. */}
+      <section className="logi-next">
+        <div>
+          <span className="eyebrow">{l('Next action', 'अगला कदम')}</span>
+          <h2>{item.status === 'completed' ? l('This pickup is complete', 'यह पिकअप पूरा हो गया')
+            : item.status === 'issue' ? l('Resolve the reported issue before continuing', 'आगे बढ़ने से पहले समस्या हल करें')
+              : item.status === 'unassigned' ? l('Assign a vehicle to this pickup', 'इस पिकअप को वाहन दें')
+                : nextAction?.label ?? l('Awaiting the next step', 'अगले कदम का इंतज़ार')}</h2>
+          <p>{item.pickupWindow} · {item.notes || l('No special handling notes.', 'कोई विशेष निर्देश नहीं।')}</p>
+        </div>
+        <div className="logi-next-actions">
+          {nextAction && <button type="button" className="btn btn-primary btn-large" disabled={busy} onClick={() => update(nextAction.status)}>{nextAction.label} <ChevronRight size={16} /></button>}
+          <a className="btn btn-secondary" href="tel:18001234567"><UserRound size={16} /> {l('Call farmer', 'किसान को कॉल करें')}</a>
+        </div>
+      </section>
+
+      <div className="logistics-detail-grid">
+        <section className="feature-card">
+          {stops.length > 0 && (
+            <CorridorRouteMap
+              stops={stops}
+              title={route ? (language === 'hi' ? route.nameHi : route.name) : l('Collection corridor', 'संग्रह कॉरिडोर')}
+              subtitle={l(`This pickup is stop ${position || 1} on the run`, `यह पिकअप रूट पर स्टॉप ${position || 1} है`)}
+              meta={route ? { routeId: route.id, vehicle: vehicle ? `${vehicle.registration} · ${vehicle.driver}` : route.vehicleId, distanceKm: route.distanceKm, durationMinutes: route.durationMinutes, loadKg: route.loadKg, capacityKg: route.capacityKg } : undefined}
+            />
+          )}
+          <InfoGrid items={[
+            [l('Farmer / farm', 'किसान / खेत'), `${item.farmer} · ${item.farm}`],
+            [l('Location', 'स्थान'), item.farmLocation],
+            [l('Time window', 'समय'), item.pickupWindow],
+            [l('Linked orders', 'जुड़े ऑर्डर'), item.orderRefs.join(', ') || '—'],
+            [l('Vehicle', 'वाहन'), vehicle ? `${vehicle.registration} · ${vehicle.capacityKg.toLocaleString('en-IN')} kg` : l('Unassigned', 'तय नहीं')],
+            [l('Driver', 'ड्राइवर'), item.driver ?? l('Awaiting assignment', 'असाइनमेंट बाकी')],
+          ]} />
+          <h2 className="section-title">{l('Pickup checklist', 'पिकअप चेकलिस्ट')} <small>{checklistDone}/{checklistTotal}</small></h2>
+          <div className="checklist">
+            {(Object.entries(item.checklist) as Array<[keyof LogisticsPickup['checklist'], boolean]>).map(([key, checked]) => (
+              <label key={key}>
+                <input type="checkbox" checked={checked} onChange={() => guard(() => logisticsService.toggleChecklist(item.id, key), l('Checklist updated', 'चेकलिस्ट अपडेट हुई'))} />
+                <span>{l(key.replace(/([A-Z])/g, ' $1').toLowerCase(), ({ arrived: 'पहुंच गया', quantityVerified: 'मात्रा सत्यापित', qualityChecked: 'गुणवत्ता जांची', loadSecured: 'लोड सुरक्षित', pickupCompleted: 'पिकअप पूरा' } as Record<string, string>)[key])}</span>
+              </label>
+            ))}
+          </div>
+          <Timeline items={item.timeline} language={language} />
+        </section>
+
+        <aside className="summary-card sticky">
+          <h2>{l('Pickup controls', 'पिकअप नियंत्रण')}</h2>
+          <label className="field">
+            <span>{l('Farmgate pickup OTP', 'फार्मगेट पिकअप OTP')}</span>
+            <div className="otp-field-row">
+              <input value={otp} onChange={(event) => setOtp(event.target.value.replace(/\D/g, ''))} placeholder={l('6-digit OTP', '6-अंकों का OTP')} inputMode="numeric" autoComplete="one-time-code" maxLength={6} />
+              <button type="button" className="btn btn-primary" disabled={otp.length < 4 || busy} onClick={verifyOtp}>{l('Verify', 'सत्यापित करें')}</button>
+            </div>
+            <small className="field-hint">{l('Shared with the farmer when the driver arrives.', 'ड्राइवर पहुंचने पर किसान को मिलता है।')}</small>
+          </label>
+          <label className="field">
+            <span>{l('Assign vehicle', 'वाहन तय करें')}</span>
+            <select value={item.vehicleId ?? ''} disabled={busy} onChange={(event) => { if (event.target.value) guard(() => logisticsService.assignPickup(item.id, event.target.value), l('Vehicle assigned', 'वाहन तय हुआ')) }}>
+              <option value="">{l('Select available vehicle', 'उपलब्ध वाहन चुनें')}</option>
+              {data.vehicles.filter((entry) => entry.status !== 'maintenance').map((entry) => (
+                <option value={entry.id} key={entry.id} disabled={entry.capacityKg < item.quantityKg}>
+                  {entry.registration} · {entry.driver} · {entry.capacityKg.toLocaleString('en-IN')} kg{entry.capacityKg < item.quantityKg ? ` (${l('too small', 'बहुत छोटा')})` : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="field">
+            <span className="field-label">{l('Override status', 'स्थिति बदलें')}</span>
+            <div className="status-controls">
+              {pickupSteps.filter((status) => status !== 'issue').map((status) => (
+                <button className={item.status === status ? 'active' : ''} disabled={item.status === status || busy} onClick={() => update(status)} key={status}>{labels.pickup[status][language === 'hi' ? 1 : 0]}</button>
+              ))}
+            </div>
+          </div>
+          <label className="field">
+            <span>{l('Report issue', 'समस्या दर्ज करें')}</span>
+            <textarea value={issue} rows={3} maxLength={200} onChange={(event) => setIssue(event.target.value)} placeholder={l('Describe the operational issue', 'संचालन समस्या लिखें')} />
+          </label>
+          <button className="btn btn-secondary btn-full danger" disabled={!issue.trim() || busy} onClick={() => guard(async () => { await logisticsService.reportPickupIssue(item.id, issue.trim()); setIssue('') }, l('Issue reported', 'समस्या दर्ज हुई'))}>
+            <AlertTriangle size={16} /> {l('Report issue', 'समस्या दर्ज करें')}
+          </button>
+        </aside>
+      </div>
+    </div>
+  )
 }
 
 export function LogisticsDeliveriesPage() {
   const { l, language } = useCopy(); const [filter, setFilter] = useState<'active' | DeliveryStatus>('active'); const { data, loading, error } = useAsyncData(() => logisticsService.deliveries())
   if (loading) return <DashboardSkeleton />; const items = data?.filter((item) => filter === 'active' ? item.status !== 'delivered' : item.status === filter) ?? []
-  return <div className="page logistics-page"><PageHead eyebrow={l('Buyer fulfillment', 'खरीदार पूर्ति')} title={l('Delivery management', 'डिलीवरी प्रबंधन')} copy={l('Consumer and bulk shipments in one operational queue.', 'ग्राहक और थोक शिपमेंट एक संचालन सूची में।')} />{(data?.length ?? 0) > 0 && <DeliveryRiskCard deliveries={data ?? []} />}<div className="filter-tabs logistics-filters">{(['active', ...deliverySteps] as const).map((status) => <button className={filter === status ? 'active' : ''} onClick={() => setFilter(status)} key={status}>{status === 'active' ? l('Active', 'सक्रिय') : labels.delivery[status][language === 'hi' ? 1 : 0]}</button>)}</div>{error ? <ErrorState /> : items.length ? <div className="logistics-list">{items.map((item) => <Link className="logistics-row" to={`/logistics/deliveries/${item.id}`} key={item.id}><div><span className="eyebrow">{item.id} · {item.buyerType}</span><h2>{language === 'hi' ? item.produceHi : item.produce} · {item.quantityKg.toLocaleString('en-IN')} kg</h2><p>{item.destination}</p><small>ETA {item.eta} · {item.orderRefs.join(', ')}</small></div><div><StatusBadge tone={tone(item.status)}>{labels.delivery[item.status][language === 'hi' ? 1 : 0]}</StatusBadge><strong>{item.vehicleId ?? l('Unassigned', 'तय नहीं')}</strong><ChevronRight size={18} /></div></Link>)}</div> : <EmptyState icon={PackageCheck} title={l('No deliveries here', 'यहां कोई डिलीवरी नहीं')} copy={l('This state has no matching delivery.', 'इस स्थिति में कोई संबंधित डिलीवरी नहीं है।')} />}</div>
+  return <div className="page logistics-page"><PageHead eyebrow={l('Buyer fulfillment', 'खरीदार पूर्ति')} title={l('Delivery management', 'डिलीवरी प्रबंधन')} copy={l('Consumer and bulk shipments in one operational queue.', 'ग्राहक और थोक शिपमेंट एक संचालन सूची में।')} />{(data?.length ?? 0) > 0 && <DeliveryRiskCard deliveries={data ?? []} />}<div className="filter-tabs logistics-filters">{(['active', ...deliverySteps] as const).map((status) => <button className={filter === status ? 'active' : ''} onClick={() => setFilter(status)} key={status}>{status === 'active' ? l('Active', 'सक्रिय') : labels.delivery[status][language === 'hi' ? 1 : 0]}</button>)}</div>{error ? <ErrorState /> : items.length ? <div className="logistics-list">{items.map((item) => <Link className="logistics-row" to={`/logistics/deliveries/${item.id}`} key={item.id}><div><span className="eyebrow">{item.id} · {item.buyerType}</span><h2>{language === 'hi' ? item.produceHi : item.produce} · {item.quantityKg.toLocaleString('en-IN')} kg</h2><p>{item.destination}</p><small>ETA {prettyWhen(item.eta)} · {item.orderRefs.join(', ')}</small></div><div><StatusBadge tone={tone(item.status)}>{labels.delivery[item.status][language === 'hi' ? 1 : 0]}</StatusBadge><strong>{item.vehicleId ?? l('Unassigned', 'तय नहीं')}</strong><ChevronRight size={18} /></div></Link>)}</div> : <EmptyState icon={PackageCheck} title={l('No deliveries here', 'यहां कोई डिलीवरी नहीं')} copy={l('This state has no matching delivery.', 'इस स्थिति में कोई संबंधित डिलीवरी नहीं है।')} />}</div>
 }
 
 export function LogisticsDeliveryDetailPage() {
   const { id = '' } = useParams(); const { l, language } = useCopy(); const { showToast } = useToast(); const [version, setVersion] = useState(0); const [issue, setIssue] = useState(''); const [otp, setOtp] = useState(''); const { data, loading, error } = useAsyncData(() => logisticsService.delivery(id), [id, version]); if (loading) return <DashboardSkeleton />; if (!data || error) return <ErrorState title={l('Delivery not found', 'डिलीवरी नहीं मिली')} />; const item: Delivery = data; const refresh = () => setVersion((value) => value + 1)
   const verifyOtp = async () => { try { const res = await logisticsService.verifyDeliveryOtp(item.id, otp); showToast(res.message); setOtp(''); refresh() } catch (err) { showToast(err instanceof Error ? err.message : l('OTP verification failed', 'OTP सत्यापन विफल')) } }
-  return <div className="page logistics-page"><Link className="back-link" to="/logistics/deliveries"><ArrowLeft size={16} /> {l('All deliveries', 'सभी डिलीवरी')}</Link><div className="page-title-row"><div><span className="eyebrow">{item.id} · {item.buyerType}</span><h1>{language === 'hi' ? item.produceHi : item.produce} · {item.quantityKg.toLocaleString('en-IN')} kg</h1><p>{item.buyer} · ETA {item.eta}</p></div><StatusBadge tone={tone(item.status)}>{labels.delivery[item.status][language === 'hi' ? 1 : 0]}</StatusBadge></div><div className="logistics-detail-grid"><section className="feature-card"><InfoGrid items={[[l('Origin', 'मूल स्थान'), item.origin], [l('Destination', 'गंतव्य'), item.destination], [l('Order references', 'ऑर्डर संदर्भ'), item.orderRefs.join(', ')], [l('Shipment', 'शिपमेंट'), item.shipment], [l('Vehicle', 'वाहन'), item.vehicleId ?? '—'], [l('Handling notes', 'हैंडलिंग नोट्स'), item.handlingNotes]]} />{item.issues.length > 0 && <div className="issue-box"><AlertTriangle size={19} /><div><strong>{l('Reported issues', 'दर्ज समस्याएं')}</strong>{item.issues.map((value) => <p key={value}>{value}</p>)}</div></div>}<Timeline items={item.timeline} language={language} /></section><aside className="summary-card sticky"><h2>{l('Delivery controls', 'डिलीवरी नियंत्रण')}</h2><label className="field"><span>{l('Buyer delivery OTP', 'खरीदार डिलीवरी OTP')}</span><div className="otp-field-row"><input value={otp} onChange={(e) => setOtp(e.target.value)} placeholder={l('6-digit OTP', '6-अंकों का OTP')} maxLength={6} /><button type="button" className="btn btn-primary" disabled={!otp.trim()} onClick={verifyOtp}>{l('Verify', 'सत्यापित करें')}</button></div></label><div className="status-controls">{deliverySteps.filter((status) => status !== 'issue').map((status) => <button className={item.status === status ? 'active' : ''} disabled={item.status === status} onClick={async () => { await logisticsService.updateDelivery(item.id, status); showToast(l('Buyer and farmer views synchronized', 'खरीदार और किसान स्थिति बदल गई')); refresh() }} key={status}>{labels.delivery[status][language === 'hi' ? 1 : 0]}</button>)}</div><label className="field"><span>{l('Report issue or delay', 'समस्या या देरी दर्ज करें')}</span><textarea value={issue} onChange={(event) => setIssue(event.target.value)} placeholder={l('Example: ETA delayed by 25 minutes', 'उदाहरण: ETA में 25 मिनट की देरी')} /></label><button className="btn btn-secondary btn-full danger" disabled={!issue.trim()} onClick={async () => { await logisticsService.reportDeliveryIssue(item.id, issue.trim()); setIssue(''); refresh() }}><AlertTriangle size={16} /> {l('Report issue', 'समस्या दर्ज करें')}</button></aside></div></div>
+  return <div className="page logistics-page"><Link className="back-link" to="/logistics/deliveries"><ArrowLeft size={16} /> {l('All deliveries', 'सभी डिलीवरी')}</Link><div className="page-title-row"><div><span className="eyebrow">{item.id} · {item.buyerType}</span><h1>{language === 'hi' ? item.produceHi : item.produce} · {item.quantityKg.toLocaleString('en-IN')} kg</h1><p>{item.buyer} · ETA {prettyWhen(item.eta)}</p></div><StatusBadge tone={tone(item.status)}>{labels.delivery[item.status][language === 'hi' ? 1 : 0]}</StatusBadge></div><div className="logistics-detail-grid"><section className="feature-card"><InfoGrid items={[[l('Origin', 'मूल स्थान'), item.origin], [l('Destination', 'गंतव्य'), item.destination], [l('Order references', 'ऑर्डर संदर्भ'), item.orderRefs.join(', ')], [l('Shipment', 'शिपमेंट'), item.shipment], [l('Vehicle', 'वाहन'), item.vehicleId ?? '—'], [l('Handling notes', 'हैंडलिंग नोट्स'), item.handlingNotes]]} />{item.issues.length > 0 && <div className="issue-box"><AlertTriangle size={19} /><div><strong>{l('Reported issues', 'दर्ज समस्याएं')}</strong>{item.issues.map((value) => <p key={value}>{value}</p>)}</div></div>}<Timeline items={item.timeline} language={language} /></section><aside className="summary-card sticky"><h2>{l('Delivery controls', 'डिलीवरी नियंत्रण')}</h2><label className="field"><span>{l('Buyer delivery OTP', 'खरीदार डिलीवरी OTP')}</span><div className="otp-field-row"><input value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} placeholder={l('6-digit OTP', '6-अंकों का OTP')} inputMode="numeric" autoComplete="one-time-code" maxLength={6} /><button type="button" className="btn btn-primary" disabled={!otp.trim()} onClick={verifyOtp}>{l('Verify', 'सत्यापित करें')}</button></div></label><div className="status-controls">{deliverySteps.filter((status) => status !== 'issue').map((status) => <button className={item.status === status ? 'active' : ''} disabled={item.status === status} onClick={async () => { await logisticsService.updateDelivery(item.id, status); showToast(l('Buyer and farmer views synchronized', 'खरीदार और किसान स्थिति बदल गई')); refresh() }} key={status}>{labels.delivery[status][language === 'hi' ? 1 : 0]}</button>)}</div><label className="field"><span>{l('Report issue or delay', 'समस्या या देरी दर्ज करें')}</span><textarea value={issue} onChange={(event) => setIssue(event.target.value)} placeholder={l('Example: ETA delayed by 25 minutes', 'उदाहरण: ETA में 25 मिनट की देरी')} /></label><button className="btn btn-secondary btn-full danger" disabled={!issue.trim()} onClick={async () => { await logisticsService.reportDeliveryIssue(item.id, issue.trim()); setIssue(''); refresh() }}><AlertTriangle size={16} /> {l('Report issue', 'समस्या दर्ज करें')}</button></aside></div></div>
 }
 
 export function LogisticsRoutesPage() {
-  const { l, language } = useCopy(); const { showToast } = useToast(); const [optimizing, setOptimizing] = useState(false); const { data, loading, error } = useAsyncData(() => logisticsService.routes()); if (loading) return <DashboardSkeleton />
+  const { l, language } = useCopy(); const { showToast } = useToast(); const [optimizing, setOptimizing] = useState(false)
+  const { data, loading, error } = useAsyncData(async () => {
+    const [routes, pickups, deliveries, vehicles] = await Promise.all([
+      logisticsService.routes(), logisticsService.pickups(), logisticsService.deliveries(), logisticsService.vehicles(),
+    ])
+    return { routes, pickups, deliveries, vehicles }
+  }, [], { live: true })
+  if (loading) return <DashboardSkeleton />
+
   const handleOptimize = async () => {
     setOptimizing(true)
     try {
       const res = await logisticsService.optimizeLiveRoute(1500)
       showToast(l(`Route optimized: ${res.total_distance_km} km, ${res.trips_reduced} trips saved`, `रूट अनुकूलित: ${res.total_distance_km} किमी`))
-    } finally {
-      setOptimizing(false)
-    }
+    } finally { setOptimizing(false) }
   }
-  return <div className="page logistics-page"><div className="page-title-row"><div><span className="eyebrow">{l('Route optimization', 'रूट अनुकूलन')}</span><h1>{l('Routes', 'रूट')}</h1><p>{l('Capacitated multi-stop farmgate pickup routing, powered by OR-Tools.', 'बहु-खेत पिकअप रूट अनुकूलन, OR-Tools द्वारा संचालित।')}</p></div><button type="button" className="btn btn-primary" disabled={optimizing} onClick={handleOptimize}><Route size={16} /> {optimizing ? l('Optimizing…', 'अनुकूलन हो रहा है…') : l('Run route optimizer', 'रूट अनुकूलक चलाएं')}</button></div><RouteReviewCard routes={data ?? []} />{error ? <ErrorState /> : <div className="route-grid">{data?.map((route) => <article className="feature-card route-card" key={route.id}><div className="card-heading"><div><span className="eyebrow">{route.id}</span><h2>{language === 'hi' ? route.nameHi : route.name}</h2></div><StatusBadge tone={route.status === 'completed' ? 'green' : 'amber'}>{route.status}</StatusBadge></div>{route.pooled && <span className="optimized-badge"><ShieldCheck size={15} /> {l('Optimized route', 'अनुकूलित रूट')}</span>}<div className="route-stops">{route.stops.map((stop, index) => <div key={stop}><span>{index + 1}</span><strong>{stop}</strong></div>)}</div><div className="route-stats"><span><small>{l('Vehicle', 'वाहन')}</small><strong>{route.vehicleId}</strong></span><span><small>{l('Distance', 'दूरी')}</small><strong>{route.distanceKm} km</strong></span><span><small>{l('Duration', 'समय')}</small><strong>{formatTime(route.durationMinutes)}</strong></span><span><small>{l('Utilization', 'उपयोग')}</small><strong>{Math.round(route.loadKg / route.capacityKg * 100)}%</strong></span></div></article>)}</div>}<section className="pooled-feature"><div><span className="eyebrow light">{l('Smart pooled route', 'स्मार्ट साझा रूट')}</span><h2>{l('Three farms. One coordinated trip.', 'तीन खेत। एक साझा यात्रा।')}</h2><p>{l('Traditional: 3 farms → 3 separate trips', 'पारंपरिक: 3 खेत → 3 अलग यात्राएं')}</p><strong>{l('KisanLink: Farm A → Farm B → Farm C → Hub / Buyer', 'KisanLink: खेत A → खेत B → खेत C → हब / खरीदार')}</strong><small>{l('Route sequencing solved with Google OR-Tools (capacitated VRP).', 'गूगल OR-Tools (VRP) से रूट क्रम तय किया गया।')}</small></div><div className="pooled-metrics"><span><strong>3 → 1</strong><small>{l('Trips reduced', 'यात्राएं कम')}</small></span><span><strong>64 km</strong><small>{l('Estimated km saved', 'अनुमानित किमी बचत')}</small></span><span><strong>90%</strong><small>{l('Vehicle utilization', 'वाहन उपयोग')}</small></span><span><strong>28%</strong><small>{l('Estimated logistics cost reduction', 'अनुमानित लागत बचत')}</small></span><span><strong>18 kg CO₂e</strong><small>{l('Optional emissions estimate', 'वैकल्पिक उत्सर्जन अनुमान')}</small></span></div></section></div>
+
+  const routes = data?.routes ?? []
+  const pooledRoutes = routes.filter((route) => route.pooled)
+  const tripsSaved = pooledRoutes.reduce((sum, route) => sum + Math.max(0, route.pickups.length - 1), 0)
+
+  return (
+    <div className="page logistics-page logistics-console">
+      <div className="page-title-row">
+        <div>
+          <span className="eyebrow"><Route size={14} /> {l('Route optimization', 'रूट अनुकूलन')}</span>
+          <h1>{l('Routes', 'रूट')}</h1>
+          <p>{l('Capacitated multi-stop farmgate pickup routing. Several small farm lots, one trip.', 'बहु-खेत पिकअप रूट अनुकूलन। कई छोटे लॉट, एक यात्रा।')}</p>
+        </div>
+        <button type="button" className="btn btn-primary" disabled={optimizing} onClick={handleOptimize}>
+          <Route size={16} /> {optimizing ? l('Optimizing…', 'अनुकूलन हो रहा है…') : l('Run route optimizer', 'रूट अनुकूलक चलाएं')}
+        </button>
+      </div>
+
+      {routes.length > 0 && <RouteReviewCard routes={routes} />}
+
+      {error ? <ErrorState /> : routes.length === 0 ? (
+        <EmptyState icon={MapPinned} title={l('No routes planned', 'कोई रूट नहीं')} copy={l('A route is created when a procurement order or pooled market is confirmed.', 'खरीद ऑर्डर या साझा बाज़ार पक्का होने पर रूट बनता है।')} />
+      ) : (
+        <div className="route-stack">
+          {routes.map((route) => {
+            const stops = stopsForRoute(route, data!.pickups, data!.deliveries)
+            const vehicle = data!.vehicles.find((item) => item.id === route.vehicleId)
+            const delivery = data!.deliveries.find((item) => route.deliveries.includes(item.id))
+            const utilisation = Math.round((route.loadKg / Math.max(1, route.capacityKg)) * 100)
+            return (
+              <article className="route-block" key={route.id}>
+                <header className="route-block-head">
+                  <div>
+                    <span className="eyebrow">{route.id} · {route.status}</span>
+                    <h2>{language === 'hi' ? route.nameHi : route.name}</h2>
+                    <p>{l(`${route.pickups.length} farm pickups → Sonipat hub → ${delivery?.buyer ?? l('buyer', 'खरीदार')}`, `${route.pickups.length} खेत पिकअप → हब → खरीदार`)}</p>
+                  </div>
+                  <div className="route-block-badges">
+                    {route.pooled && <span className="optimized-badge"><ShieldCheck size={14} /> {l('Pooled route', 'साझा रूट')}</span>}
+                    <StatusBadge tone={route.status === 'completed' ? 'green' : route.status === 'active' ? 'amber' : 'neutral'}>{route.status}</StatusBadge>
+                  </div>
+                </header>
+                <CorridorRouteMap
+                  stops={stops}
+                  title={language === 'hi' ? route.nameHi : route.name}
+                  subtitle={l(`${route.distanceKm} km · ${utilisation}% of ${route.capacityKg.toLocaleString('en-IN')} kg vehicle`, `${route.distanceKm} किमी · ${utilisation}% भार`)}
+                  meta={{
+                    routeId: route.id,
+                    vehicle: vehicle ? `${vehicle.registration} · ${vehicle.driver}` : route.vehicleId,
+                    distanceKm: route.distanceKm,
+                    durationMinutes: route.durationMinutes,
+                    loadKg: route.loadKg,
+                    capacityKg: route.capacityKg,
+                    eta: delivery?.eta,
+                  }}
+                />
+              </article>
+            )
+          })}
+        </div>
+      )}
+
+      <section className="pooled-feature">
+        <div>
+          <span className="eyebrow light">{l('Why pooling matters', 'पूलिंग क्यों ज़रूरी है')}</span>
+          <h2>{l('Several farms. One coordinated trip.', 'कई खेत। एक साझा यात्रा।')}</h2>
+          <p>{l('Traditional sourcing sends one vehicle per farm, so a small lot carries the whole cost of its own trip.', 'पारंपरिक तरीके में हर खेत के लिए अलग वाहन जाता है।')}</p>
+          <strong>{l('KisanLink sequences the farms onto one southbound run into the hub, then one delivery.', 'KisanLink सभी खेतों को एक ही रूट पर जोड़ता है, फिर एक डिलीवरी।')}</strong>
+          <small>{l('Sequencing solved with a capacitated vehicle-routing pass over the mapped corridor.', 'रूट क्रम क्षमता-आधारित VRP से तय किया गया।')}</small>
+        </div>
+        <div className="pooled-metrics">
+          <span><strong>{tripsSaved + pooledRoutes.length} → {pooledRoutes.length || 1}</strong><small>{l('Trips reduced', 'यात्राएं कम')}</small></span>
+          <span><strong>{Math.max(0, Math.round(pooledRoutes.reduce((sum, route) => sum + route.distanceKm * 0.42, 0)))} km</strong><small>{l('Estimated km saved', 'अनुमानित किमी बचत')}</small></span>
+          <span><strong>{pooledRoutes.length ? Math.round(pooledRoutes.reduce((sum, route) => sum + (route.loadKg / Math.max(1, route.capacityKg)) * 100, 0) / pooledRoutes.length) : 0}%</strong><small>{l('Vehicle utilization', 'वाहन उपयोग')}</small></span>
+          <span><strong>28%</strong><small>{l('Estimated logistics cost reduction', 'अनुमानित लागत बचत')}</small></span>
+        </div>
+      </section>
+    </div>
+  )
 }
 
 export function LogisticsVehiclesPage() {
@@ -245,11 +524,11 @@ export function LogisticsProfilePage() {
   const { l, language } = useCopy(); const { showToast } = useToast(); const { switchRole, logout } = useAuth(); const navigate = useNavigate(); const [profile, setProfile] = useState<LogisticsProfileData | null>(null); const [saving, setSaving] = useState(false); useEffect(() => { logisticsService.profile().then(setProfile) }, []); if (!profile) return <DashboardSkeleton />
   const save = async () => { setSaving(true); await logisticsService.saveProfile({ ...profile, language }); setSaving(false); showToast(l('Logistics profile saved', 'लॉजिस्टिक्स प्रोफ़ाइल सहेजी गई')) }
   const changeRole = async (role: 'farmer' | 'consumer' | 'bulk') => { await switchRole(role); navigate(roleHome(role)) }
-  return <div className="page logistics-page"><div className="page-title-row"><div><span className="eyebrow">{l('Operations account', 'संचालन खाता')}</span><h1>{l('Logistics profile', 'लॉजिस्टिक्स प्रोफ़ाइल')}</h1><p>{l('Hub, shift and notification preferences.', 'हब, शिफ्ट और सूचना पसंद।')}</p></div><button className="btn btn-primary" disabled={saving} onClick={save}><Save size={17} /> {saving ? l('Saving…', 'सहेज रहे हैं…') : l('Save changes', 'बदलाव सहेजें')}</button></div><div className="profile-grid"><section className="profile-card"><div className="profile-identity"><span className="profile-avatar avatar-logistics">KL</span><div><span className="profile-role"><Warehouse size={14} /> {l('Verified operator demo', 'सत्यापित ऑपरेटर डेमो')}</span><h2>{profile.name}</h2><p>{profile.hub}</p></div></div><div className="profile-form"><Field label={l('Name', 'नाम')} value={profile.name} onChange={(value) => setProfile({ ...profile, name: value })} /><Field label={l('Phone', 'फ़ोन')} value={profile.phone} onChange={(value) => setProfile({ ...profile, phone: value })} /><Field label={l('Primary hub', 'मुख्य हब')} value={profile.hub} onChange={(value) => setProfile({ ...profile, hub: value })} /><Field label={l('Shift', 'शिफ्ट')} value={profile.shift} onChange={(value) => setProfile({ ...profile, shift: value })} /></div></section><section className="profile-settings-card"><h2>{l('Notification preferences', 'सूचना पसंद')}</h2><div className="preference-group">{Object.entries(profile.notifications).map(([key, checked]) => <label className="toggle-row" key={key}><span>{key.replace(/([A-Z])/g, ' $1')}</span><input type="checkbox" checked={checked} onChange={(event) => setProfile({ ...profile, notifications: { ...profile.notifications, [key]: event.target.checked } })} /></label>)}</div></section><section className="demo-switch-card logistics-demo-card"><div><span className="eyebrow">{l('Demo controls', 'डेमो नियंत्रण')}</span><h2>{l('Switch demo role', 'डेमो भूमिका बदलें')}</h2><p>{l('Move across the synchronized ecosystem without signing in again.', 'बिना दोबारा साइन इन किए साझा सिस्टम में भूमिका बदलें।')}</p></div><div className="demo-switch-options"><button onClick={() => changeRole('farmer')}><Sprout size={21} /><strong>{l('Farmer', 'किसान')}</strong></button><button onClick={() => changeRole('consumer')}><ShoppingBasket size={21} /><strong>{l('Consumer', 'ग्राहक')}</strong></button><button onClick={() => changeRole('bulk')}><Building2 size={21} /><strong>{l('Bulk Buyer', 'थोक खरीदार')}</strong></button><button onClick={() => { logout(); window.location.replace('/') }}><LogOut size={21} /><strong>{l('Log out', 'लॉग आउट')}</strong></button></div><DemoControlCenter /></section></div></div>
+  return <div className="page logistics-page"><div className="page-title-row"><div><span className="eyebrow">{l('Operations account', 'संचालन खाता')}</span><h1>{l('Logistics profile', 'लॉजिस्टिक्स प्रोफ़ाइल')}</h1><p>{l('Hub, shift and notification preferences.', 'हब, शिफ्ट और सूचना पसंद।')}</p></div><button className="btn btn-primary" disabled={saving} onClick={save}><Save size={17} /> {saving ? l('Saving…', 'सहेज रहे हैं…') : l('Save changes', 'बदलाव सहेजें')}</button></div><div className="profile-grid"><section className="profile-card"><div className="profile-identity"><span className="profile-avatar avatar-logistics">KL</span><div><span className="profile-role"><Warehouse size={14} /> {l('Verified operator demo', 'सत्यापित ऑपरेटर डेमो')}</span><h2>{profile.name}</h2><p>{profile.hub}</p></div></div><div className="profile-form"><Field label={l('Name', 'नाम')} value={profile.name} onChange={(value) => setProfile({ ...profile, name: value })} /><Field label={l('Phone', 'फ़ोन')} type="tel" value={profile.phone} onChange={(value) => setProfile({ ...profile, phone: value })} /><Field label={l('Primary hub', 'मुख्य हब')} value={profile.hub} onChange={(value) => setProfile({ ...profile, hub: value })} /><Field label={l('Shift', 'शिफ्ट')} value={profile.shift} onChange={(value) => setProfile({ ...profile, shift: value })} /></div></section><section className="profile-settings-card"><h2>{l('Notification preferences', 'सूचना पसंद')}</h2><div className="preference-group">{Object.entries(profile.notifications).map(([key, checked]) => <label className="toggle-row" key={key}><span>{key.replace(/([A-Z])/g, ' $1')}</span><input type="checkbox" checked={checked} onChange={(event) => setProfile({ ...profile, notifications: { ...profile.notifications, [key]: event.target.checked } })} /></label>)}</div></section><section className="demo-switch-card logistics-demo-card"><div><span className="eyebrow">{l('Demo controls', 'डेमो नियंत्रण')}</span><h2>{l('Switch demo role', 'डेमो भूमिका बदलें')}</h2><p>{l('Move across the synchronized ecosystem without signing in again.', 'बिना दोबारा साइन इन किए साझा सिस्टम में भूमिका बदलें।')}</p></div><div className="demo-switch-options"><button onClick={() => changeRole('farmer')}><Sprout size={21} /><strong>{l('Farmer', 'किसान')}</strong></button><button onClick={() => changeRole('consumer')}><ShoppingBasket size={21} /><strong>{l('Consumer', 'ग्राहक')}</strong></button><button onClick={() => changeRole('bulk')}><Building2 size={21} /><strong>{l('Bulk Buyer', 'थोक खरीदार')}</strong></button><button onClick={() => { logout(); window.location.replace('/') }}><LogOut size={21} /><strong>{l('Log out', 'लॉग आउट')}</strong></button></div><DemoControlCenter /></section></div></div>
 }
 
 function PageHead({ eyebrow, title, copy }: { eyebrow: string; title: string; copy: string }) { return <div className="page-title-row"><div><span className="eyebrow">{eyebrow}</span><h1>{title}</h1><p>{copy}</p></div></div> }
 function InfoGrid({ items }: { items: string[][] }) { return <div className="logistics-info-grid">{items.map(([label, value]) => <div key={label}><small>{label}</small><strong>{value}</strong></div>)}</div> }
 function Timeline({ items, language }: { items: LogisticsPickup['timeline']; language: 'en' | 'hi' }) { return <div className="operation-timeline"><h2>{language === 'hi' ? 'समयरेखा' : 'Timeline'}</h2>{items.map((item, index) => <div key={`${item.at}-${index}`}><span><Check size={13} /></span><div><strong>{language === 'hi' ? item.labelHi : item.label}</strong><small>{new Date(item.at).toLocaleString(language === 'hi' ? 'hi-IN' : 'en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</small></div></div>)}</div> }
-function Field({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) { return <label className="field"><span>{label}</span><input value={value} onChange={(event) => onChange(event.target.value)} /></label> }
+function Field({ label, value, onChange, type = 'text' }: { label: string; value: string; onChange: (value: string) => void; type?: string }) { return <label className="field"><span>{label}</span><input type={type} value={value} onChange={(event) => onChange(event.target.value)} {...(type === 'tel' ? { inputMode: 'tel' as const, autoComplete: 'tel', maxLength: 10 } : {})} /></label> }
 function ErrorState({ title = 'Unable to load operations' }: { title?: string }) { return <div className="error-panel"><RefreshCw size={25} /><h2>{title}</h2><button className="btn btn-primary" onClick={() => window.location.reload()}>Retry</button></div> }

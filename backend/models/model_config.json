@@ -1,0 +1,31 @@
+{
+  "config_version": 1,
+  "model_name": "efficientnet_b2",
+  "framework": "timm",
+  "class_names": [
+    "fresh",
+    "not_fresh"
+  ],
+  "input_color_mode": "RGB",
+  "preprocessing": {
+    "resize_shorter_side": 256,
+    "crop_size": 224,
+    "interpolation": "bicubic"
+  },
+  "normalize": {
+    "mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "std": [
+      0.229,
+      0.224,
+      0.225
+    ]
+  },
+  "output_semantics": {
+    "predicted_class": "binary image classification label",
+    "confidence": "softmax probability of predicted_class; internal model confidence only"
+  }
+}

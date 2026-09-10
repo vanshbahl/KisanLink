@@ -9,6 +9,7 @@ from app.models.payment import LedgerEntryTypeEnum, PaymentsLedger
 from app.models.intelligence import PriceObservation, DemandForecast, ImpactMetric
 from app.models.review import Review, Dispute
 from app.models.audit import OperatorAuditLog
+from app.models.inspection import ProduceInspection
 
 __all__ = [
     "Base",
@@ -41,4 +42,5 @@ __all__ = [
     "Review",
     "Dispute",
     "OperatorAuditLog",
+    "ProduceInspection",
 ]

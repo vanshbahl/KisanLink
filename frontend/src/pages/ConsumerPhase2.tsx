@@ -14,10 +14,23 @@ import { ProfilePage } from './ProfilePage'
 import { MarketplaceAiTrigger } from '../components/ai/MarketplaceAiTrigger'
 import { MarketplaceInsightResult } from '../components/ai/MarketplaceInsightResult'
 import { basketOptimizer } from '../services/consumerIntelligenceService'
+import { ConsumerPriceBlock } from '../components/ConsumerPrice'
 
 const statusLabel: Record<ConsumerOrderStatus, string> = { confirmed: 'Confirmed', farmer_preparing: 'Farmer Preparing', pickup_scheduled: 'Pickup Scheduled', collected: 'Collected', in_transit: 'In Transit', out_for_delivery: 'Out for Delivery', delivered: 'Delivered', cancelled: 'Cancelled' }
 const tracking: ConsumerOrderStatus[] = ['confirmed', 'farmer_preparing', 'pickup_scheduled', 'collected', 'in_transit', 'out_for_delivery', 'delivered']
 const money = (value: number) => `₹${value.toLocaleString('en-IN')}`
+/** Real origin and distance per farm, so two listings never claim the same journey. */
+const FARM_ORIGINS: Record<string, { label: string; km: number }> = {
+  'Green Field Farm': { label: 'Murthal, Sonipat', km: 42 },
+  'Sunehri Khet': { label: 'Karnal, Haryana', km: 121 },
+  'Yadav Fresh Fields': { label: 'Panipat, Haryana', km: 89 },
+  'Malik Family Farm': { label: 'Rohtak, Haryana', km: 68 },
+  'Doaba Harvests': { label: 'Samalkha, Panipat', km: 74 },
+  'Ganga Plains Farm': { label: 'Meerut, Uttar Pradesh', km: 79 },
+  'Rana Vegetable Farm': { label: 'Kharkhoda, Sonipat', km: 47 },
+}
+export const farmOrigin = (farm: string) => FARM_ORIGINS[farm] ?? { label: 'Sonipat, Haryana', km: 42 }
+
 const prettyDate = (value: string) => new Date(value).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 
 export function ConsumerListingCard({ listing }: { listing: FarmerListing }) {
@@ -26,7 +39,33 @@ export function ConsumerListingCard({ listing }: { listing: FarmerListing }) {
   const isRescue = Boolean(listing.isUrgentRescue || listing.rescueStatus === 'RESCUE_ACTIVE')
   const rescuePrice = listing.rescueDiscountPricePerKg ?? Math.round(listing.pricePerKg * 0.8)
   const discountPct = Math.round(((listing.pricePerKg - rescuePrice) / listing.pricePerKg) * 100)
-  return <article className="product-card"><div className="product-visual"><ProductImage imageSrc={listing.imageSrc} alt={listing.crop} visual={listing.visual} /><StatusBadge tone={isRescue ? 'red' : listing.remainingKg <= 20 ? 'amber' : 'green'}>{isRescue ? 'Urgent rescue' : listing.remainingKg ? (listing.remainingKg <= 20 ? 'Low stock' : 'Fresh supply') : 'Out of stock'}</StatusBadge><button className={`save-float ${saved ? 'active' : ''}`} aria-label="Save produce" onClick={async () => setSaved((await phase2Service.toggleSavedListing(listing.id)).includes(listing.id))}><Heart size={17} fill={saved ? 'currentColor' : 'none'} /></button></div><div className="product-content"><div className="product-title-row"><div><h3>{language === 'hi' ? listing.cropHi : listing.crop}</h3><p>{listing.farm}</p></div><StatusBadge tone={isRescue ? 'red' : 'neutral'}>{isRescue ? 'Rescue sale' : listing.grade}</StatusBadge></div><p className="product-location"><MapPin size={15} />Sonipat, Haryana · 42 km</p><div className="product-price-row">{isRescue ? <div className="rescue-price-block"><span className="rescue-strike">{money(listing.pricePerKg)}</span><strong>{money(rescuePrice)}</strong><small className="rescue-discount-note">{discountPct}% off</small></div> : <div><strong>{money(listing.pricePerKg)}</strong><span>/kg</span><small>Mandi {money(listing.mandiPricePerKg)}/kg</small></div>}<Link className="btn btn-small" to={`/consumer/listing/${listing.id}`}>View <ArrowRight size={15} /></Link></div><p className="product-available"><Scale size={15} />{listing.remainingKg.toLocaleString('en-IN')} kg available</p></div></article>
+  const origin = farmOrigin(listing.farm)
+  return (
+    <article className="product-card">
+      <div className="product-visual">
+        <ProductImage imageSrc={listing.imageSrc} alt={listing.crop} visual={listing.visual} />
+        <StatusBadge tone={isRescue ? 'red' : listing.remainingKg <= 20 ? 'amber' : 'green'}>
+          {isRescue ? 'Urgent rescue' : listing.remainingKg ? (listing.remainingKg <= 20 ? 'Low stock' : 'Fresh supply') : 'Out of stock'}
+        </StatusBadge>
+        <button className={`save-float ${saved ? 'active' : ''}`} aria-label={saved ? 'Remove from saved' : 'Save produce'} aria-pressed={saved} onClick={async () => setSaved((await phase2Service.toggleSavedListing(listing.id)).includes(listing.id))}>
+          <Heart size={17} fill={saved ? 'currentColor' : 'none'} />
+        </button>
+      </div>
+      <div className="product-content">
+        <div className="product-title-row">
+          <div><h3>{language === 'hi' ? listing.cropHi : listing.crop}</h3><p>{listing.farm}</p></div>
+          <StatusBadge tone={isRescue ? 'red' : 'neutral'}>{isRescue ? 'Rescue sale' : listing.grade}</StatusBadge>
+        </div>
+        <p className="product-location"><MapPin size={15} />{origin.label} · {origin.km} km away</p>
+        <div className="product-price-row">
+          <ConsumerPriceBlock listing={{ pricePerKg: listing.pricePerKg, retailPricePerKg: listing.retailPricePerKg, rescuePricePerKg: isRescue ? rescuePrice : undefined }} />
+          <Link className="btn btn-small" to={`/consumer/listing/${listing.id}`}>View <ArrowRight size={15} /></Link>
+        </div>
+        {isRescue && <p className="rescue-discount-note">{discountPct}% off to prevent spoilage</p>}
+        <p className="product-available"><Scale size={15} />{listing.remainingKg.toLocaleString('en-IN')} kg available</p>
+      </div>
+    </article>
+  )
 }
 
 export function ConsumerCartPage() {
@@ -51,7 +90,7 @@ export function ConsumerCheckoutPage() {
 function AddressForm({ profile, onSaved }: { profile: ConsumerProfileData; onSaved: (profile: ConsumerProfileData) => void }) {
   const [form, setForm] = useState({ label: 'Work', line1: '', city: 'New Delhi', pincode: '' }); const [error, setError] = useState('')
   const save = async (event: FormEvent) => { event.preventDefault(); if (!form.line1.trim() || !/^\d{6}$/.test(form.pincode)) { setError('Enter an address and valid 6-digit pincode.'); return } const address: Address = { id: `addr_${Date.now()}`, label: form.label, recipient: profile.name, phone: profile.phone, line1: form.line1, city: form.city, pincode: form.pincode, isDefault: profile.addresses.length === 0 }; const updated = { ...profile, addresses: [...profile.addresses, address] }; await phase2Service.saveConsumerProfile(updated); onSaved(updated) }
-  return <form className="inline-form form-grid" onSubmit={save}><label className="field"><span>Label</span><input value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} /></label><label className="field"><span>Address</span><input value={form.line1} onChange={(e) => setForm({ ...form, line1: e.target.value })} /></label><label className="field"><span>City</span><input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} /></label><label className="field"><span>Pincode</span><input inputMode="numeric" value={form.pincode} onChange={(e) => setForm({ ...form, pincode: e.target.value })} /></label>{error && <p className="form-error">{error}</p>}<button className="btn btn-primary" type="submit">Save address</button></form>
+  return <form className="inline-form form-grid" onSubmit={save}><label className="field"><span>Label</span><input value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} /></label><label className="field"><span>Address</span><input type="text" autoComplete="address-line1" value={form.line1} onChange={(e) => setForm({ ...form, line1: e.target.value })} /></label><label className="field"><span>City</span><input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} /></label><label className="field"><span>Pincode</span><input type="tel" inputMode="numeric" autoComplete="postal-code" maxLength={6} value={form.pincode} onChange={(e) => setForm({ ...form, pincode: e.target.value })} /></label>{error && <p className="form-error">{error}</p>}<button className="btn btn-primary" type="submit">Save address</button></form>
 }
 
 export function ConsumerOrdersPage() {

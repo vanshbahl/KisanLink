@@ -15,7 +15,7 @@ const keys = { active: 'active', draft: 'draft', paused: 'paused', sold: 'sold',
 
 export function FarmerProducePage() {
   const { language, t } = useLanguage(); const f = (key: Parameters<typeof farmerText>[1]) => farmerText(language, key); const { showToast } = useToast(); const [params, setParams] = useSearchParams(); const [items, setItems] = useState<FarmerListing[] | null>(null); const [filtersOpen, setFiltersOpen] = useState(false); const [search, setSearch] = useState(''); const tab = (params.get('tab') as ListingStatus) || 'active'
-  const load = () => prototypeService.getListings().then(setItems); useEffect(() => { load() }, [])
+  const load = () => prototypeService.getMyListings().then(setItems); useEffect(() => { load() }, [])
   const patch = async (id: string, status: ListingStatus) => { await prototypeService.patchListing(id, { status }); showToast(f('listingUpdated')); load() }
   const updateQuantity = async (item: FarmerListing) => { const answer = window.prompt(f('updateQuantity'), String(item.remainingKg)); if (!answer) return; const value = Number(answer); if (!Number.isFinite(value) || value < 0) return; await prototypeService.patchListing(item.id, { remainingKg: value, quantityKg: value + item.allocatedKg }); showToast(f('listingUpdated')); load() }
   const remove = async (id: string) => { if (!window.confirm(f('confirmDelete'))) return; await prototypeService.deleteListing(id); load() }

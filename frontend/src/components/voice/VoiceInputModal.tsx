@@ -3,6 +3,7 @@ import { AlertCircle, Check, Mic, MicOff, RefreshCw, Sparkles, X } from 'lucide-
 import { useLanguage } from '../../contexts/LanguageContext'
 import { useToast } from '../../contexts/ToastContext'
 import { apiClient } from '../../services/apiClient'
+import { localDay } from '../../utils/dates'
 
 interface SpeechRecognitionLike {
   continuous: boolean
@@ -314,7 +315,7 @@ export function VoiceInputModal({ isOpen, onClose, onConfirm }: VoiceInputModalP
       quantityKg: editQty,
       unit: editUnit,
       pricePerKg: editPrice,
-      harvestDate: editDate || new Date().toISOString().slice(0, 10),
+      harvestDate: editDate || localDay(),
       availableFrom: editDate || undefined,
       pickupDate: editDate || undefined,
       pickupWindow: editWindow,

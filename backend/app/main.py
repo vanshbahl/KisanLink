@@ -1,6 +1,9 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 import structlog
 
@@ -42,6 +45,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+if settings.serve_local_inspection_uploads:
+    inspection_upload_dir = Path(settings.INSPECTION_UPLOAD_DIR)
+    inspection_upload_dir.mkdir(parents=True, exist_ok=True)
+    app.mount(
+        "/uploads/freshness",
+        StaticFiles(directory=inspection_upload_dir),
+        name="inspection-uploads",
+    )
 
 # Canonical v1 API routers (Farmer, Consumer, Bulk Buyer, Auth, Orders, Matching)
 app.include_router(api_v1_router)

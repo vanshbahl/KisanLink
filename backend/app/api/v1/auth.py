@@ -13,8 +13,9 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 @router.post("/request-otp", response_model=OTPResponse)
 async def request_otp(payload: OTPRequest):
-    """Request 6-digit SMS OTP for passwordless onboarding. Supports demo OTP '123456'."""
-    # In production, send SMS via provider. For dev/demo, 123456 is supported.
+    """Request a 6-digit SMS OTP for passwordless onboarding."""
+    # SMS delivery remains a provider integration point. Verification fails
+    # closed unless the explicitly environment-gated demo mode is enabled.
     return OTPResponse(
         success=True,
         message="OTP sent successfully to registered phone number.",
@@ -28,7 +29,7 @@ async def verify_otp_endpoint(payload: OTPVerifyRequest, db: AsyncSession = Depe
     if not verify_otp(payload.phone, payload.otp):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired OTP. Please use demo OTP 123456.",
+            detail="Invalid or expired OTP.",
         )
 
     stmt = (
@@ -45,7 +46,8 @@ async def verify_otp_endpoint(payload: OTPVerifyRequest, db: AsyncSession = Depe
 
     role = payload.preferred_role or UserRoleEnum.FARMER
 
-    if not user:
+    is_new_user = user is None
+    if is_new_user:
         # Provision new user
         user = User(
             phone=payload.phone,
@@ -62,13 +64,15 @@ async def verify_otp_endpoint(payload: OTPVerifyRequest, db: AsyncSession = Depe
     # Resolve user name and completeness
     name = None
     is_complete = False
-    if user.farmer_profile:
+    # Newly flushed async ORM objects have no eagerly loaded profile relation.
+    # Accessing one would trigger implicit IO and SQLAlchemy MissingGreenlet.
+    if not is_new_user and user.farmer_profile:
         name = user.farmer_profile.full_name
         is_complete = True
-    elif user.buyer_profile:
+    elif not is_new_user and user.buyer_profile:
         name = user.buyer_profile.business_name
         is_complete = True
-    elif user.logistics_profile:
+    elif not is_new_user and user.logistics_profile:
         name = user.logistics_profile.transporter_name
         is_complete = True
 

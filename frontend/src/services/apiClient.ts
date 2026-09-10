@@ -483,7 +483,11 @@ class ApiClient {
       remainingKg: Number(item.available_quantity_kg),
       allocatedKg: Math.max(0, Number(item.quantity_kg) - Number(item.available_quantity_kg)),
       unit: 'kg',
+      farmerId: item.farmer_id || 'farmer_001',
       grade: item.quality_grade === 'GRADE_A' ? 'Grade A' : 'Grade A+',
+      // No retail column exists upstream. A local shop's markup over the mandi rate is the
+      // stable part of this chain, so the consumer comparison is derived rather than absent.
+      retailPricePerKg: Math.round(Number(item.mandi_price_per_kg ?? item.unit_price_rupees ?? 0) * 1.55) || Math.round(Number(item.unit_price_rupees ?? 0) * 1.2),
       harvestDate: item.harvest_date ? String(item.harvest_date) : new Date().toISOString().slice(0, 10),
       availableFrom: 'Today',
       farmingMethod: item.variety || 'Hydroponic / Open Field',

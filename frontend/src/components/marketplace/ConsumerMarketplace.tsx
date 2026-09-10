@@ -11,6 +11,7 @@ import { ConsumerListingCard } from '../../pages/ConsumerPhase2'
 import { MarketplaceAiSection } from '../ai/MarketplaceAiSection'
 import { MarketplaceInsightResult } from '../ai/MarketplaceInsightResult'
 import { bestInResults } from '../../services/consumerIntelligenceService'
+import { localDay } from '../../utils/dates'
 
 export type MarketplaceSort = 'recommended' | 'nearest' | 'freshest' | 'price'
 
@@ -48,7 +49,7 @@ export function ConsumerMarketplace() {
   const categories = marketplaceService.getCategories()
 
   const count = [category !== 'All', grade !== 'All', freshness !== 'All', availability !== 'all', maxPrice < 100, distance < 100].filter(Boolean).length
-  const filtered = useMemo(() => (data ?? []).filter((item) => `${item.crop} ${item.cropHi} ${item.farm} Ramesh Kumar`.toLowerCase().includes(search.toLowerCase()) && matchesCategory(item.category, category) && (grade === 'All' || item.grade === grade) && (freshness === 'All' || (freshness === 'today' ? item.harvestDate === new Date().toISOString().slice(0, 10) : true)) && (availability === 'all' || item.remainingKg > 0) && item.pricePerKg <= maxPrice && 42 <= distance).sort((a, b) => sort === 'price' ? a.pricePerKg - b.pricePerKg : sort === 'freshest' ? b.harvestDate.localeCompare(a.harvestDate) : sort === 'nearest' ? a.farm.localeCompare(b.farm) : b.views - a.views), [data, search, category, grade, freshness, availability, maxPrice, distance, sort])
+  const filtered = useMemo(() => (data ?? []).filter((item) => `${item.crop} ${item.cropHi} ${item.farm} Ramesh Kumar`.toLowerCase().includes(search.toLowerCase()) && matchesCategory(item.category, category) && (grade === 'All' || item.grade === grade) && (freshness === 'All' || (freshness === 'today' ? item.harvestDate === localDay() : true)) && (availability === 'all' || item.remainingKg > 0) && item.pricePerKg <= maxPrice && 42 <= distance).sort((a, b) => sort === 'price' ? a.pricePerKg - b.pricePerKg : sort === 'freshest' ? b.harvestDate.localeCompare(a.harvestDate) : sort === 'nearest' ? a.farm.localeCompare(b.farm) : b.views - a.views), [data, search, category, grade, freshness, availability, maxPrice, distance, sort])
 
   // Any change to the query resets paging so "load more" never strands the user mid-list.
   useEffect(() => { setVisible(PAGE_SIZE) }, [search, category, grade, freshness, availability, maxPrice, distance, sort])
@@ -106,9 +107,9 @@ export function ConsumerMarketplace() {
               subtitle="Compares only the listings left by your current filters."
               idleLabel="Compare results"
               idleHint="Which of these listings is the strongest buy?"
-              stages={['Comparing asking prices', 'Checking mandi references', 'Reviewing harvest dates', 'Checking available stock', 'Preparing your comparison']}
+              stages={['Comparing asking prices', 'Comparing local retail prices', 'Reviewing harvest dates', 'Checking available stock', 'Preparing your comparison']}
               run={() => bestInResults(filtered)}
-              renderResult={(insight, reset) => <MarketplaceInsightResult {...insight} onClose={reset} onCta={() => insight.listingId ? navigate(`/consumer/listing/${insight.listingId}`) : reset()} footer="Uses listing price, mandi reference, harvest date, available stock and grade for the filtered results only." />}
+              renderResult={(insight, reset) => <MarketplaceInsightResult {...insight} onClose={reset} onCta={() => insight.listingId ? navigate(`/consumer/listing/${insight.listingId}`) : reset()} footer="Uses the listing price, the local retail reference, harvest date, available stock and grade — for the filtered results only." />}
             />
           )}
           {loading ? <DashboardSkeleton /> : error ? (

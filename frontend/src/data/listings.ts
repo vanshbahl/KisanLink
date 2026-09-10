@@ -1,5 +1,7 @@
 import type { ProduceListing } from '../types'
 
+/** `marketPricePerKg` here is the local *retail* price a household would otherwise pay. */
+
 export const listings: ProduceListing[] = [
   { id: 'listing_001', product: 'Fresh Tomatoes', category: 'Vegetables', farmerId: 'farmer_001', pricePerKg: 31, marketPricePerKg: 38, availableKg: 420, freshness: 'Harvested today', distanceKm: 32, imageSrc: '/assets/produce/tomato.webp', visual: 'tomato', grade: 'Grade A+' },
   { id: 'listing_002', product: 'New Potatoes', category: 'Staples', farmerId: 'farmer_003', pricePerKg: 24, marketPricePerKg: 29, availableKg: 680, freshness: 'Harvested yesterday', distanceKm: 54, imageSrc: '/assets/produce/potato.webp', visual: 'potato', grade: 'Grade A' },

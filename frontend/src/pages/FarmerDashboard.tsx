@@ -8,69 +8,34 @@ import { MetricCard } from '../components/MetricCard'
 import { SupportCard } from '../components/SupportCard'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useAsyncData } from '../hooks/useAsyncData'
-import { apiClient } from '../services/apiClient'
+import { prettyWhen } from '../components/maps/CorridorRouteMap'
 import { prototypeService } from '../services/prototypeService'
-import type { FarmerListing } from '../types'
 
 export function FarmerDashboard() {
   const { t } = useLanguage()
   const { data, loading, error } = useAsyncData(async () => {
-    // Prefer real listings/earnings/orders from the canonical backend; fall back to
-    // the shared prototype state wherever the live call fails or returns nothing.
-    let listings: FarmerListing[] = []
-    try {
-      const liveListings = await apiClient.getListings()
-      if (liveListings.length > 0) listings = liveListings
-    } catch {
-      // fall through to prototype state below
+    // Everything here reads the shared prototype state the other three roles also read.
+    // The canonical backend keeps an unrelated seed of its own — sourcing the headline
+    // figures from it put "68 active listings" on a farm with three, and an upcoming pickup
+    // that appeared nowhere in the logistics queue.
+    const [listings, orders, earnings, pickups] = await Promise.all([
+      prototypeService.getMyListings(),
+      prototypeService.getOrders(),
+      prototypeService.getEarnings(),
+      prototypeService.getPickups(),
+    ])
+    const mine = new Set(listings.map((item) => item.id))
+    const myOrders = orders.filter((order) => mine.has(order.listingId))
+    return {
+      listings,
+      activeListings: listings.filter((item) => item.status === 'active').length,
+      newOrders: myOrders.filter((order) => order.status === 'new').length,
+      earnings: earnings.reduce((sum, item) => sum + item.net, 0),
+      pending: earnings.filter((item) => item.status === 'pending').reduce((sum, item) => sum + item.net, 0),
+      upcomingPickup: pickups.find((item) => item.status !== 'completed'),
     }
+  }, [], { live: true })
 
-    const state = await prototypeService.getState()
-    if (listings.length === 0) listings = state.listings as FarmerListing[]
-
-    let earnings = 0
-    let pending = 0
-    let activeListings = listings.filter((item) => item.status === 'active').length
-    let newOrders = 0
-    let upcomingPickup: { date?: string; quantityKg?: number; crop?: string; id?: string } | undefined = state.pickups.find((item) => item.status !== 'completed')
-
-    try {
-      const liveDash = await apiClient.getFarmerDashboard()
-      if (liveDash) {
-        earnings = liveDash.earnings
-        pending = liveDash.pending
-        if (liveDash.active_listings) activeListings = liveDash.active_listings
-        if (liveDash.new_orders) newOrders = liveDash.new_orders
-        if (liveDash.upcoming_pickup) {
-          upcomingPickup = {
-            date: liveDash.upcoming_pickup.date,
-            quantityKg: liveDash.upcoming_pickup.quantity_kg,
-            crop: liveDash.upcoming_pickup.crop,
-            id: liveDash.upcoming_pickup.id || liveDash.upcoming_pickup.order_id,
-          }
-        }
-      }
-    } catch {
-      // fall through to prototype earnings/order counts below
-    }
-
-    // Headline earnings are read from the same merged ledger the earnings page renders, so a
-    // payout created inside the prototype (a Market Maker order, say) is counted in both places
-    // instead of only appearing on one screen.
-    const ledger = await prototypeService.getEarnings()
-    if (ledger.length > 0) {
-      earnings = ledger.reduce((sum, item) => sum + item.net, 0)
-      pending = ledger.filter((item) => item.status === 'pending').reduce((sum, item) => sum + item.net, 0)
-    } else if (earnings === 0 && pending === 0) {
-      earnings = state.earnings.reduce((sum, item) => sum + item.net, 0)
-      pending = state.earnings.filter((item) => item.status === 'pending').reduce((sum, item) => sum + item.net, 0)
-    }
-    if (newOrders === 0) {
-      newOrders = state.orders.filter((item) => item.status === 'new').length
-    }
-
-    return { earnings, pending, activeListings, newOrders, upcomingPickup, listings }
-  })
   if (loading) return <DashboardSkeleton />
   if (error || !data) return <div className="error-panel"><h2>{t('farmLoadError')}</h2><p>{error}</p><button className="btn btn-primary" onClick={() => window.location.reload()}>{t('tryAgain')}</button></div>
 
@@ -106,7 +71,7 @@ export function FarmerDashboard() {
         </section>
 
         <section className="farmer-side-stack">
-          <article className="pickup-card"><span className="pickup-icon"><CalendarClock size={24} /></span><div><small>{t('upcomingPickup')}</small><strong>{data.upcomingPickup?.date ?? t('tomorrowPickup')}</strong><p>{data.upcomingPickup ? `${data.upcomingPickup.quantityKg} kg ${data.upcomingPickup.crop} · ${data.upcomingPickup.id}` : t('pickupDetail')}</p></div><Link to="/farmer/pickups">{t('view')}</Link></article>
+          <article className="pickup-card"><span className="pickup-icon"><CalendarClock size={24} /></span><div><small>{t('upcomingPickup')}</small><strong>{data.upcomingPickup ? `${prettyWhen(data.upcomingPickup.date)} · ${data.upcomingPickup.timeWindow}` : t('tomorrowPickup')}</strong><p>{data.upcomingPickup ? `${data.upcomingPickup.quantityKg} kg ${data.upcomingPickup.crop} · ${data.upcomingPickup.id}` : t('pickupDetail')}</p></div><Link to="/farmer/pickups">{t('view')}</Link></article>
           <article className="price-insight-card">
             <div className="price-insight-head"><div><span className="eyebrow">{t('priceInsight')}</span><h2>{t('tomatoes')}</h2></div><span className="price-up">{t('goodDemand')}</span></div>
             <div className="price-compare"><div><span>{t('localMarket')}</span><strong>₹24<small>/kg</small></strong></div><div className="direct-price"><span>{t('directPotential')}</span><strong>₹31<small>/kg</small></strong></div></div>

@@ -31,7 +31,6 @@ def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
 
 
 def verify_otp(phone: str, otp: str) -> bool:
-    """Verify phone OTP. Supports standard demo OTP '123456' for dev/demo."""
-    if otp == "123456":
-        return True
-    return False
+    """Verify the demo OTP only when explicitly enabled outside production."""
+    del phone  # Reserved for a real OTP provider integration.
+    return settings.demo_auth_allowed and otp == "123456"

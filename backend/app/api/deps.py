@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.config import settings
 from app.core.security import decode_access_token
 from app.database import get_db
 from app.models import User, UserRoleEnum, FarmerProfile, BuyerProfile, LogisticsProfile
@@ -81,3 +82,20 @@ require_farmer = require_role(UserRoleEnum.FARMER, UserRoleEnum.OPERATOR_PROXY)
 require_buyer = require_role(UserRoleEnum.BUYER)
 require_logistics_provider = require_role(UserRoleEnum.LOGISTICS_PROVIDER)
 require_operator = require_role(UserRoleEnum.OPERATOR_PROXY)
+
+
+async def require_inspection_actor_or_local_demo(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> Optional[User]:
+    """Authenticate inspection uploads, with an explicit local-demo exception."""
+    if not credentials or not credentials.credentials:
+        if settings.demo_auth_allowed:
+            return None
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing or invalid authentication token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return await get_current_user(credentials=credentials, db=db)
