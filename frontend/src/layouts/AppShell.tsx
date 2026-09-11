@@ -111,6 +111,8 @@ const navByRole: Record<Role, RoleNav> = {
   },
 }
 
+import { GlobalModeIndicator } from '../components/GlobalModeIndicator'
+
 export function AppShell() {
   const { session, user } = useAuth()
   const { t } = useLanguage()
@@ -133,7 +135,8 @@ export function AppShell() {
       <div className="shell-main">
         <header className="mobile-header">
           <Logo />
-          <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <GlobalModeIndicator />
             {session.role === 'farmer' && <LanguageSwitcher compact />}
             <NotificationCenter />
             {nav.headerProfile && (
@@ -145,7 +148,15 @@ export function AppShell() {
         </header>
         <header className="desktop-topbar">
           <div><span>{t('deliveringTo')}</span><strong>{session.role === 'farmer' ? t('location') : user.location}</strong></div>
-          <div>{session.role === 'farmer' && <LanguageSwitcher />}<NotificationCenter /><NavLink to={`/${session.role}/profile`} className="topbar-profile"><span>{user.avatarInitials}</span><div><strong>{user.name}</strong><small>{t(roleKey[session.role])}</small></div></NavLink></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <GlobalModeIndicator />
+            {session.role === 'farmer' && <LanguageSwitcher />}
+            <NotificationCenter />
+            <NavLink to={`/${session.role}/profile`} className="topbar-profile">
+              <span>{user.avatarInitials}</span>
+              <div><strong>{user.name}</strong><small>{t(roleKey[session.role])}</small></div>
+            </NavLink>
+          </div>
         </header>
         <main className="app-main"><Outlet /></main>
       </div>

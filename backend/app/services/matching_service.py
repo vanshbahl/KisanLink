@@ -103,7 +103,8 @@ class MatchingEngine:
 
         # 2. Price Score (0.25 weight)
         if max_price > min_price:
-            s_price = max(0.0, 1.0 - ((MatchingEngine.effective_price(listing) - min_price) / (max_price - min_price + 0.01)))
+            raw_p_score = 1.0 - ((MatchingEngine.effective_price(listing) - min_price) / (max_price - min_price + 0.01))
+            s_price = max(0.0, min(1.0, raw_p_score))
         else:
             s_price = 1.0
 

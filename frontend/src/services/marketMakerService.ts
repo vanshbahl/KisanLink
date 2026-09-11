@@ -23,6 +23,12 @@ export interface MarketView {
   assignedVehicle: Vehicle | null
 }
 
+function resolveBoardId(id?: string): string | undefined {
+  if (!id) return undefined
+  if (id === 'MM-MULTI-SONIPAT' || id === 'MM-TOM-SONIPAT' || id === 'MM-SONIPAT') return 'MM-SONIPAT-001'
+  return id
+}
+
 export const marketMakerService = {
   /** Returns every open board along with its current math and assigned vehicle. */
   async boards(): Promise<MarketView[]> {
@@ -38,8 +44,9 @@ export const marketMakerService = {
 
   /** Finds a single board by ID, or falls back to the first open board. */
   async board(id?: string): Promise<MarketView | undefined> {
+    const targetId = resolveBoardId(id)
     const views = await this.boards()
-    return id ? views.find((view) => view.board.id === id) : views[0]
+    return targetId ? views.find((view) => view.board.id === targetId) : views[0]
   },
 
   /**
@@ -48,16 +55,23 @@ export const marketMakerService = {
    * tells every role in the same write.
    */
   async commit(boardId: string, input: { source: MarketCommitmentSource; party: string; detail: string; quantityKg: number; own?: boolean; cropId?: string }) {
+    const targetId = resolveBoardId(boardId) || boardId
     const state = await prototypeService.getState()
-    const board = state.markets.find((item) => item.id === boardId)
+    const board = state.markets.find((item) => item.id === targetId)
     if (!board) throw new Error('This market is no longer open.')
     if (board.status === 'created') throw new Error('This market has already been created.')
     if (input.quantityKg < 1) throw new Error('Commit at least 1 kg.')
 
     let targetCrop: MarketCropSegment | undefined
     if (board.isMultiCrop && board.crops && board.crops.length > 0) {
+      const inputKey = input.cropId ? input.cropId.replace(/^seg_/, '').toLowerCase() : ''
       targetCrop = input.cropId
-        ? board.crops.find((c) => c.id === input.cropId)
+        ? board.crops.find((c) =>
+            c.id === input.cropId ||
+            c.id.toLowerCase() === input.cropId?.toLowerCase() ||
+            (Boolean(inputKey) && c.id.toLowerCase().includes(inputKey)) ||
+            (Boolean(inputKey) && c.crop.toLowerCase().includes(inputKey))
+          )
         : board.crops[0]
       if (input.cropId && !targetCrop) {
         throw new Error('Specified crop is not part of this multi-crop corridor.')

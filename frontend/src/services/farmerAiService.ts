@@ -36,15 +36,17 @@ export interface CropIntel {
   actionKgMin: number
   actionKgMax: number
   pickupAvailableTomorrow: boolean
+  isLiveBackend?: boolean
+  modeLabel?: string
 }
 
 const CROP_INTEL: Record<FarmerCrop, CropIntel> = {
-  Tomatoes: { crop: 'Tomatoes', cropHi: 'टमाटर', listingCrop: 'Fresh Tomatoes', listingCropHi: 'ताज़े टमाटर', mandi: 24, direct: 32, historical: [27, 28, 28, 30, 29, 31, 32], forecast: [33, 33, 32], demandIndex: 82, demandChangePct: 32, nearbyDemandKg: 1800, buyerCount: 46, volatility: 'Moderate', supplyPressure: 'Moderate', confidence: 88, recommendedMin: 31, recommendedMax: 33, actionKgMin: 300, actionKgMax: 500, pickupAvailableTomorrow: true },
-  Potatoes: { crop: 'Potatoes', cropHi: 'आलू', listingCrop: 'New Potatoes', listingCropHi: 'नए आलू', mandi: 21, direct: 25, historical: [20, 21, 21, 22, 22, 24, 25], forecast: [25, 26, 26], demandIndex: 58, demandChangePct: 9, nearbyDemandKg: 900, buyerCount: 21, volatility: 'Low', supplyPressure: 'High', confidence: 74, recommendedMin: 24, recommendedMax: 26, actionKgMin: 400, actionKgMax: 600, pickupAvailableTomorrow: true },
-  Onion: { crop: 'Onion', cropHi: 'प्याज़', listingCrop: 'Red Onion', listingCropHi: 'लाल प्याज़', mandi: 18, direct: 24, historical: [17, 18, 19, 19, 21, 23, 24], forecast: [25, 26, 25], demandIndex: 71, demandChangePct: 24, nearbyDemandKg: 1200, buyerCount: 33, volatility: 'High', supplyPressure: 'Moderate', confidence: 69, recommendedMin: 23, recommendedMax: 26, actionKgMin: 250, actionKgMax: 400, pickupAvailableTomorrow: false },
-  Spinach: { crop: 'Spinach', cropHi: 'पालक', listingCrop: 'Baby Spinach', listingCropHi: 'बेबी पालक', mandi: 35, direct: 42, historical: [33, 35, 36, 38, 39, 40, 42], forecast: [43, 43, 42], demandIndex: 64, demandChangePct: 14, nearbyDemandKg: 400, buyerCount: 28, volatility: 'Moderate', supplyPressure: 'Low', confidence: 79, recommendedMin: 40, recommendedMax: 44, actionKgMin: 80, actionKgMax: 140, pickupAvailableTomorrow: true },
-  Wheat: { crop: 'Wheat', cropHi: 'गेहूं', listingCrop: 'Sharbati Wheat', listingCropHi: 'शरबती गेहूं', mandi: 31, direct: 37, historical: [30, 31, 31, 32, 33, 34, 37], forecast: [37, 38, 38], demandIndex: 41, demandChangePct: 4, nearbyDemandKg: 3000, buyerCount: 12, volatility: 'Low', supplyPressure: 'High', confidence: 62, recommendedMin: 36, recommendedMax: 38, actionKgMin: 800, actionKgMax: 1200, pickupAvailableTomorrow: false },
-  Carrots: { crop: 'Carrots', cropHi: 'गाजर', listingCrop: 'Sweet Carrots', listingCropHi: 'मीठी गाजर', mandi: 29, direct: 36, historical: [27, 28, 30, 31, 33, 35, 36], forecast: [37, 37, 36], demandIndex: 55, demandChangePct: 11, nearbyDemandKg: 700, buyerCount: 19, volatility: 'Moderate', supplyPressure: 'Moderate', confidence: 70, recommendedMin: 35, recommendedMax: 38, actionKgMin: 200, actionKgMax: 350, pickupAvailableTomorrow: true },
+  Tomatoes: { crop: 'Tomatoes', cropHi: 'टमाटर', listingCrop: 'Fresh Tomatoes', listingCropHi: 'ताज़े टमाटर', mandi: 24, direct: 32, historical: [27, 28, 28, 30, 29, 31, 32], forecast: [33, 33, 32], demandIndex: 82, demandChangePct: 32, nearbyDemandKg: 1800, buyerCount: 46, volatility: 'Moderate', supplyPressure: 'Moderate', confidence: 88, recommendedMin: 31, recommendedMax: 33, actionKgMin: 300, actionKgMax: 500, pickupAvailableTomorrow: true, isLiveBackend: false, modeLabel: 'Demo / Local Intelligence' },
+  Potatoes: { crop: 'Potatoes', cropHi: 'आलू', listingCrop: 'New Potatoes', listingCropHi: 'नए आलू', mandi: 21, direct: 25, historical: [20, 21, 21, 22, 22, 24, 25], forecast: [25, 26, 26], demandIndex: 58, demandChangePct: 9, nearbyDemandKg: 900, buyerCount: 21, volatility: 'Low', supplyPressure: 'High', confidence: 74, recommendedMin: 24, recommendedMax: 26, actionKgMin: 400, actionKgMax: 600, pickupAvailableTomorrow: true, isLiveBackend: false, modeLabel: 'Demo / Local Intelligence' },
+  Onion: { crop: 'Onion', cropHi: 'प्याज़', listingCrop: 'Red Onion', listingCropHi: 'लाल प्याज़', mandi: 18, direct: 24, historical: [17, 18, 19, 19, 21, 23, 24], forecast: [25, 26, 25], demandIndex: 71, demandChangePct: 24, nearbyDemandKg: 1200, buyerCount: 33, volatility: 'High', supplyPressure: 'Moderate', confidence: 69, recommendedMin: 23, recommendedMax: 26, actionKgMin: 250, actionKgMax: 400, pickupAvailableTomorrow: false, isLiveBackend: false, modeLabel: 'Demo / Local Intelligence' },
+  Spinach: { crop: 'Spinach', cropHi: 'पालक', listingCrop: 'Baby Spinach', listingCropHi: 'बेबी पालक', mandi: 35, direct: 42, historical: [33, 35, 36, 38, 39, 40, 42], forecast: [43, 43, 42], demandIndex: 64, demandChangePct: 14, nearbyDemandKg: 400, buyerCount: 28, volatility: 'Moderate', supplyPressure: 'Low', confidence: 79, recommendedMin: 40, recommendedMax: 44, actionKgMin: 80, actionKgMax: 140, pickupAvailableTomorrow: true, isLiveBackend: false, modeLabel: 'Demo / Local Intelligence' },
+  Wheat: { crop: 'Wheat', cropHi: 'गेहूं', listingCrop: 'Sharbati Wheat', listingCropHi: 'शरबती गेहूं', mandi: 31, direct: 37, historical: [30, 31, 31, 32, 33, 34, 37], forecast: [37, 38, 38], demandIndex: 41, demandChangePct: 4, nearbyDemandKg: 3000, buyerCount: 12, volatility: 'Low', supplyPressure: 'High', confidence: 62, recommendedMin: 36, recommendedMax: 38, actionKgMin: 800, actionKgMax: 1200, pickupAvailableTomorrow: false, isLiveBackend: false, modeLabel: 'Demo / Local Intelligence' },
+  Carrots: { crop: 'Carrots', cropHi: 'गाजर', listingCrop: 'Sweet Carrots', listingCropHi: 'मीठी गाजर', mandi: 29, direct: 36, historical: [27, 28, 30, 31, 33, 35, 36], forecast: [37, 37, 36], demandIndex: 55, demandChangePct: 11, nearbyDemandKg: 700, buyerCount: 19, volatility: 'Moderate', supplyPressure: 'Moderate', confidence: 70, recommendedMin: 35, recommendedMax: 38, actionKgMin: 200, actionKgMax: 350, pickupAvailableTomorrow: true, isLiveBackend: false, modeLabel: 'Demo / Local Intelligence' },
 }
 
 export const FARMER_CROPS: FarmerCrop[] = ['Tomatoes', 'Potatoes', 'Onion', 'Spinach', 'Wheat', 'Carrots']
@@ -120,6 +122,8 @@ export interface PriceOption {
   labelKey: string
   hintKey: string
   saleChancePct: number
+  isLiveBackend?: boolean
+  modeLabel?: string
 }
 
 /** Feature 3 — Smart Price Advisor. Derives 3 anchor prices and a deterministic sale-chance estimate. */
@@ -134,9 +138,9 @@ export function getPriceOptions(listing: Pick<FarmerListing, 'crop' | 'mandiPric
   const gradeBonus = listing.grade === 'Grade A+' ? 4 : 0
   const chanceFor = (price: number) => clamp(round(84 - (price - mid) * 6 + (demandIndex - 70) * 0.3 + gradeBonus), 30, 97)
   return [
-    { id: 'fast', price: low, labelKey: 'fastSale', hintKey: 'lowerEarnings', saleChancePct: chanceFor(low) },
-    { id: 'balanced', price: mid, labelKey: 'bestBalance', hintKey: 'bestBalanceHint', saleChancePct: chanceFor(mid) },
-    { id: 'high', price: high, labelKey: 'higherEarnings', hintKey: 'lowerSaleProbability', saleChancePct: chanceFor(high) },
+    { id: 'fast', price: low, labelKey: 'fastSale', hintKey: 'lowerEarnings', saleChancePct: chanceFor(low), isLiveBackend: false, modeLabel: 'Demo / Local Intelligence' },
+    { id: 'balanced', price: mid, labelKey: 'bestBalance', hintKey: 'bestBalanceHint', saleChancePct: chanceFor(mid), isLiveBackend: false, modeLabel: 'Demo / Local Intelligence' },
+    { id: 'high', price: high, labelKey: 'higherEarnings', hintKey: 'lowerSaleProbability', saleChancePct: chanceFor(high), isLiveBackend: false, modeLabel: 'Demo / Local Intelligence' },
   ]
 }
 
@@ -157,6 +161,8 @@ export async function fetchLivePriceOptions(listing: Pick<FarmerListing, 'crop' 
         labelKey: opt.label_key,
         hintKey: opt.hint_key,
         saleChancePct: opt.sale_chance_pct,
+        isLiveBackend: true,
+        modeLabel: 'Live Kisan Intelligence',
       }))
     }
   } catch (err) {
@@ -196,6 +202,8 @@ export async function fetchLiveCropIntel(crop: FarmerCrop): Promise<CropIntel> {
         actionKgMin: 300,
         actionKgMax: 500,
         pickupAvailableTomorrow: true,
+        isLiveBackend: true,
+        modeLabel: 'Live Kisan Intelligence',
       }
     }
   } catch (err) {

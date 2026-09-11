@@ -36,18 +36,19 @@ interface DigitalTwinCorridorMapProps {
   height?: string
 }
 
-// Representative Delhi-NCR sourcing corridor shown until real shipment/order geometry
-// is wired in — same "deterministic demo" convention used elsewhere on this page.
+// Sourcing corridor nodes covering Murthal, Rai, Samalkha, Sonipat Hub & Delhi drops
 const defaultNodes: CorridorNode[] = [
-  { id: 'node-1', type: 'FARMER', name: 'Ramesh Kumar (Karnal Cluster)', locationName: 'Karnal, Haryana', cropName: 'Tomato (Grade A)', quantityKg: 1200, latitude: 29.6857, longitude: 76.9905 },
-  { id: 'node-2', type: 'FARMER', name: 'Suresh Patel (Sonipat Sourcing)', locationName: 'Sonipat, Haryana', cropName: 'Spinach / Greens', quantityKg: 850, latitude: 28.9931, longitude: 77.0198 },
-  { id: 'node-3', type: 'HUB', name: 'Sonipat Consolidation Hub', locationName: 'Kundli, Sonipat', cropName: 'Pooled load', quantityKg: 2050, latitude: 28.8628, longitude: 77.1167 },
-  { id: 'node-4', type: 'BUYER', name: 'Azadpur Mandi Hub & Bulk Mart', locationName: 'Azadpur, New Delhi', cropName: 'Consolidated produce', quantityKg: 2050, latitude: 28.7041, longitude: 77.1725 },
+  { id: 'node-murthal', type: 'FARMER', name: 'Ramesh Sharma (Green Field Farm)', locationName: 'Murthal, Sonipat', cropName: 'Fresh Tomatoes (Grade A)', quantityKg: 1200, latitude: 28.9912, longitude: 77.0125 },
+  { id: 'node-rai', type: 'FARMER', name: 'Suresh Kumar (Nandi Organic Plot)', locationName: 'Rai, Sonipat', cropName: 'Baby Spinach (Grade A+)', quantityKg: 800, latitude: 29.0200, longitude: 77.0500 },
+  { id: 'node-samalkha', type: 'FARMER', name: 'Balbir Singh (Rana Veg Farm)', locationName: 'Samalkha, Panipat', cropName: 'Fresh Tomatoes (Grade A)', quantityKg: 1700, latitude: 29.3900, longitude: 76.9600 },
+  { id: 'node-hub', type: 'HUB', name: 'Sonipat Consolidation Hub', locationName: 'Kundli, Sonipat', cropName: 'Pooled Multi-Crop Load', quantityKg: 3700, latitude: 28.8628, longitude: 77.1167 },
+  { id: 'node-azadpur', type: 'BUYER', name: 'Azadpur Mandi Hub & Bulk Mart', locationName: 'Azadpur, New Delhi', cropName: 'Consolidated Produce', quantityKg: 2500, latitude: 28.7041, longitude: 77.1725 },
+  { id: 'node-okhla', type: 'BUYER', name: 'The Imperial Hotel / Okhla Center', locationName: 'Connaught Place / Okhla, New Delhi', cropName: 'Direct Hotel & Group Buy Supply', quantityKg: 1200, latitude: 28.6315, longitude: 77.2167 },
 ]
 
 const defaultRoutes: CorridorRoute[] = [
-  { id: 'route-1', shipmentCode: 'SHP-2026-KR01', originName: 'Karnal Farmers Hub', destinationName: 'Azadpur Bulk Procurement Hub', cropName: 'Tomato', quantityKg: 1200, distanceKm: 128.4, status: 'IN_TRANSIT', farmerCoords: [76.9905, 29.6857], buyerCoords: [77.1725, 28.7041] },
-  { id: 'route-2', shipmentCode: 'SHP-2026-SN02', originName: 'Sonipat Organic Group', destinationName: 'Azadpur Bulk Procurement Hub', cropName: 'Spinach', quantityKg: 850, distanceKm: 52.1, status: 'ASSIGNED', farmerCoords: [77.0198, 28.9931], buyerCoords: [77.1725, 28.7041] },
+  { id: 'route-1', shipmentCode: 'SHP-2026-MUR01', originName: 'Murthal → Rai → Sonipat Hub', destinationName: 'Azadpur Wholesale Hub', cropName: 'Tomatoes & Spinach', quantityKg: 2000, distanceKm: 64.0, status: 'IN_TRANSIT', farmerCoords: [77.0125, 28.9912], buyerCoords: [77.1725, 28.7041] },
+  { id: 'route-2', shipmentCode: 'SHP-2026-SAM02', originName: 'Samalkha Farmgate', destinationName: 'Okhla Distribution Center', cropName: 'Fresh Tomatoes', quantityKg: 1700, distanceKm: 92.5, status: 'ASSIGNED', farmerCoords: [76.9600, 29.3900], buyerCoords: [77.2167, 28.6315] },
 ]
 
 const markerColor = (type: CorridorNode['type']) => type === 'FARMER' ? '#236747' : type === 'HUB' ? '#c2802a' : '#4a76a8'

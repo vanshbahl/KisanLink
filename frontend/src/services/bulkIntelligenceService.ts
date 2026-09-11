@@ -1,10 +1,11 @@
 import type { BulkRfq, FarmerListing, SupplyContribution } from '../types'
+import { apiClient } from './apiClient'
 import { getCropIntel, type FarmerCrop } from './farmerAiService'
 
 const cropFor = (crop: string): FarmerCrop | null => (['Tomatoes', 'Potatoes', 'Onion', 'Spinach', 'Wheat', 'Carrots'] as FarmerCrop[]).find((item) => crop.toLowerCase().includes(item.slice(0, -1).toLowerCase())) ?? null
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n))
 export type BulkFactor = { label: string; value: string }
-export type BulkInsight = { title: string; recommendation: string; confidence: number; factors: BulkFactor[]; ctaLabel?: string; href?: string; note?: string }
+export type BulkInsight = { title: string; recommendation: string; confidence: number; factors: BulkFactor[]; ctaLabel?: string; href?: string; note?: string; isLiveBackend?: boolean; modeLabel?: string }
 /** Shape of one pooled-supply row as assembled by `phase2Service.supplyPools()`. */
 export type SupplyPoolLike = { id: string; product: string; grade: string; corridor: string; totalQuantityKg: number; startingPrice: number; priceMax: number; moqKg: number; farmerCount: number; readiness: string; dispatch: string }
 
@@ -16,9 +17,9 @@ export function targetPriceOptions(crop: string, quantity: number, fallback: num
 
 export function procurementPulse(rfqs: BulkRfq[], listings: FarmerListing[]): BulkInsight {
   const atRisk = rfqs.find((rfq) => !['converted', 'closed'].includes(rfq.status) && rfq.matches.reduce((sum, match) => sum + match.quantityKg, 0) < rfq.requiredQuantityKg)
-  if (atRisk) { const matched = atRisk.matches.reduce((sum, match) => sum + match.quantityKg, 0); return { title: 'Procurement Pulse', recommendation: `${atRisk.crop} requirement needs attention: ${matched.toLocaleString('en-IN')} kg matched of ${atRisk.requiredQuantityKg.toLocaleString('en-IN')} kg.`, confidence: 81, href: `/bulk/requests/${atRisk.id}`, ctaLabel: 'Review requirement', factors: [{ label: 'Fulfilment', value: `${Math.round(matched / atRisk.requiredQuantityKg * 100)}% matched` }, { label: 'Farmer cluster', value: `${atRisk.matches.length} farmers` }, { label: 'Target rate', value: `₹${atRisk.targetPrice}/kg` }, { label: 'Delivery', value: atRisk.deliveryWindow }] } }
+  if (atRisk) { const matched = atRisk.matches.reduce((sum, match) => sum + match.quantityKg, 0); return { title: 'Procurement Pulse', recommendation: `${atRisk.crop} requirement needs attention: ${matched.toLocaleString('en-IN')} kg matched of ${atRisk.requiredQuantityKg.toLocaleString('en-IN')} kg.`, confidence: 81, href: `/bulk/requests/${atRisk.id}`, ctaLabel: 'Review requirement', modeLabel: 'Demo / Local Intelligence', factors: [{ label: 'Fulfilment', value: `${Math.round(matched / atRisk.requiredQuantityKg * 100)}% matched` }, { label: 'Farmer cluster', value: `${atRisk.matches.length} farmers` }, { label: 'Target rate', value: `₹${atRisk.targetPrice}/kg` }, { label: 'Delivery', value: atRisk.deliveryWindow }] } }
   const best = listings.filter((item) => item.status === 'active' && item.remainingKg > 0).sort((a, b) => b.remainingKg - a.remainingKg)[0]
-  return best ? { title: 'Procurement Pulse', recommendation: `${best.crop} has ${best.remainingKg.toLocaleString('en-IN')} kg available at ₹${best.pricePerKg}/kg.`, confidence: 78, href: '/bulk/supply', ctaLabel: 'Browse supply', factors: [{ label: 'Available supply', value: `${best.remainingKg.toLocaleString('en-IN')} kg` }, { label: 'Farm-gate rate', value: `₹${best.pricePerKg}/kg` }, { label: 'Mandi reference', value: `₹${best.mandiPricePerKg}/kg` }, { label: 'Readiness', value: 'Listing active' }] } : { title: 'Procurement Pulse', recommendation: 'No active supply is available to assess.', confidence: 55, factors: [] }
+  return best ? { title: 'Procurement Pulse', recommendation: `${best.crop} has ${best.remainingKg.toLocaleString('en-IN')} kg available at ₹${best.pricePerKg}/kg.`, confidence: 78, href: '/bulk/supply', ctaLabel: 'Browse supply', modeLabel: 'Demo / Local Intelligence', factors: [{ label: 'Available supply', value: `${best.remainingKg.toLocaleString('en-IN')} kg` }, { label: 'Farm-gate rate', value: `₹${best.pricePerKg}/kg` }, { label: 'Mandi reference', value: `₹${best.mandiPricePerKg}/kg` }, { label: 'Readiness', value: 'Listing active' }] } : { title: 'Procurement Pulse', recommendation: 'No active supply is available to assess.', confidence: 55, factors: [] }
 }
 
 /**
@@ -37,6 +38,8 @@ export function contributionIntelligence(contributions: SupplyContribution[], re
     title: 'Match Intelligence',
     recommendation: `${Math.min(100, Math.round(fulfilment * 100))}% matched — ${risk.toLowerCase()}.`,
     confidence: clamp(Math.round(58 + Math.min(1, fulfilment) * 30 + Math.min(contributions.length * 3, 9)), 55, 92),
+    isLiveBackend: false,
+    modeLabel: 'Demo / Local Intelligence',
     note: 'Distance, price, time, reliability and quality use the backend weighted match engine when a canonical cluster is available; local previews use deterministic prototype defaults.',
     factors: [
       { label: 'Distance · 30%', value: 'Weighted by match engine or prototype route context' },
@@ -53,6 +56,34 @@ export function matchIntelligence(rfq: BulkRfq): BulkInsight {
   return contributionIntelligence(rfq.matches, rfq.requiredQuantityKg, { deliveryWindow: rfq.deliveryWindow, grade: rfq.grade })
 }
 
+export async function fetchLiveRequirementMatches(requirementId: string, fallbackRfq?: BulkRfq): Promise<BulkInsight> {
+  try {
+    const cluster = await apiClient.generateRequirementMatches(requirementId)
+    if (cluster) {
+      return {
+        title: 'Match Intelligence (5-Factor Cluster Engine)',
+        recommendation: `Cluster Formed! ${cluster.fulfillment_percentage}% matched across ${cluster.farmers?.length || 0} farmers (${cluster.buyer_savings_percentage}% buyer savings).`,
+        confidence: Math.round(cluster.fulfillment_percentage || 85),
+        isLiveBackend: true,
+        modeLabel: 'Live Backend Sourcing Engine',
+        note: cluster.explanation ? cluster.explanation.join(' ') : 'Formulated via live 5-factor weighted utility scoring engine.',
+        factors: [
+          { label: 'Distance · 30%', value: 'ST_Distance spatial centroid weighting' },
+          { label: 'Price · 25%', value: `₹${cluster.total_delivered_price_per_kg}/kg landed` },
+          { label: 'Delivered Total', value: `₹${cluster.estimated_freight_rupees} freight` },
+          { label: 'APMC Benchmark', value: `₹${cluster.traditional_wholesale_benchmark}/kg` },
+          { label: 'Buyer Savings', value: `${cluster.buyer_savings_percentage}% savings` },
+        ],
+      }
+    }
+  } catch (err) {
+    if (import.meta.env.DEV) {
+      console.warn('[BulkIntel] Requirement matching API call failed; using prototype fallback.', err)
+    }
+  }
+  return fallbackRfq ? matchIntelligence(fallbackRfq) : contributionIntelligence([], 1000)
+}
+
 /** Browse-supply scout: which pooled listing in the current filtered view is the strongest start. */
 export function supplyPoolScout(pools: SupplyPoolLike[]): BulkInsight {
   if (!pools.length) return { title: 'Supply Scout', recommendation: 'No pooled supply matches the current filters.', confidence: 55, factors: [] }
@@ -66,6 +97,7 @@ export function supplyPoolScout(pools: SupplyPoolLike[]): BulkInsight {
     confidence: clamp(66 + Math.round(score(best) / 4), 66, 90),
     ctaLabel: 'Open this pool',
     href: `/bulk/supply/${best.id}`,
+    modeLabel: 'Demo / Local Intelligence',
     note: best.id === cheapest.id ? undefined : `${cheapest.product} starts lower at ₹${cheapest.startingPrice}/kg but scores below on pooled depth, MOQ or farmer count.`,
     factors: [
       { label: 'Pooled depth', value: `${best.totalQuantityKg.toLocaleString('en-IN')} kg across ${best.farmerCount} farmers` },
@@ -77,3 +109,4 @@ export function supplyPoolScout(pools: SupplyPoolLike[]): BulkInsight {
     ],
   }
 }
+

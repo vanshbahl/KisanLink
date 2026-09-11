@@ -91,51 +91,83 @@ export const logisticsService = {
   // so the pickup/delivery/route screens keep working when a listing/order isn't
   // backed by a real Postgres record (or the backend is unavailable).
   async verifyPickupOtp(pickupId: string, otp: string) {
-    try {
-      const res = await apiClient.verifyPickupOtp(otp)
-      if (res.success) {
-        await this.updatePickup(pickupId, 'completed')
-        return res
-      }
-    } catch {
-      // Prototype fallback below
-    }
     const cleanOtp = otp.trim()
-    if (cleanOtp.length < 4) throw new Error('Please enter a valid 6-digit OTP')
+    if (!/^\d{6}$/.test(cleanOtp)) throw new Error('Please enter a valid 6-digit numeric OTP')
+
+    try {
+      const res = await apiClient.verifyPickupOtp(cleanOtp, pickupId)
+      if (res && res.success) {
+        await this.updatePickup(pickupId, 'completed')
+        return { ...res, isLiveBackend: true, modeLabel: 'Verified via Live Backend API' }
+      }
+    } catch (err: any) {
+      if (import.meta.env.DEV) {
+        console.warn('[LogisticsIntel] Live pickup OTP API failed, trying prototype fallback:', err?.message)
+      }
+    }
+
+    // Prototype fallback with strict OTP check (Safeguard 1)
+    const state = await prototypeService.getState()
+    const pickup = state.logisticsPickups.find((item) => item.id === pickupId)
+    const expectedOtp = pickup?.otp || (pickupId === 'PK-001' || pickupId === 'PK-002' ? '123456' : '987654')
+
+    if (cleanOtp !== expectedOtp) {
+      throw new Error(`Invalid OTP code "${cleanOtp}" for pickup ${pickupId}. Expected code is required for verification.`)
+    }
+
     await this.updatePickup(pickupId, 'completed')
-    return { success: true, message: 'Pickup OTP verified! Produce loaded.' }
+    return { success: true, message: `Pickup OTP ${cleanOtp} verified! Produce loaded.`, isLiveBackend: false, modeLabel: 'Verified via Demo Seed OTP' }
   },
 
   async verifyDeliveryOtp(deliveryId: string, otp: string) {
-    try {
-      const res = await apiClient.verifyDeliveryOtp(deliveryId, otp)
-      if (res.success) {
-        await this.updateDelivery(deliveryId, 'delivered')
-        return res
-      }
-    } catch {
-      // Prototype fallback below
-    }
     const cleanOtp = otp.trim()
-    if (cleanOtp.length < 4) throw new Error('Please enter a valid 6-digit OTP')
+    if (!/^\d{6}$/.test(cleanOtp)) throw new Error('Please enter a valid 6-digit numeric OTP')
+
+    try {
+      const res = await apiClient.verifyDeliveryOtp(deliveryId, cleanOtp)
+      if (res && res.success) {
+        await this.updateDelivery(deliveryId, 'delivered')
+        return { ...res, isLiveBackend: true, modeLabel: 'Verified via Live Backend API' }
+      }
+    } catch (err: any) {
+      if (import.meta.env.DEV) {
+        console.warn('[LogisticsIntel] Live delivery OTP API failed, trying prototype fallback:', err?.message)
+      }
+    }
+
+    // Prototype fallback with strict OTP check (Safeguard 1)
+    const state = await prototypeService.getState()
+    const delivery = state.deliveries.find((item) => item.id === deliveryId)
+    const expectedOtp = delivery?.otp || (deliveryId === 'DL-001' || deliveryId === 'DL-002' ? '123456' : '654321')
+
+    if (cleanOtp !== expectedOtp) {
+      throw new Error(`Invalid OTP code "${cleanOtp}" for delivery ${deliveryId}. Expected code is required for verification.`)
+    }
+
     await this.updateDelivery(deliveryId, 'delivered')
-    return { success: true, message: 'Delivery OTP verified! Order delivered & escrow settled.' }
+    return { success: true, message: `Delivery OTP ${cleanOtp} verified! Order delivered & escrow settled.`, isLiveBackend: false, modeLabel: 'Verified via Demo Seed OTP' }
   },
 
   async optimizeLiveRoute(vehicleCapacityKg: number = 1500) {
     try {
       const res = await apiClient.optimizeRoute(undefined, vehicleCapacityKg)
       if (res && res.waypoints) {
-        return res
+        return { ...res, isLiveBackend: true, modeLabel: 'Live OR-Tools Solver (Backend)' }
       }
-    } catch {
-      // Fallback below
+    } catch (err: any) {
+      if (import.meta.env.DEV) {
+        console.warn('[LogisticsIntel] Live route optimization API failed, using prototype fallback:', err?.message)
+      }
     }
+
     return {
       total_distance_km: 64,
       estimated_duration_minutes: 110,
       utilization_pct: 90,
       trips_reduced: 2,
+      isLiveBackend: false,
+      modeLabel: 'Demo / Local Logistics Solver',
     }
   },
 }
+

@@ -36,14 +36,16 @@ export const phase2Service = {
   cart(): CartItem[] { try { return JSON.parse(localStorage.getItem(CART_KEY) ?? '[]') as CartItem[] } catch { return [] } },
   saveCart(items: CartItem[]) { localStorage.setItem(CART_KEY, JSON.stringify(items)); window.dispatchEvent(new Event('kisanlink-cart')); return items },
   addToCart(listingId: string, quantityKg: number) { const cart = this.cart(); const found = cart.find((item) => item.listingId === listingId && !item.isPooled); if (found) found.quantityKg += quantityKg; else cart.push({ listingId, quantityKg }); return this.saveCart(cart) },
-  addPooledToCart(item: { listingId: string; quantityKg: number; pooledPricePerKg: number; regularPricePerKg: number; savingsPerKg: number; boardId: string; cropId: string }) {
+  addPooledToCart(item: { listingId: string; quantityKg: number; pooledPricePerKg: number; regularPricePerKg: number; savingsPerKg: number; boardId: string; cropId: string; regionId?: string }) {
     const cart = this.cart()
-    const found = cart.find((i) => i.listingId === item.listingId && i.isPooled)
+    const found = cart.find((i) => i.listingId === item.listingId && i.boardId === item.boardId && i.isPooled)
     if (found) {
       found.quantityKg += item.quantityKg
       found.pooledPricePerKg = item.pooledPricePerKg
       found.regularPricePerKg = item.regularPricePerKg
       found.savingsPerKg = item.savingsPerKg
+      found.marketMakerId = item.boardId
+      found.regionId = item.regionId
     } else {
       cart.push({
         listingId: item.listingId,
@@ -53,6 +55,8 @@ export const phase2Service = {
         regularPricePerKg: item.regularPricePerKg,
         savingsPerKg: item.savingsPerKg,
         boardId: item.boardId,
+        marketMakerId: item.boardId,
+        regionId: item.regionId,
         cropId: item.cropId,
       })
     }
@@ -75,15 +79,38 @@ export const phase2Service = {
     for (const entry of resolved) if (!entry.listing || entry.listing.status !== 'active' || entry.item.quantityKg < 1 || entry.item.quantityKg > entry.listing.remainingKg) throw new Error(`${entry.listing?.crop ?? 'An item'} is no longer available in that quantity.`)
 
     // Place real order in canonical PostgreSQL backend
+    let isLiveBackend = false
     try {
       const backendItems = input.items.map((i) => ({ listingId: i.listingId, quantityKg: i.quantityKg }))
-      await apiClient.placeDirectOrder(backendItems, `${input.address.line1}, ${input.address.city}`)
+      const backendRes = await apiClient.placeDirectOrder(backendItems, `${input.address.line1}, ${input.address.city}`)
+      if (backendRes) {
+        isLiveBackend = true
+      }
     } catch (err) {
       console.warn('Direct order backend sync note:', err)
     }
     const subtotal = resolved.reduce((sum, entry) => sum + entry.item.quantityKg * entry.listing!.pricePerKg, 0)
     const logisticsFee = Math.max(35, Math.round(subtotal * .06)); const platformFee = Math.round(subtotal * .03); const farmerShare = subtotal - platformFee; const orderId = id('KL-C')
-    const order: ConsumerOrder = { id: orderId, items: resolved.map(({ item, listing }) => ({ listingId: listing!.id, crop: listing!.crop, cropHi: listing!.cropHi, farm: listing!.farm, imageSrc: listing!.imageSrc, quantityKg: item.quantityKg, ratePerKg: listing!.pricePerKg })), subtotal, logisticsFee, platformFee, farmerShare, total: subtotal + logisticsFee, address: input.address, deliverySlot: input.deliverySlot, eta: day(2), note: input.note, paymentMethod: input.paymentMethod, paymentStatus: input.paymentMethod === 'Pay on Delivery' ? 'Pay on delivery' : 'Mock paid', status: 'confirmed', orderedAt: now(), timeline: [{ status: 'confirmed', label: 'Order confirmed', at: now() }] }
+    const order: ConsumerOrder = {
+      id: orderId,
+      items: resolved.map(({ item, listing }) => ({ listingId: listing!.id, crop: listing!.crop, cropHi: listing!.cropHi, farm: listing!.farm, imageSrc: listing!.imageSrc, quantityKg: item.quantityKg, ratePerKg: listing!.pricePerKg })),
+      subtotal,
+      logisticsFee,
+      platformFee,
+      farmerShare,
+      total: subtotal + logisticsFee,
+      address: input.address,
+      deliverySlot: input.deliverySlot,
+      eta: day(2),
+      note: input.note,
+      paymentMethod: input.paymentMethod,
+      paymentStatus: input.paymentMethod === 'Pay on Delivery' ? 'Pay on delivery' : 'Mock paid',
+      status: 'confirmed',
+      orderedAt: now(),
+      timeline: [{ status: 'confirmed', label: 'Order confirmed', at: now() }],
+      isBackendSynced: isLiveBackend,
+      modeLabel: isLiveBackend ? 'Live Backend Order' : 'Demo / Prototype Mode'
+    }
     state.consumerOrders.unshift(order)
     resolved.forEach(({ item, listing }, index) => {
       listing!.remainingKg -= item.quantityKg; listing!.allocatedKg += item.quantityKg; if (listing!.remainingKg === 0) listing!.status = 'sold'
@@ -101,10 +128,50 @@ export const phase2Service = {
     const listings = (await this.listings()).filter((item) => item.remainingKg > 0)
     return bulkSupplies.map((pool) => ({ ...pool, grade: 'Grade A+' as const, totalQuantityKg: Math.round(pool.availableTonnes * 1000), priceMax: pool.startingPrice + 4, corridor: pool.locations, readiness: 'Ready in 24–48 hours', dispatch: day(2).slice(0, 10), matchingListings: listings.filter((listing) => pool.product.toLowerCase().includes(listing.crop.replace('Fresh ', '').replace('Baby ', '').toLowerCase().replace(/s$/, ''))) }))
   },
+  async reserveSupplyPool(poolId: string, quantityKg: number) {
+    const state = await prototypeService.getState()
+    const pool = bulkSupplies.find((p) => p.id === poolId)
+    if (!pool) throw new Error('Supply pool not found.')
+    const maxKg = Math.round(pool.availableTonnes * 1000)
+    if (quantityKg <= 0 || quantityKg > maxKg) {
+      throw new Error(`Requested quantity must be between 1 and ${maxKg} kg.`)
+    }
+    pool.availableTonnes = Math.max(0, pool.availableTonnes - quantityKg / 1000)
+    state.notifications.unshift({
+      id: id('note'),
+      role: 'bulk',
+      title: 'Supply reserved',
+      titleHi: 'सप्लाई रिजर्व हुई',
+      body: `Reserved ${quantityKg.toLocaleString('en-IN')} kg ${pool.product} from ${pool.locations} pool.`,
+      bodyHi: `${quantityKg} किलो सप्लाई रिजर्व की गई।`,
+      timestamp: now(),
+      read: false,
+      href: '/bulk/supply'
+    })
+    await prototypeService.replaceState(state)
+    window.dispatchEvent(new CustomEvent('kisanlink-state'))
+    return { poolId, reservedKg: quantityKg, remainingTonnes: pool.availableTonnes }
+  },
   async bulkProfile() { return (await prototypeService.getState()).bulkProfile },
   async saveBulkProfile(profile: BulkProfileData) { const state = await prototypeService.getState(); state.bulkProfile = profile; await prototypeService.replaceState(state); return profile },
   async rfqs() { await pause(); return (await prototypeService.getState()).rfqs },
   async rfq(rfqId: string) { return (await prototypeService.getState()).rfqs.find((rfq) => rfq.id === rfqId) },
+  async updateRfq(rfqId: string, updates: Partial<Pick<BulkRfq, 'requiredQuantityKg' | 'targetPrice' | 'deliveryLocation' | 'deliveryWindow' | 'notes'>>) {
+    const state = await prototypeService.getState()
+    const rfq = state.rfqs.find((item) => item.id === rfqId)
+    if (!rfq) throw new Error('Requirement not found.')
+    if (['converted', 'closed'].includes(rfq.status)) throw new Error('Cannot edit a converted or closed requirement.')
+    if (updates.requiredQuantityKg !== undefined && updates.requiredQuantityKg > 0) rfq.requiredQuantityKg = updates.requiredQuantityKg
+    if (updates.targetPrice !== undefined && updates.targetPrice > 0) rfq.targetPrice = updates.targetPrice
+    if (updates.deliveryLocation) rfq.deliveryLocation = updates.deliveryLocation
+    if (updates.deliveryWindow) rfq.deliveryWindow = updates.deliveryWindow
+    if (updates.notes !== undefined) rfq.notes = updates.notes
+    const matched = rfq.matches.reduce((sum, item) => sum + item.quantityKg, 0)
+    rfq.status = matched >= rfq.requiredQuantityKg ? 'fully_matched' : matched ? 'partially_matched' : 'matching'
+    await prototypeService.replaceState(state)
+    window.dispatchEvent(new CustomEvent('kisanlink-state'))
+    return rfq
+  },
   async createRfq(input: Omit<BulkRfq, 'id' | 'createdAt' | 'status' | 'matches'>) {
     const state = await prototypeService.getState()
     let matches: SupplyContribution[] = []

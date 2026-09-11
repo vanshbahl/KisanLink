@@ -1,0 +1,20 @@
+{
+  "venvPath": "backend",
+  "venv": ".venv",
+  "pythonVersion": "3.13",
+  "typeCheckingMode": "basic",
+  "extraPaths": [
+    "backend",
+    "backend/app",
+    "backend/.venv/lib/python3.13/site-packages"
+  ],
+  "executionEnvironments": [
+    {
+      "root": "backend",
+      "extraPaths": [
+        "app",
+        ".venv/lib/python3.13/site-packages"
+      ]
+    }
+  ]
+}

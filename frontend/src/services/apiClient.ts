@@ -39,6 +39,15 @@ const ROLE_PHONE_MAP: Record<string, { phone: string; preferred_role: string }> 
 class ApiClient {
   private tokenCache: Record<string, string> = {}
 
+  async checkBackendHealth(): Promise<boolean> {
+    try {
+      const res = await fetch('/api/v1/intelligence/impact-summary', { method: 'GET', signal: AbortSignal.timeout(1500) })
+      return res.ok
+    } catch {
+      return false
+    }
+  }
+
   private async ensureToken(role: 'farmer' | 'consumer' | 'bulk' | 'operator' = 'farmer'): Promise<string> {
     const cached = this.tokenCache[role] || localStorage.getItem(`kisanlink_jwt_${role}`)
     if (cached) {
@@ -545,6 +554,14 @@ class ApiClient {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Intelligence & Logistics API Endpoints (Phase 8)
+  // ---------------------------------------------------------------------------
+
+  async generateRequirementMatches(requirementId: string): Promise<any> {
+    return this.request<any>(`/requirements/${requirementId}/generate-matches`, { method: 'POST' }, 'bulk')
+  }
+
   private resolveVisual(name: string): any {
     const lower = name.toLowerCase()
     if (lower.includes('tomato')) return 'tomato'
@@ -561,3 +578,5 @@ function roundRate(gross: number, qty: number): number {
 }
 
 export const apiClient = new ApiClient()
+
+

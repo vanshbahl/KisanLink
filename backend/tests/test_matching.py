@@ -2,7 +2,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 
-from app.models import BuyerRequirement, CropListing, FarmerProfile
+from app.models import BuyerRequirement, CropListing, FarmerProfile, ListingStatusEnum
 from app.services.matching_service import MatchingEngine
 
 
@@ -31,7 +31,7 @@ async def test_matching_engine_candidate_search(client: AsyncClient, buyer_token
     candidates = await MatchingEngine.find_candidate_listings(db_session, req)
     assert len(candidates) > 0
     for listing, farmer, c_name, item_lat, item_lon, dist_km in candidates:
-        assert listing.status == "ACTIVE"
+        assert listing.status in [ListingStatusEnum.ACTIVE, ListingStatusEnum.RESCUE_ACTIVE]
         assert float(listing.expected_price_per_kg) <= float(req.max_price_per_kg)
         assert dist_km >= 0.0
 

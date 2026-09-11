@@ -1,9 +1,9 @@
 import {
-  ArrowRight, Boxes, Building2, CalendarClock, Check, CircleAlert, Home, IndianRupee, Layers, MapPinned,
+  ArrowRight, Boxes, Building2, CalendarClock, Check, CircleAlert, Home, IndianRupee, Layers, MapPin, MapPinned,
   PackageCheck, Radar, RotateCcw, Sparkles, Sprout, Truck, Zap,
 } from 'lucide-react'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { FarmerMarketMaker } from '../components/market/FarmerMarketMaker'
 import { MarketCommitPanel } from '../components/market/MarketCommitPanel'
 import { MarketHowItWorks } from '../components/market/MarketHowItWorks'
@@ -64,6 +64,8 @@ export function MarketMakerPage() {
   const { session } = useAuth()
   const { language } = useLanguage()
   const { showToast } = useToast()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const queryBoardId = searchParams.get('boardId') || ''
   const [busy, setBusy] = useState(false)
   const [reveal, setReveal] = useState<MarketCreationResult | null>(null)
   const [selectedBoardId, setSelectedBoardId] = useState<string>('')
@@ -83,10 +85,18 @@ export function MarketMakerPage() {
   if (loading && !data) return <DashboardSkeleton />
   if (!data?.views || data.views.length === 0) return <div className="error-panel"><h2>No market corridor is open</h2><p>Seed the Market Maker scenario from the logistics demo controls to restore it.</p></div>
 
-  const currentView = data.views.find((v) => v.board.id === selectedBoardId)
+  const effectiveBoardId = selectedBoardId || queryBoardId
+  const currentView = data.views.find((v) => v.board.id === effectiveBoardId)
     || data.views.find((v) => v.board.isMultiCrop)
     || data.views[0]
   const { board, math } = currentView
+
+  const handleSelectBoard = (boardId: string) => {
+    setSelectedBoardId(boardId)
+    setSelectedCropId('')
+    setSearchParams({ boardId })
+  }
+
   const frame = roleFrame[role]
   const deliveryWindow = language === 'hi'
     ? board.deliveryWindow.replace('Tomorrow', 'कल').replace(' AM', ' बजे').replace(' PM', ' बजे')
@@ -130,45 +140,11 @@ export function MarketMakerPage() {
     finally { setBusy(false); refresh() }
   }
 
-  if (role === 'farmer') {
-    return (
-      <div className="page mm-page mm-page-farmer">
-        {/* Corridor Selector Bar for Farmer */}
-        <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.5rem', marginBottom: '0.75rem' }}>
-          {data.views.map((v) => (
-            <button
-              key={v.board.id}
-              type="button"
-              className={`btn ${v.board.id === board.id ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => { setSelectedBoardId(v.board.id); setSelectedCropId('') }}
-              style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem', whiteSpace: 'nowrap' }}
-            >
-              {v.board.isMultiCrop ? '🚛 ' : '🍅 '} {language === 'hi' ? v.board.cropHi : v.board.crop}
-            </button>
-          ))}
-        </div>
-        {board.isMultiCrop && math.multiCropMath && (
-          <MultiCropCorridorCard
-            board={board}
-            math={math}
-            onSelectCrop={(cropId) => setSelectedCropId(cropId)}
-          />
-        )}
-        <FarmerMarketMaker
-          board={board} math={math} busy={busy} available={own?.availableKg ?? 0}
-          onOffer={(extra) => own && guard(() => marketMakerService.offerMore(board.id, own.lot.id, extra), `${extra} kg more released to ${board.corridor}`)}
-        />
-        <MarketHowItWorks board={board} math={math} />
-        {reveal && <MarketUnlockReveal board={board} math={math} result={reveal} role={role} onClose={() => { setReveal(null); refresh() }} />}
-      </div>
-    )
-  }
-
   return (
     <div className={`page mm-page mm-page-${role}`}>
       <div className="page-title-row mm-head">
         <div>
-          <span className="eyebrow"><Radar size={15} /> {l('KisanLink Market Maker', 'किसानलिंक मार्केट मेकर')} · {l(frame.eyebrow, 'साझा मांग से सीधा बाज़ार')}</span>
+          <span className="eyebrow"><Radar size={15} /> {l('KisanLink Regional Market Maker Ecosystem', 'किसानलिंक क्षेत्रीय मार्केट मेकर')} · {l(frame.eyebrow, 'साझा मांग से सीधा बाज़ार')}</span>
           <h1>{l(frame.title, 'सीधा बाज़ार बनाना')}</h1>
           <p>{l(frame.copy, 'बिखरी हुई मांग और सप्लाई को जोड़कर सीधा व्यापार संभव बनाया जाता है, और किसान का न्यूनतम भाव सुरक्षित रहता है।')}</p>
         </div>
@@ -176,6 +152,102 @@ export function MarketMakerPage() {
           {created ? l('Market created', 'बाज़ार बन गया') : math.viable ? l('Ready to create', 'बनाने के लिए तैयार') : structural ? l('Blocked', 'रुका हुआ') : l('Forming', 'बन रहा है')}
         </StatusBadge>
       </div>
+
+      {/* Directory Hero Grid of Regional Market Maker Opportunities */}
+      <section style={{ marginBottom: '1.75rem', background: '#042f2e', color: '#ffffff', borderRadius: '16px', padding: '1.25rem', border: '1px solid #115e59' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <div>
+            <div style={{ fontSize: '0.8rem', color: '#34d399', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              NCR MARKET MAKER OPPORTUNITIES DIRECTORY
+            </div>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: '0.1rem 0 0', color: '#ffffff' }}>
+              {l('Find a profitable shared transport corridor near you', 'अपने पास एक लाभप्रद साझा परिवहन कॉरिडोर चुनें')}
+            </h2>
+          </div>
+          <span style={{ fontSize: '0.8rem', background: 'rgba(255,255,255,0.1)', padding: '0.2rem 0.6rem', borderRadius: '6px', opacity: 0.8 }}>
+            {data.views.length} {l('Regional Pools Active', 'क्षेत्रीय पूल सक्रीय')}
+          </span>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.85rem' }}>
+          {data.views.map((v) => {
+            const isSelected = v.board.id === board.id
+            const poolMath = v.math
+            const pct = Math.min(100, Math.round((poolMath.committedKg / (poolMath.thresholdKg || 1)) * 100))
+            const cropsList = v.board.crops?.map((c) => c.crop).join(' • ') ?? v.board.crop
+            const regionName = v.board.regions?.[0]?.name ?? v.board.crop.split(' ')[0]
+
+            return (
+              <div
+                key={v.board.id}
+                onClick={() => handleSelectBoard(v.board.id)}
+                style={{
+                  background: isSelected ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                  border: isSelected ? '2px solid #34d399' : '1px solid rgba(255, 255, 255, 0.12)',
+                  borderRadius: '12px',
+                  padding: '1rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#34d399', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <MapPin size={14} /> {regionName.toUpperCase()}
+                    </span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: poolMath.viable ? '#34d399' : '#fbbf24', background: 'rgba(0,0,0,0.3)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>
+                      {poolMath.viable ? l('UNLOCKED', 'अनलॉक्ड') : `${pct}% FUNDED`}
+                    </span>
+                  </div>
+
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: '0 0 0.25rem', color: '#ffffff' }}>
+                    {v.board.crop}
+                  </h3>
+
+                  <div style={{ fontSize: '0.8rem', color: '#9ca3af', marginBottom: '0.6rem' }}>
+                    {cropsList}
+                  </div>
+
+                  <div style={{ fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem', color: '#d1d5db' }}>
+                    <span>{l('Pooled Volume', 'पूल वॉल्यूम')}:</span>
+                    <strong style={{ color: '#6ee7b7' }}>{poolMath.committedKg} / {poolMath.thresholdKg} kg</strong>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden', marginBottom: '0.75rem' }}>
+                    <div style={{ width: `${pct}%`, height: '100%', background: poolMath.viable ? '#10b981' : '#3b82f6', transition: 'width 0.3s' }} />
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); handleSelectBoard(v.board.id) }}
+                  style={{
+                    width: '100%',
+                    background: isSelected ? '#10b981' : 'rgba(255, 255, 255, 0.1)',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '0.4rem 0.6rem',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.3rem',
+                  }}
+                >
+                  {isSelected ? l('Viewing Market Maker', 'देख रहे हैं') : l('Open Market Maker', 'मार्केट मेकर खोलें')} <ArrowRight size={14} />
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      </section>
 
       {/* Corridor Selector Bar */}
       <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
@@ -186,13 +258,13 @@ export function MarketMakerPage() {
               key={v.board.id}
               type="button"
               className={`btn ${isSelected ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => { setSelectedBoardId(v.board.id); setSelectedCropId('') }}
+              onClick={() => handleSelectBoard(v.board.id)}
               style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}
             >
               {v.board.isMultiCrop ? <Layers size={16} /> : <Sprout size={16} />}
               <span>{language === 'hi' ? v.board.cropHi : v.board.crop}</span>
               <small style={{ opacity: 0.8, fontSize: '0.75rem', padding: '1px 5px', borderRadius: '4px', background: isSelected ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.05)' }}>
-                {v.board.isMultiCrop ? l('Multi-Crop Shared Transport', 'मल्टी-क्रॉप साझा') : l('Single Crop', 'एकल फसल')}
+                {v.board.regions?.[0]?.name ?? 'NCR'}
               </small>
             </button>
           )

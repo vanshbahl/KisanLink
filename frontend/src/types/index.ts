@@ -189,6 +189,8 @@ export interface CartItem {
   regularPricePerKg?: number
   savingsPerKg?: number
   boardId?: string
+  marketMakerId?: string
+  regionId?: string
   cropId?: string
 }
 export interface Address { id: string; label: string; recipient: string; phone: string; line1: string; city: string; pincode: string; isDefault: boolean }
@@ -196,7 +198,7 @@ export interface ConsumerOrderItem { listingId: string; crop: string; cropHi: st
 export interface ConsumerOrder {
   id: string; items: ConsumerOrderItem[]; subtotal: number; logisticsFee: number; platformFee: number; farmerShare: number; total: number
   address: Address; deliverySlot: string; eta: string; note: string; paymentMethod: 'UPI' | 'Card' | 'Pay on Delivery'; paymentStatus: 'Mock paid' | 'Pay on delivery'
-  status: ConsumerOrderStatus; orderedAt: string; timeline: Array<{ status: ConsumerOrderStatus; label: string; at: string }>
+  status: ConsumerOrderStatus; orderedAt: string; timeline: Array<{ status: ConsumerOrderStatus; label: string; at: string }>; isBackendSynced?: boolean; modeLabel?: string
 }
 export interface ConsumerProfileData { name: string; phone: string; language: Language; defaultLocation: string; addresses: Address[]; notifications: { orders: boolean; freshness: boolean; offers: boolean } }
 
@@ -218,8 +220,8 @@ export type LogisticsPickupStatus = 'unassigned' | 'assigned' | 'en_route' | 'ar
 export type DeliveryStatus = 'scheduled' | 'loaded' | 'in_transit' | 'at_hub' | 'out_for_delivery' | 'delivered' | 'issue'
 export type VehicleStatus = 'available' | 'assigned' | 'in_transit' | 'maintenance'
 export interface LogisticsTimelineItem { label: string; labelHi: string; at: string }
-export interface LogisticsPickup { id: string; farmer: string; farm: string; farmLocation: string; crop: string; cropHi: string; quantityKg: number; pickupWindow: string; orderRefs: string[]; vehicleId?: string; driver?: string; status: LogisticsPickupStatus; notes: string; routeId?: string; checklist: { arrived: boolean; quantityVerified: boolean; qualityChecked: boolean; loadSecured: boolean; pickupCompleted: boolean }; timeline: LogisticsTimelineItem[] }
-export interface Delivery { id: string; origin: string; destination: string; buyer: string; buyerType: 'Consumer' | 'Bulk Buyer'; shipment: string; produce: string; produceHi: string; quantityKg: number; eta: string; vehicleId?: string; orderRefs: string[]; status: DeliveryStatus; handlingNotes: string; issues: string[]; timeline: LogisticsTimelineItem[] }
+export interface LogisticsPickup { id: string; farmer: string; farm: string; farmLocation: string; crop: string; cropHi: string; quantityKg: number; pickupWindow: string; orderRefs: string[]; vehicleId?: string; driver?: string; status: LogisticsPickupStatus; notes: string; routeId?: string; otp?: string; checklist: { arrived: boolean; quantityVerified: boolean; qualityChecked: boolean; loadSecured: boolean; pickupCompleted: boolean }; timeline: LogisticsTimelineItem[] }
+export interface Delivery { id: string; origin: string; destination: string; buyer: string; buyerType: 'Consumer' | 'Bulk Buyer'; shipment: string; produce: string; produceHi: string; quantityKg: number; eta: string; vehicleId?: string; orderRefs: string[]; status: DeliveryStatus; handlingNotes: string; issues: string[]; otp?: string; timeline: LogisticsTimelineItem[] }
 export interface LogisticsRoute { id: string; name: string; nameHi: string; vehicleId: string; pickups: string[]; deliveries: string[]; stops: string[]; distanceKm: number; durationMinutes: number; capacityKg: number; loadKg: number; status: 'planned' | 'active' | 'completed'; pooled: boolean }
 export interface Vehicle { id: string; registration: string; type: string; typeHi: string; capacityKg: number; driver: string; currentAssignment?: string; status: VehicleStatus }
 export interface LogisticsProfileData { name: string; phone: string; hub: string; shift: string; language: Language; notifications: { pickups: boolean; deliveries: boolean; issues: boolean; delays: boolean } }

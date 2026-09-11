@@ -64,14 +64,14 @@ const seedState: PrototypeState = {
   consumerProfile: { name: 'Aarav Mehta', phone: '9811122233', language: 'en', defaultLocation: 'Dwarka, New Delhi', addresses: [{ id: 'addr_home', label: 'Home', recipient: 'Aarav Mehta', phone: '9811122233', line1: 'Sector 12, Dwarka', city: 'New Delhi', pincode: '110078', isDefault: true }], notifications: { orders: true, freshness: true, offers: false } },
   bulkProfile: { businessName: 'FreshKart Foods Pvt. Ltd.', representative: 'Neha Kapoor', phone: '9899001122', gst: '07AABCF1234M1Z5 (mock)', language: 'en', procurementLocations: ['Delhi NCR', 'Gurugram'], deliveryAddresses: ['Okhla Distribution Centre, New Delhi'], notifications: { matches: true, orders: true, deliveries: true } },
   logisticsPickups: [
-    { id: 'PK-2048', farmer: 'Ramesh Kumar', farm: 'Green Field Farm', farmLocation: 'Murthal, Sonipat, Haryana', crop: 'Baby Spinach', cropHi: 'बेबी पालक', quantityKg: 8, pickupWindow: 'Tomorrow · 7–10 AM', orderRefs: ['KL-ORD-1037'], vehicleId: 'VEH-01', driver: 'Suresh Kumar', status: 'assigned', notes: 'Use ventilated crates.', routeId: 'RTE-101', checklist: { arrived: false, quantityVerified: false, qualityChecked: false, loadSecured: false, pickupCompleted: false }, timeline: [{ label: 'Pickup created', labelHi: 'पिकअप बनाया गया', at: new Date(Date.now() - 3600000).toISOString() }, { label: 'Vehicle assigned', labelHi: 'वाहन सौंपा गया', at: new Date().toISOString() }] },
-    { id: 'PK-2051', farmer: 'Ramesh Kumar', farm: 'Green Field Farm', farmLocation: 'Murthal, Sonipat, Haryana', crop: 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', quantityKg: 300, pickupWindow: 'Today · 2–4 PM', orderRefs: ['KL-ORD-1042'], status: 'unassigned', notes: 'Grade A+ crates. Verify count before loading.', routeId: 'RTE-POOL-01', checklist: { arrived: false, quantityVerified: false, qualityChecked: false, loadSecured: false, pickupCompleted: false }, timeline: [{ label: 'Pickup created', labelHi: 'पिकअप बनाया गया', at: new Date().toISOString() }] },
-    { id: 'PK-POOL-B', farmer: 'Harpreet Singh', farm: 'Sunehri Khet', farmLocation: 'Karnal, Haryana', crop: 'Tomatoes', cropHi: 'टमाटर', quantityKg: 500, pickupWindow: 'Today · 4–5 PM', orderRefs: ['KL-B-DEMO'], vehicleId: 'VEH-02', driver: 'Imran Khan', status: 'en_route', notes: 'Pooled bulk route stop 2.', routeId: 'RTE-POOL-01', checklist: { arrived: false, quantityVerified: false, qualityChecked: false, loadSecured: false, pickupCompleted: false }, timeline: [{ label: 'Vehicle en route', labelHi: 'वाहन रास्ते में है', at: new Date().toISOString() }] },
-    { id: 'PK-POOL-C', farmer: 'Rajesh Yadav', farm: 'Yadav Fresh Fields', farmLocation: 'Panipat, Haryana', crop: 'Tomatoes', cropHi: 'टमाटर', quantityKg: 800, pickupWindow: 'Today · 5–6 PM', orderRefs: ['KL-B-DEMO'], vehicleId: 'VEH-02', driver: 'Imran Khan', status: 'assigned', notes: 'Pooled bulk route stop 3.', routeId: 'RTE-POOL-01', checklist: { arrived: false, quantityVerified: false, qualityChecked: false, loadSecured: false, pickupCompleted: false }, timeline: [{ label: 'Vehicle assigned', labelHi: 'वाहन तय हुआ', at: new Date().toISOString() }] },
+    { id: 'PK-2048', farmer: 'Ramesh Kumar', farm: 'Green Field Farm', farmLocation: 'Murthal, Sonipat, Haryana', crop: 'Baby Spinach', cropHi: 'बेबी पालक', quantityKg: 8, pickupWindow: 'Tomorrow · 7–10 AM', orderRefs: ['KL-ORD-1037'], vehicleId: 'VEH-01', driver: 'Suresh Kumar', status: 'assigned', notes: 'Use ventilated crates.', routeId: 'RTE-101', otp: '123456', checklist: { arrived: false, quantityVerified: false, qualityChecked: false, loadSecured: false, pickupCompleted: false }, timeline: [{ label: 'Pickup created', labelHi: 'पिकअप बनाया गया', at: new Date(Date.now() - 3600000).toISOString() }, { label: 'Vehicle assigned', labelHi: 'वाहन सौंपा गया', at: new Date().toISOString() }] },
+    { id: 'PK-2051', farmer: 'Ramesh Kumar', farm: 'Green Field Farm', farmLocation: 'Murthal, Sonipat, Haryana', crop: 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', quantityKg: 300, pickupWindow: 'Today · 2–4 PM', orderRefs: ['KL-ORD-1042'], status: 'unassigned', notes: 'Grade A+ crates. Verify count before loading.', routeId: 'RTE-POOL-01', otp: '884920', checklist: { arrived: false, quantityVerified: false, qualityChecked: false, loadSecured: false, pickupCompleted: false }, timeline: [{ label: 'Pickup created', labelHi: 'पिकअप बनाया गया', at: new Date().toISOString() }] },
+    { id: 'PK-POOL-B', farmer: 'Harpreet Singh', farm: 'Sunehri Khet', farmLocation: 'Karnal, Haryana', crop: 'Tomatoes', cropHi: 'टमाटर', quantityKg: 500, pickupWindow: 'Today · 4–5 PM', orderRefs: ['KL-B-DEMO'], vehicleId: 'VEH-02', driver: 'Imran Khan', status: 'en_route', notes: 'Pooled bulk route stop 2.', routeId: 'RTE-POOL-01', otp: '551203', checklist: { arrived: false, quantityVerified: false, qualityChecked: false, loadSecured: false, pickupCompleted: false }, timeline: [{ label: 'Vehicle en route', labelHi: 'वाहन रास्ते में है', at: new Date().toISOString() }] },
+    { id: 'PK-POOL-C', farmer: 'Rajesh Yadav', farm: 'Yadav Fresh Fields', farmLocation: 'Panipat, Haryana', crop: 'Tomatoes', cropHi: 'टमाटर', quantityKg: 800, pickupWindow: 'Today · 5–6 PM', orderRefs: ['KL-B-DEMO'], vehicleId: 'VEH-02', driver: 'Imran Khan', status: 'assigned', notes: 'Pooled bulk route stop 3.', routeId: 'RTE-POOL-01', otp: '449102', checklist: { arrived: false, quantityVerified: false, qualityChecked: false, loadSecured: false, pickupCompleted: false }, timeline: [{ label: 'Vehicle assigned', labelHi: 'वाहन तय हुआ', at: new Date().toISOString() }] },
   ],
   deliveries: [
-    { id: 'DLV-301', origin: 'KisanLink Sonipat Hub', destination: 'Sector 12, Dwarka, New Delhi', buyer: 'Aarav Mehta', buyerType: 'Consumer', shipment: 'Fresh crate C-301', produce: 'Baby Spinach', produceHi: 'बेबी पालक', quantityKg: 8, eta: iso(1), vehicleId: 'VEH-01', orderRefs: ['KL-ORD-1037'], status: 'scheduled', handlingNotes: 'Keep shaded and ventilated.', issues: [], timeline: [{ label: 'Delivery scheduled', labelHi: 'डिलीवरी तय हुई', at: new Date().toISOString() }] },
-    { id: 'DLV-302', origin: 'KisanLink Sonipat Hub', destination: 'Okhla Distribution Centre, New Delhi', buyer: 'FreshKart Foods', buyerType: 'Bulk Buyer', shipment: 'Pooled tomato lot B-302', produce: 'Tomatoes', produceHi: 'टमाटर', quantityKg: 1300, eta: iso(1), vehicleId: 'VEH-02', orderRefs: ['KL-B-DEMO'], status: 'in_transit', handlingNotes: 'Do not stack above four crates.', issues: [], timeline: [{ label: 'Shipment loaded', labelHi: 'माल लोड हुआ', at: new Date(Date.now() - 1800000).toISOString() }, { label: 'In transit', labelHi: 'रास्ते में', at: new Date().toISOString() }] },
+    { id: 'DLV-301', origin: 'KisanLink Sonipat Hub', destination: 'Sector 12, Dwarka, New Delhi', buyer: 'Aarav Mehta', buyerType: 'Consumer', shipment: 'Fresh crate C-301', produce: 'Baby Spinach', produceHi: 'बेबी पालक', quantityKg: 8, eta: iso(1), vehicleId: 'VEH-01', orderRefs: ['KL-ORD-1037'], status: 'scheduled', handlingNotes: 'Keep shaded and ventilated.', issues: [], otp: '123456', timeline: [{ label: 'Delivery scheduled', labelHi: 'डिलीवरी तय हुई', at: new Date().toISOString() }] },
+    { id: 'DLV-302', origin: 'KisanLink Sonipat Hub', destination: 'Okhla Distribution Centre, New Delhi', buyer: 'FreshKart Foods', buyerType: 'Bulk Buyer', shipment: 'Pooled tomato lot B-302', produce: 'Tomatoes', produceHi: 'टमाटर', quantityKg: 1300, eta: iso(1), vehicleId: 'VEH-02', orderRefs: ['KL-B-DEMO'], status: 'in_transit', handlingNotes: 'Do not stack above four crates.', issues: [], otp: '654321', timeline: [{ label: 'Shipment loaded', labelHi: 'माल लोड हुआ', at: new Date(Date.now() - 1800000).toISOString() }, { label: 'In transit', labelHi: 'रास्ते में', at: new Date().toISOString() }] },
   ],
   logisticsRoutes: [
     { id: 'RTE-POOL-01', name: 'Sonipat–Karnal pooled tomato run', nameHi: 'सोनीपत–करनाल साझा टमाटर रूट', vehicleId: 'VEH-02', pickups: ['PK-2051', 'PK-POOL-B', 'PK-POOL-C'], deliveries: ['DLV-302'], stops: ['Farm A · Murthal', 'Farm B · Karnal', 'Farm C · Panipat', 'FreshKart Okhla Hub'], distanceKm: 118, durationMinutes: 245, capacityKg: 2000, loadKg: 1800, status: 'active', pooled: true },
@@ -89,78 +89,38 @@ const seedState: PrototypeState = {
   savedFarmNames: ['Green Field Farm'],
   markets: [
     {
-      id: 'MM-TOM-SONIPAT',
-      crop: 'Fresh Tomatoes',
-      cropHi: 'ताज़े टमाटर',
-      grade: 'Grade A+',
-      corridor: 'Sonipat → Delhi NCR',
-      corridorHi: 'सोनीपत → दिल्ली NCR',
-      destination: 'Dwarka & Okhla, New Delhi',
-      deliveryWindow: 'Tomorrow · 6–10 AM',
-      imageSrc: '/assets/produce/tomato.webp',
-      visual: 'tomato',
-      farmerFloorPerKg: 31,
-      mandiPricePerKg: 24,
-      buyerCeilingPerKg: 38,
-      buyerCurrentPerKg: 42,
-      platformFeePct: 0.02,
-      routeDistanceKm: 92,
-      vehicleId: 'VEH-05',
-      lots: [
-        { id: 'lot_green_field', listingId: 'listing_001', farmer: 'Ramesh Kumar', farm: 'Green Field Farm', location: 'Murthal, Sonipat', offeredKg: 180, detourKm: 0, own: true },
-        { id: 'lot_nandi', farmer: 'Sunita Devi', farm: 'Nandi Organic Plot', location: 'Bahalgarh, Sonipat', offeredKg: 84, detourKm: 5 },
-        { id: 'lot_rana', farmer: 'Jaswant Rana', farm: 'Rana Vegetable Farm', location: 'Kharkhoda, Sonipat', offeredKg: 96, detourKm: 9 },
-      ],
-      commitments: [
-        { id: 'mmc_freshkart', source: 'bulk', party: 'FreshKart Foods', detail: 'Okhla Distribution Centre', quantityKg: 200, committedAt: iso(-1) },
-        { id: 'mmc_dwarka12', source: 'consumer', party: 'Dwarka Sector 12 pool', detail: '11 households', quantityKg: 62, committedAt: iso(-1) },
-        { id: 'mmc_dwarka19', source: 'consumer', party: 'Dwarka Sector 19 pool', detail: '7 households', quantityKg: 38, committedAt: iso(0) },
-        { id: 'mmc_aarav', source: 'consumer', party: 'Aarav Mehta', detail: 'Sector 12, Dwarka', quantityKg: 15, committedAt: iso(0), own: true },
-      ],
-      status: 'forming',
-      createdAt: iso(-2),
-    },
-    {
-      id: 'MM-MULTI-SONIPAT',
+      id: 'MM-SONIPAT-001',
       isMultiCrop: true,
-      isMultiRegion: true,
-      crop: 'NCR Multi-Region Produce',
-      cropHi: 'एनसीआर बहु-क्षेत्रीय उपज़',
+      isMultiRegion: false,
+      crop: 'Sonipat Fresh Produce Pool',
+      cropHi: 'सोनीपत ताज़ा उपज पूल',
       grade: 'Grade A+',
-      corridor: 'NCR Multi-Region Shared Produce Corridor',
-      corridorHi: 'एनसीआर बहु-क्षेत्रीय साझा फसल कॉरिडोर',
-      destination: 'Delhi NCR Wholesale Hub (Azadpur & Okhla)',
+      corridor: 'Sonipat → Azadpur Hub',
+      corridorHi: 'सोनीपत → आज़ादपुर हब',
+      destination: 'Azadpur Wholesale Hub, Delhi',
       deliveryWindow: 'Tomorrow · 6–10 AM',
       imageSrc: '/assets/produce/tomato.webp',
       visual: 'tomato',
-      farmerFloorPerKg: 24,
-      mandiPricePerKg: 19,
-      buyerCeilingPerKg: 32,
-      buyerCurrentPerKg: 36,
+      farmerFloorPerKg: 26,
+      mandiPricePerKg: 22,
+      buyerCeilingPerKg: 34,
+      buyerCurrentPerKg: 38,
       platformFeePct: 0.02,
-      routeDistanceKm: 95,
+      routeDistanceKm: 54,
       vehicleId: 'VEH-02',
-      regions: [
-        { id: 'reg_sonipat', name: 'Sonipat', district: 'Sonipat, Haryana' },
-        { id: 'reg_rohtak', name: 'Rohtak', district: 'Rohtak, Haryana' },
-        { id: 'reg_meerut', name: 'Meerut', district: 'Meerut, UP' },
-        { id: 'reg_ghaziabad', name: 'Ghaziabad', district: 'Ghaziabad, UP' },
-      ],
+      regions: [{ id: 'reg_sonipat', name: 'Sonipat', district: 'Sonipat, Haryana' }],
       lots: [
-        { id: 'lot_multi_sonipat', farmer: 'Ramesh Kumar & Harpreet Singh', farm: 'Sonipat Cluster Farms', location: 'Murthal & Gannaur, Sonipat', offeredKg: 500, detourKm: 2, regionId: 'reg_sonipat', regionName: 'Sonipat', own: true },
-        { id: 'lot_multi_rohtak', farmer: 'Vikas Hooda', farm: 'Hooda Khet', location: 'Kalanaur, Rohtak', offeredKg: 250, detourKm: 5, regionId: 'reg_rohtak', regionName: 'Rohtak' },
-        { id: 'lot_multi_meerut', farmer: 'Satish Verma & Amit Tyagi', farm: 'Meerut Belt Farms', location: 'Hastinapur & Sardhana, Meerut', offeredKg: 550, detourKm: 6, regionId: 'reg_meerut', regionName: 'Meerut' },
-        { id: 'lot_multi_ghaziabad', farmer: 'Sunil Gurjar & Rekha Sharma', farm: 'NCR East Plots', location: 'Loni & Muradnagar, Ghaziabad', offeredKg: 400, detourKm: 4, regionId: 'reg_ghaziabad', regionName: 'Ghaziabad' },
+        { id: 'lot_sonipat_1', farmer: 'Ramesh Kumar & Harpreet Singh', farm: 'Sonipat Cluster Farms', location: 'Murthal & Gannaur, Sonipat', offeredKg: 1200, detourKm: 2, regionId: 'reg_sonipat', regionName: 'Sonipat', own: true },
       ],
       commitments: [
-        { id: 'mmc_multi_bulk1', source: 'bulk', party: 'FreshKart Foods', detail: 'NCR Retail Supply', quantityKg: 500, committedAt: iso(-1) },
-        { id: 'mmc_multi_cons1', source: 'consumer', party: 'Delhi Sector 12 Pool', detail: 'Neighborhood Pool', quantityKg: 350, committedAt: iso(0) },
+        { id: 'mmc_sonipat_bulk1', source: 'bulk', party: 'FreshKart Foods', detail: 'Sonipat Procurement Pool', quantityKg: 300, committedAt: iso(-1) },
+        { id: 'mmc_sonipat_cons1', source: 'consumer', party: 'Delhi Sector 12 Pool', detail: 'Sonipat Tomatoes & Onions Pool', quantityKg: 200, committedAt: iso(0) },
       ],
       status: 'forming',
       createdAt: iso(-2),
       crops: [
         {
-          id: 'seg_tomato',
+          id: 'seg_sonipat_tomato',
           crop: 'Tomatoes',
           cropHi: 'टमाटर',
           grade: 'Grade A+',
@@ -173,17 +133,15 @@ const seedState: PrototypeState = {
           platformFeePct: 0.02,
           storageType: 'ambient',
           lots: [
-            { id: 'lot_m_tom_1', farmer: 'Ramesh Kumar', farm: 'Green Field Farm', location: 'Murthal, Sonipat', offeredKg: 300, detourKm: 0, regionId: 'reg_sonipat', regionName: 'Sonipat', own: true },
-            { id: 'lot_m_tom_2', farmer: 'Vikas Hooda', farm: 'Hooda Khet', location: 'Kalanaur, Rohtak', offeredKg: 250, detourKm: 5, regionId: 'reg_rohtak', regionName: 'Rohtak' },
-            { id: 'lot_m_tom_3', farmer: 'Sunil Gurjar', farm: 'Gurjar Plot', location: 'Loni, Ghaziabad', offeredKg: 200, detourKm: 4, regionId: 'reg_ghaziabad', regionName: 'Ghaziabad' },
+            { id: 'lot_s_tom_1', farmer: 'Ramesh Kumar', farm: 'Green Field Farm', location: 'Murthal, Sonipat', offeredKg: 700, detourKm: 0, regionId: 'reg_sonipat', regionName: 'Sonipat', own: true },
           ],
           commitments: [
-            { id: 'mmc_m_tom_1', source: 'bulk', party: 'FreshKart Foods', detail: 'Tomatoes for Retail', quantityKg: 230, committedAt: iso(-1) },
-            { id: 'mmc_m_tom_2', source: 'consumer', party: 'Delhi Sector 12 Pool', detail: 'Tomatoes Pool', quantityKg: 150, committedAt: iso(0) },
+            { id: 'mmc_s_tom_1', source: 'bulk', party: 'FreshKart Foods', detail: 'Tomatoes for Retail', quantityKg: 180, committedAt: iso(-1) },
+            { id: 'mmc_s_tom_2', source: 'consumer', party: 'Delhi Sector 12 Pool', detail: 'Tomatoes Pool', quantityKg: 120, committedAt: iso(0) },
           ],
         },
         {
-          id: 'seg_onion',
+          id: 'seg_sonipat_onion',
           crop: 'Onions',
           cropHi: 'प्याज़',
           grade: 'Grade A',
@@ -196,21 +154,20 @@ const seedState: PrototypeState = {
           platformFeePct: 0.02,
           storageType: 'ambient',
           lots: [
-            { id: 'lot_m_oni_1', farmer: 'Harpreet Singh', farm: 'Sunehri Khet', location: 'Gannaur, Sonipat', offeredKg: 200, detourKm: 4, regionId: 'reg_sonipat', regionName: 'Sonipat' },
-            { id: 'lot_m_oni_2', farmer: 'Amit Tyagi', farm: 'Tyagi Agro', location: 'Sardhana, Meerut', offeredKg: 250, detourKm: 6, regionId: 'reg_meerut', regionName: 'Meerut' },
+            { id: 'lot_s_oni_1', farmer: 'Harpreet Singh', farm: 'Sunehri Khet', location: 'Gannaur, Sonipat', offeredKg: 500, detourKm: 4, regionId: 'reg_sonipat', regionName: 'Sonipat' },
           ],
           commitments: [
-            { id: 'mmc_m_oni_1', source: 'bulk', party: 'FreshKart Foods', detail: 'Onions Wholesale', quantityKg: 145, committedAt: iso(-1) },
-            { id: 'mmc_m_oni_2', source: 'consumer', party: 'Community Pool', detail: 'Households Onions', quantityKg: 100, committedAt: iso(0) },
+            { id: 'mmc_s_oni_1', source: 'bulk', party: 'FreshKart Foods', detail: 'Onions Wholesale', quantityKg: 120, committedAt: iso(-1) },
+            { id: 'mmc_s_oni_2', source: 'consumer', party: 'Community Pool', detail: 'Households Onions', quantityKg: 80, committedAt: iso(0) },
           ],
         },
         {
-          id: 'seg_potato',
+          id: 'seg_sonipat_potato',
           crop: 'Potatoes',
           cropHi: 'आलू',
           grade: 'Grade A+',
           imageSrc: '/assets/produce/potato.webp',
-          visual: 'tomato',
+          visual: 'potato',
           farmerFloorPerKg: 18,
           mandiPricePerKg: 14,
           buyerCeilingPerKg: 24,
@@ -218,12 +175,377 @@ const seedState: PrototypeState = {
           platformFeePct: 0.02,
           storageType: 'ambient',
           lots: [
-            { id: 'lot_m_pot_1', farmer: 'Satish Verma', farm: 'Verma Farm', location: 'Hastinapur, Meerut', offeredKg: 300, detourKm: 6, regionId: 'reg_meerut', regionName: 'Meerut' },
-            { id: 'lot_m_pot_2', farmer: 'Rekha Sharma', farm: 'Sharma Farm', location: 'Muradnagar, Ghaziabad', offeredKg: 200, detourKm: 4, regionId: 'reg_ghaziabad', regionName: 'Ghaziabad' },
+            { id: 'lot_s_pot_1', farmer: 'Jaipal Singh', farm: 'Jaipal Farm', location: 'Rai, Sonipat', offeredKg: 400, detourKm: 3, regionId: 'reg_sonipat', regionName: 'Sonipat' },
+          ],
+          commitments: [],
+        },
+      ],
+    },
+    {
+      id: 'MM-GURGAON-001',
+      isMultiCrop: true,
+      isMultiRegion: false,
+      crop: 'Gurgaon Fresh Produce Pool',
+      cropHi: 'गुड़गांव ताज़ा उपज पूल',
+      grade: 'Grade A+',
+      corridor: 'Gurgaon → Gurgaon Hub',
+      corridorHi: 'गुड़गांव → गुड़गांव हब',
+      destination: 'Gurgaon NCR Buyer Hub',
+      deliveryWindow: 'Tomorrow · 7–11 AM',
+      imageSrc: '/assets/produce/onion.webp',
+      visual: 'onion',
+      farmerFloorPerKg: 21,
+      mandiPricePerKg: 18,
+      buyerCeilingPerKg: 29,
+      buyerCurrentPerKg: 34,
+      platformFeePct: 0.02,
+      routeDistanceKm: 42,
+      vehicleId: 'VEH-03',
+      regions: [{ id: 'reg_gurgaon', name: 'Gurgaon', district: 'Gurugram, Haryana' }],
+      lots: [
+        { id: 'lot_gurgaon_1', farmer: 'Rajender Yadav', farm: 'Yadav Organic Farm', location: 'Sohna, Gurgaon', offeredKg: 900, detourKm: 3, regionId: 'reg_gurgaon', regionName: 'Gurgaon' },
+      ],
+      commitments: [
+        { id: 'mmc_gurgaon_bulk1', source: 'bulk', party: 'CyberCity Fresh Hub', detail: 'Gurgaon Retail Procurement', quantityKg: 150, committedAt: iso(-1) },
+        { id: 'mmc_gurgaon_cons1', source: 'consumer', party: 'DLF Phase 3 Pool', detail: 'Gurgaon Onions Group Buy', quantityKg: 100, committedAt: iso(0) },
+      ],
+      status: 'forming',
+      createdAt: iso(-2),
+      crops: [
+        {
+          id: 'seg_gurgaon_onion',
+          crop: 'Onions',
+          cropHi: 'प्याज़',
+          grade: 'Grade A+',
+          imageSrc: '/assets/produce/onion.webp',
+          visual: 'onion',
+          farmerFloorPerKg: 19,
+          mandiPricePerKg: 18,
+          buyerCeilingPerKg: 25,
+          buyerCurrentPerKg: 32,
+          platformFeePct: 0.02,
+          storageType: 'ambient',
+          lots: [
+            { id: 'lot_g_oni_1', farmer: 'Rajender Yadav', farm: 'Yadav Organic Farm', location: 'Sohna, Gurgaon', offeredKg: 600, detourKm: 2, regionId: 'reg_gurgaon', regionName: 'Gurgaon' },
           ],
           commitments: [
-            { id: 'mmc_m_pot_1', source: 'bulk', party: 'Hotel Delhi Grand', detail: 'Potatoes Canteen', quantityKg: 120, committedAt: iso(-1) },
-            { id: 'mmc_m_pot_2', source: 'consumer', party: 'Dwarka Pool', detail: 'Household Potatoes', quantityKg: 105, committedAt: iso(0) },
+            { id: 'mmc_g_oni_1', source: 'bulk', party: 'CyberCity Fresh Hub', detail: 'Onions Retail', quantityKg: 150, committedAt: iso(-1) },
+            { id: 'mmc_g_oni_2', source: 'consumer', party: 'DLF Phase 3 Pool', detail: 'Household Onions', quantityKg: 100, committedAt: iso(0) },
+          ],
+        },
+        {
+          id: 'seg_gurgaon_tomato',
+          crop: 'Tomatoes',
+          cropHi: 'टमाटर',
+          grade: 'Grade A',
+          imageSrc: '/assets/produce/tomato.webp',
+          visual: 'tomato',
+          farmerFloorPerKg: 26,
+          mandiPricePerKg: 22,
+          buyerCeilingPerKg: 35,
+          buyerCurrentPerKg: 38,
+          platformFeePct: 0.02,
+          storageType: 'ambient',
+          lots: [
+            { id: 'lot_g_tom_1', farmer: 'Mahesh Sharma', farm: 'Sharma Khet', location: 'Manesar, Gurgaon', offeredKg: 300, detourKm: 4, regionId: 'reg_gurgaon', regionName: 'Gurgaon' },
+          ],
+          commitments: [],
+        },
+        {
+          id: 'seg_gurgaon_leafy',
+          crop: 'Leafy Vegetables',
+          cropHi: 'हरी पत्तेदार सब्जियां',
+          grade: 'Grade A+',
+          imageSrc: '/assets/produce/spinach.webp',
+          visual: 'leafy',
+          farmerFloorPerKg: 30,
+          mandiPricePerKg: 25,
+          buyerCeilingPerKg: 40,
+          buyerCurrentPerKg: 45,
+          platformFeePct: 0.02,
+          storageType: 'ambient',
+          lots: [
+            { id: 'lot_g_leaf_1', farmer: 'Brijesh Pal', farm: 'Green Greens Manesar', location: 'Manesar, Gurgaon', offeredKg: 200, detourKm: 5, regionId: 'reg_gurgaon', regionName: 'Gurgaon' },
+          ],
+          commitments: [],
+        },
+      ],
+    },
+    {
+      id: 'MM-FARIDABAD-001',
+      isMultiCrop: true,
+      isMultiRegion: false,
+      crop: 'Faridabad Farm Produce Pool',
+      cropHi: 'फरीदाबाद कृषि उपज पूल',
+      grade: 'Grade A',
+      corridor: 'Faridabad → Okhla Hub',
+      corridorHi: 'फरीदाबाद → ओखला हब',
+      destination: 'Okhla / South-East Delhi Wholesale Hub',
+      deliveryWindow: 'Tomorrow · 6–10 AM',
+      imageSrc: '/assets/produce/potato.webp',
+      visual: 'potato',
+      farmerFloorPerKg: 17,
+      mandiPricePerKg: 15,
+      buyerCeilingPerKg: 24,
+      buyerCurrentPerKg: 30,
+      platformFeePct: 0.02,
+      routeDistanceKm: 38,
+      vehicleId: 'VEH-02',
+      regions: [{ id: 'reg_faridabad', name: 'Faridabad', district: 'Faridabad, Haryana' }],
+      lots: [
+        { id: 'lot_faridabad_1', farmer: 'Devender Singh', farm: 'Ballabhgarh Farms', location: 'Ballabhgarh, Faridabad', offeredKg: 1100, detourKm: 3, regionId: 'reg_faridabad', regionName: 'Faridabad' },
+      ],
+      commitments: [
+        { id: 'mmc_faridabad_bulk1', source: 'bulk', party: 'South Delhi Wholesale', detail: 'Faridabad Potato Pool', quantityKg: 200, committedAt: iso(-1) },
+        { id: 'mmc_faridabad_cons1', source: 'consumer', party: 'Neelam Flyover Pool', detail: 'Household Potatoes', quantityKg: 150, committedAt: iso(0) },
+      ],
+      status: 'forming',
+      createdAt: iso(-2),
+      crops: [
+        {
+          id: 'seg_faridabad_potato',
+          crop: 'Potatoes',
+          cropHi: 'आलू',
+          grade: 'Grade A',
+          imageSrc: '/assets/produce/potato.webp',
+          visual: 'potato',
+          farmerFloorPerKg: 16,
+          mandiPricePerKg: 15,
+          buyerCeilingPerKg: 24,
+          buyerCurrentPerKg: 30,
+          platformFeePct: 0.02,
+          storageType: 'ambient',
+          lots: [
+            { id: 'lot_f_pot_1', farmer: 'Devender Singh', farm: 'Ballabhgarh Farms', location: 'Ballabhgarh, Faridabad', offeredKg: 700, detourKm: 2, regionId: 'reg_faridabad', regionName: 'Faridabad' },
+          ],
+          commitments: [
+            { id: 'mmc_f_pot_1', source: 'bulk', party: 'South Delhi Wholesale', detail: 'Potatoes Retail', quantityKg: 200, committedAt: iso(-1) },
+            { id: 'mmc_f_pot_2', source: 'consumer', party: 'Neelam Flyover Pool', detail: 'Household Potatoes', quantityKg: 150, committedAt: iso(0) },
+          ],
+        },
+        {
+          id: 'seg_faridabad_tomato',
+          crop: 'Tomatoes',
+          cropHi: 'टमाटर',
+          grade: 'Grade A',
+          imageSrc: '/assets/produce/tomato.webp',
+          visual: 'tomato',
+          farmerFloorPerKg: 27,
+          mandiPricePerKg: 23,
+          buyerCeilingPerKg: 36,
+          buyerCurrentPerKg: 40,
+          platformFeePct: 0.02,
+          storageType: 'ambient',
+          lots: [
+            { id: 'lot_f_tom_1', farmer: 'Karan Singh', farm: 'Singh Green Plot', location: 'Palwal Border, Faridabad', offeredKg: 400, detourKm: 4, regionId: 'reg_faridabad', regionName: 'Faridabad' },
+          ],
+          commitments: [],
+        },
+      ],
+    },
+    {
+      id: 'MM-ROHTAK-001',
+      isMultiCrop: true,
+      isMultiRegion: false,
+      crop: 'Rohtak Grain & Vegetable Pool',
+      cropHi: 'रोहतक अनाज और सब्जी पूल',
+      grade: 'Grade A',
+      corridor: 'Rohtak → Punjabi Bagh Hub',
+      corridorHi: 'रोहतक → पंजाबी बाग हब',
+      destination: 'Punjabi Bagh / West Delhi Hub',
+      deliveryWindow: 'Tomorrow · 8–12 PM',
+      imageSrc: '/assets/produce/wheat.webp',
+      visual: 'grain',
+      farmerFloorPerKg: 25,
+      mandiPricePerKg: 20,
+      buyerCeilingPerKg: 33,
+      buyerCurrentPerKg: 37,
+      platformFeePct: 0.02,
+      routeDistanceKm: 72,
+      vehicleId: 'VEH-01',
+      regions: [{ id: 'reg_rohtak', name: 'Rohtak', district: 'Rohtak, Haryana' }],
+      lots: [
+        { id: 'lot_rohtak_1', farmer: 'Vikas Hooda', farm: 'Hooda Khet', location: 'Kalanaur, Rohtak', offeredKg: 750, detourKm: 5, regionId: 'reg_rohtak', regionName: 'Rohtak' },
+      ],
+      commitments: [
+        { id: 'mmc_rohtak_bulk1', source: 'bulk', party: 'West Delhi Wholesale', detail: 'Wheat & Tomato Pool', quantityKg: 120, committedAt: iso(-1) },
+        { id: 'mmc_rohtak_cons1', source: 'consumer', party: 'Paschim Vihar Pool', detail: 'Grain Group Buy', quantityKg: 80, committedAt: iso(0) },
+      ],
+      status: 'forming',
+      createdAt: iso(-2),
+      crops: [
+        {
+          id: 'seg_rohtak_tomato',
+          crop: 'Tomatoes',
+          cropHi: 'टमाटर',
+          grade: 'Grade A',
+          imageSrc: '/assets/produce/tomato.webp',
+          visual: 'tomato',
+          farmerFloorPerKg: 27,
+          mandiPricePerKg: 22,
+          buyerCeilingPerKg: 35,
+          buyerCurrentPerKg: 39,
+          platformFeePct: 0.02,
+          storageType: 'ambient',
+          lots: [{ id: 'lot_r_tom_1', farmer: 'Vikas Hooda', farm: 'Hooda Khet', location: 'Kalanaur, Rohtak', offeredKg: 350, detourKm: 4, regionId: 'reg_rohtak', regionName: 'Rohtak' }],
+          commitments: [{ id: 'mmc_r_tom_1', source: 'bulk', party: 'West Delhi Wholesale', detail: 'Tomatoes', quantityKg: 120, committedAt: iso(-1) }],
+        },
+        {
+          id: 'seg_rohtak_wheat',
+          crop: 'Wheat',
+          cropHi: 'गेहूं',
+          grade: 'Grade A+',
+          imageSrc: '/assets/produce/wheat.webp',
+          visual: 'grain',
+          farmerFloorPerKg: 24,
+          mandiPricePerKg: 20,
+          buyerCeilingPerKg: 31,
+          buyerCurrentPerKg: 35,
+          platformFeePct: 0.02,
+          storageType: 'dry',
+          lots: [{ id: 'lot_r_wht_1', farmer: 'Kuldeep Hooda', farm: 'Rohtak Grain Farm', location: 'Sampla, Rohtak', offeredKg: 400, detourKm: 3, regionId: 'reg_rohtak', regionName: 'Rohtak' }],
+          commitments: [{ id: 'mmc_r_wht_1', source: 'consumer', party: 'Paschim Vihar Pool', detail: 'Household Wheat', quantityKg: 80, committedAt: iso(0) }],
+        },
+      ],
+    },
+    {
+      id: 'MM-MEERUT-001',
+      isMultiCrop: true,
+      isMultiRegion: false,
+      crop: 'Meerut Western UP Produce Pool',
+      cropHi: 'मेरठ पश्चिमी यूपी उपज पूल',
+      grade: 'Grade A+',
+      corridor: 'Meerut → Ghazipur Hub',
+      corridorHi: 'मेरठ → गाज़ीपुर हब',
+      destination: 'Ghazipur / East Delhi Hub',
+      deliveryWindow: 'Tomorrow · 5–9 AM',
+      imageSrc: '/assets/produce/potato.webp',
+      visual: 'root',
+      farmerFloorPerKg: 17,
+      mandiPricePerKg: 14,
+      buyerCeilingPerKg: 23,
+      buyerCurrentPerKg: 26,
+      platformFeePct: 0.02,
+      routeDistanceKm: 68,
+      vehicleId: 'VEH-02',
+      regions: [{ id: 'reg_meerut', name: 'Meerut', district: 'Meerut, UP' }],
+      lots: [
+        { id: 'lot_meerut_1', farmer: 'Satish Verma & Amit Tyagi', farm: 'Meerut Belt Farms', location: 'Hastinapur & Sardhana, Meerut', offeredKg: 1500, detourKm: 6, regionId: 'reg_meerut', regionName: 'Meerut' },
+      ],
+      commitments: [
+        { id: 'mmc_meerut_bulk1', source: 'bulk', party: 'Ghazipur Mandi Buyer', detail: 'Meerut Potato & Onion Bulk', quantityKg: 120, committedAt: iso(-1) },
+        { id: 'mmc_meerut_cons1', source: 'consumer', party: 'Mayur Vihar Pool', detail: 'East Delhi Pool', quantityKg: 80, committedAt: iso(0) },
+      ],
+      status: 'forming',
+      createdAt: iso(-2),
+      crops: [
+        {
+          id: 'seg_meerut_potato',
+          crop: 'Potatoes',
+          cropHi: 'आलू',
+          grade: 'Grade A+',
+          imageSrc: '/assets/produce/potato.webp',
+          visual: 'potato',
+          farmerFloorPerKg: 16,
+          mandiPricePerKg: 13,
+          buyerCeilingPerKg: 22,
+          buyerCurrentPerKg: 25,
+          platformFeePct: 0.02,
+          storageType: 'ambient',
+          lots: [{ id: 'lot_m_pot_1', farmer: 'Satish Verma', farm: 'Verma Farm', location: 'Hastinapur, Meerut', offeredKg: 800, detourKm: 5, regionId: 'reg_meerut', regionName: 'Meerut' }],
+          commitments: [
+            { id: 'mmc_m_pot_1', source: 'bulk', party: 'Ghazipur Mandi Buyer', detail: 'Potatoes Bulk', quantityKg: 80, committedAt: iso(-1) },
+            { id: 'mmc_m_pot_2', source: 'consumer', party: 'Mayur Vihar Pool', detail: 'Potatoes Consumer', quantityKg: 40, committedAt: iso(0) },
+          ],
+        },
+        {
+          id: 'seg_meerut_onion',
+          crop: 'Onions',
+          cropHi: 'प्याज़',
+          grade: 'Grade A',
+          imageSrc: '/assets/produce/onion.webp',
+          visual: 'onion',
+          farmerFloorPerKg: 19,
+          mandiPricePerKg: 16,
+          buyerCeilingPerKg: 26,
+          buyerCurrentPerKg: 29,
+          platformFeePct: 0.02,
+          storageType: 'ambient',
+          lots: [{ id: 'lot_m_oni_1', farmer: 'Amit Tyagi', farm: 'Tyagi Agro', location: 'Sardhana, Meerut', offeredKg: 700, detourKm: 6, regionId: 'reg_meerut', regionName: 'Meerut' }],
+          commitments: [
+            { id: 'mmc_m_oni_1', source: 'bulk', party: 'Ghazipur Mandi Buyer', detail: 'Onions Bulk', quantityKg: 40, committedAt: iso(-1) },
+            { id: 'mmc_m_oni_2', source: 'consumer', party: 'Mayur Vihar Pool', detail: 'Onions Consumer', quantityKg: 40, committedAt: iso(0) },
+          ],
+        },
+      ],
+    },
+    {
+      id: 'MM-GHAZIABAD-001',
+      isMultiCrop: true,
+      isMultiRegion: false,
+      crop: 'Ghaziabad NCR Express Pool',
+      cropHi: 'गाज़ियाबाद एनसीआर एक्सप्रेस पूल',
+      grade: 'Grade A+',
+      corridor: 'Ghaziabad → Sahibabad Hub',
+      corridorHi: 'गाज़ियाबाद → साहिबाबाद हब',
+      destination: 'Sahibabad / East Delhi Distribution Hub',
+      deliveryWindow: 'Tomorrow · 6–9 AM',
+      imageSrc: '/assets/produce/spinach.webp',
+      visual: 'leafy',
+      farmerFloorPerKg: 32,
+      mandiPricePerKg: 26,
+      buyerCeilingPerKg: 41,
+      buyerCurrentPerKg: 46,
+      platformFeePct: 0.02,
+      routeDistanceKm: 28,
+      vehicleId: 'VEH-04',
+      regions: [{ id: 'reg_ghaziabad', name: 'Ghaziabad', district: 'Ghaziabad, UP' }],
+      lots: [
+        { id: 'lot_ghaziabad_1', farmer: 'Sunil Gurjar & Rekha Sharma', farm: 'NCR East Plots', location: 'Loni & Muradnagar, Ghaziabad', offeredKg: 800, detourKm: 4, regionId: 'reg_ghaziabad', regionName: 'Ghaziabad' },
+      ],
+      commitments: [
+        { id: 'mmc_ghaziabad_bulk1', source: 'bulk', party: 'Indirapuram Retail Hub', detail: 'Fresh Greens Bulk', quantityKg: 70, committedAt: iso(-1) },
+        { id: 'mmc_ghaziabad_cons1', source: 'consumer', party: 'Vasundhara Pool', detail: 'Leafy Veg Group Buy', quantityKg: 50, committedAt: iso(0) },
+      ],
+      status: 'forming',
+      createdAt: iso(-2),
+      crops: [
+        {
+          id: 'seg_ghaziabad_leafy',
+          crop: 'Leafy Vegetables',
+          cropHi: 'हरी पत्तेदार सब्जियां',
+          grade: 'Grade A+',
+          imageSrc: '/assets/produce/spinach.webp',
+          visual: 'leafy',
+          farmerFloorPerKg: 32,
+          mandiPricePerKg: 26,
+          buyerCeilingPerKg: 41,
+          buyerCurrentPerKg: 46,
+          platformFeePct: 0.02,
+          storageType: 'ambient',
+          lots: [{ id: 'lot_gh_leaf_1', farmer: 'Sunil Gurjar', farm: 'Gurjar Plot', location: 'Loni, Ghaziabad', offeredKg: 450, detourKm: 3, regionId: 'reg_ghaziabad', regionName: 'Ghaziabad' }],
+          commitments: [
+            { id: 'mmc_gh_leaf_1', source: 'bulk', party: 'Indirapuram Retail Hub', detail: 'Leafy Greens', quantityKg: 50, committedAt: iso(-1) },
+            { id: 'mmc_gh_leaf_2', source: 'consumer', party: 'Vasundhara Pool', detail: 'Leafy Greens', quantityKg: 35, committedAt: iso(0) },
+          ],
+        },
+        {
+          id: 'seg_ghaziabad_tomato',
+          crop: 'Tomatoes',
+          cropHi: 'टमाटर',
+          grade: 'Grade A',
+          imageSrc: '/assets/produce/tomato.webp',
+          visual: 'tomato',
+          farmerFloorPerKg: 27,
+          mandiPricePerKg: 23,
+          buyerCeilingPerKg: 35,
+          buyerCurrentPerKg: 39,
+          platformFeePct: 0.02,
+          storageType: 'ambient',
+          lots: [{ id: 'lot_gh_tom_1', farmer: 'Rekha Sharma', farm: 'Sharma Farm', location: 'Murdadnagar, Ghaziabad', offeredKg: 350, detourKm: 4, regionId: 'reg_ghaziabad', regionName: 'Ghaziabad' }],
+          commitments: [
+            { id: 'mmc_gh_tom_1', source: 'bulk', party: 'Indirapuram Retail Hub', detail: 'Tomatoes', quantityKg: 40, committedAt: iso(-1) },
+            { id: 'mmc_gh_tom_2', source: 'consumer', party: 'Vasundhara Pool', detail: 'Tomatoes', quantityKg: 40, committedAt: iso(0) },
           ],
         },
       ],
@@ -242,7 +564,7 @@ const normalize = (value: Partial<PrototypeState>): PrototypeState => {
     // A payload that predates a Market Maker seed board must top-up missing seed markets
     // by ID rather than hiding new multi-crop corridors or losing user's existing commitments.
     markets: value.markets?.length
-      ? [...value.markets, ...base.markets.filter((market) => !value.markets!.some((item) => item.id === market.id))]
+      ? [...value.markets.map((m) => m.id === 'MM-MULTI-SONIPAT' ? { ...m, id: 'MM-SONIPAT-001' } : m), ...base.markets.filter((market) => !value.markets!.some((item) => item.id === market.id || (item.id === 'MM-MULTI-SONIPAT' && market.id === 'MM-SONIPAT-001')))]
       : base.markets,
     // The corridor vehicle is part of feasibility, so an older fleet payload is topped up
     // rather than silently leaving the market with nothing to quote against.
@@ -256,15 +578,16 @@ const normalize = (value: Partial<PrototypeState>): PrototypeState => {
   // 2. Ensure total commitments DO NOT exceed break-even threshold (thresholdKg)
   state.markets.forEach((board) => {
     if (board.id === 'MM-MULTI-SONIPAT') {
-      const baseMulti = base.markets.find((m) => m.id === 'MM-MULTI-SONIPAT')
-      if (baseMulti) {
-        board.crop = baseMulti.crop
-        board.cropHi = baseMulti.cropHi
-        board.corridor = baseMulti.corridor
-        board.corridorHi = baseMulti.corridorHi
-        board.destination = baseMulti.destination
-        board.isMultiRegion = true
-        board.regions = baseMulti.regions
+      board.id = 'MM-SONIPAT-001'
+    }
+    if (board.id === 'MM-SONIPAT-001') {
+      const baseSonipat = base.markets.find((m) => m.id === 'MM-SONIPAT-001')
+      if (baseSonipat) {
+        board.crop = baseSonipat.crop
+        board.cropHi = baseSonipat.cropHi
+        board.corridor = baseSonipat.corridor
+        board.corridorHi = baseSonipat.corridorHi
+        board.destination = baseSonipat.destination
       }
     }
 
@@ -272,12 +595,19 @@ const normalize = (value: Partial<PrototypeState>): PrototypeState => {
     if (math.committedKg > math.thresholdKg && Number.isFinite(math.thresholdKg) && math.thresholdKg > 0) {
       const scale = math.thresholdKg / math.committedKg
       board.commitments.forEach((c) => {
-        c.quantityKg = Math.max(1, Math.round(c.quantityKg * scale))
+        c.quantityKg = Math.max(1, Math.floor(c.quantityKg * scale))
       })
+      let curSum = board.commitments.reduce((sum, c) => sum + c.quantityKg, 0)
+      while (curSum > math.thresholdKg) {
+        const reducible = board.commitments.find((c) => c.quantityKg > 1)
+        if (!reducible) break
+        reducible.quantityKg -= 1
+        curSum -= 1
+      }
       if (board.crops) {
         board.crops.forEach((c) => {
           c.commitments.forEach((item) => {
-            item.quantityKg = Math.max(1, Math.round(item.quantityKg * scale))
+            item.quantityKg = Math.max(1, Math.floor(item.quantityKg * scale))
           })
         })
       }

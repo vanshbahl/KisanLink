@@ -2,7 +2,7 @@ import type { Delivery, LogisticsPickup, LogisticsRoute, Vehicle } from '../type
 import { logisticsService } from './logisticsService'
 
 export type LogisticsFactor = { label: string; value: string }
-export type LogisticsInsight = { title: string; recommendation: string; confidence: number; factors: LogisticsFactor[]; note?: string; ctaLabel?: string; href?: string }
+export type LogisticsInsight = { title: string; recommendation: string; confidence: number; factors: LogisticsFactor[]; note?: string; ctaLabel?: string; href?: string; isLiveBackend?: boolean; modeLabel?: string }
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 const kg = (value: number) => `${value.toLocaleString('en-IN')} kg`
@@ -66,7 +66,9 @@ export async function routeOptimisationReview(routes: LogisticsRoute[], capacity
     confidence: clamp(70 + saved * 6 + (pooled.length ? 8 : 0), 60, 92),
     ctaLabel: routes.length ? 'Review pooled routes' : undefined,
     href: routes.length ? '/logistics/routes' : undefined,
-    note: 'Sequencing comes from the backend OR-Tools capacitated VRP solver; the deterministic prototype benchmark is used when that service is unavailable.',
+    isLiveBackend: Boolean(result.isLiveBackend),
+    modeLabel: result.modeLabel || (result.isLiveBackend ? 'Live OR-Tools Solver (Backend)' : 'Demo / Local Logistics Solver'),
+    note: result.isLiveBackend ? 'Sequencing computed via live OR-Tools capacitated VRP solver endpoint.' : 'Sequencing calculated via local deterministic route solver when backend service is unavailable.',
     factors: [
       { label: 'Planned distance', value: `${distance} km` },
       { label: 'Estimated duration', value: duration ? minutes(duration) : '—' },

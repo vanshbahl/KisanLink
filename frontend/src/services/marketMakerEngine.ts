@@ -322,7 +322,7 @@ export function evaluateMarket(board: MarketMakerBoard, listings: FarmerListing[
 }
 
 function evaluateSingleCropMarket(board: MarketMakerBoard, listings: FarmerListing[], vehicles: Vehicle[]): MarketMath {
-  const committedKg = board.commitments.reduce((sum, item) => sum + item.quantityKg, 0)
+  let committedKg = board.commitments.reduce((sum, item) => sum + item.quantityKg, 0)
   const consumerKg = board.commitments.filter((item) => item.source === 'consumer').reduce((sum, item) => sum + item.quantityKg, 0)
   const bulkKg = committedKg - consumerKg
 
