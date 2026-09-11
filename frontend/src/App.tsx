@@ -94,6 +94,8 @@ export default function App() {
           <Route path="market" element={<RoleGuard role="logistics"><MarketMakerPage /></RoleGuard>} />
           <Route path="profile" element={<RoleGuard role="logistics"><LogisticsProfilePage /></RoleGuard>} />
         </Route>
+
+        <Route path="market-maker" element={<MarketMakerPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

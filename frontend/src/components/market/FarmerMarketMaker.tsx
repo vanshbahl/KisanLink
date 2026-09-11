@@ -82,6 +82,25 @@ export function FarmerMarketMaker({ board, math, busy, onOffer, available }: {
         </div>
       </section>
 
+      {board.isMultiCrop && math.multiCropMath && (
+        <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1rem', fontSize: '0.85rem' }}>
+          <div style={{ fontWeight: 600, color: '#166534', marginBottom: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <span>🟢</span>
+            <span>{l('Compatible Shared Transport Corridor', 'अनुकूल साझा परिवहन कॉरिडोर')}</span>
+          </div>
+          <p style={{ margin: '0 0 0.4rem 0', color: '#15803d', fontSize: '0.8rem' }}>
+            {l('Your produce is pooled with compatible crops sharing vehicle costs:', 'आपकी फसल को साझा वाहन लागत के साथ अनुकूल फसलों के साथ जोड़ा गया है:')}
+          </p>
+          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+            {math.multiCropMath.cropMaths.map((c) => (
+              <span key={c.segment.id} style={{ background: '#ffffff', border: '1px solid #86efac', padding: '2px 8px', borderRadius: '4px', color: '#166534', fontSize: '0.75rem', fontWeight: 600 }}>
+                {c.segment.crop === 'Tomatoes' ? '🍅' : c.segment.crop === 'Onions' ? '🧅' : '🥔'} {c.segment.crop}: {c.committedKg} kg
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       <ol className="mm-farmer-stages" aria-label={l('Progress', 'प्रगति')}>
         {stages.map((label, index) => (
           <li key={label} className={index < stage ? 'is-done' : index === stage ? 'is-active' : ''}>

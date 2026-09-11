@@ -9,6 +9,7 @@ import { useAsyncData } from '../hooks/useAsyncData'
 import { useLanguage } from '../contexts/LanguageContext'
 import { MarketplaceAiSection } from '../components/ai/MarketplaceAiSection'
 import { MarketPulseCard } from '../components/market/MarketPulseCard'
+import { NcrGroupBuyCard } from '../components/market/NcrGroupBuyCard'
 import { MarketplaceInsightResult } from '../components/ai/MarketplaceInsightResult'
 import { ConsumerMarketplace } from '../components/marketplace/ConsumerMarketplace'
 import { freshPick } from '../services/consumerIntelligenceService'
@@ -45,6 +46,7 @@ export function ConsumerHome() {
   return (
     <div className="page consumer-page">
       <MarketPulseCard role="consumer" />
+      <NcrGroupBuyCard />
 
       <section className="section-block">
         <div className="section-heading">

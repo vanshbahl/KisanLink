@@ -35,7 +35,29 @@ export const phase2Service = {
   },
   cart(): CartItem[] { try { return JSON.parse(localStorage.getItem(CART_KEY) ?? '[]') as CartItem[] } catch { return [] } },
   saveCart(items: CartItem[]) { localStorage.setItem(CART_KEY, JSON.stringify(items)); window.dispatchEvent(new Event('kisanlink-cart')); return items },
-  addToCart(listingId: string, quantityKg: number) { const cart = this.cart(); const found = cart.find((item) => item.listingId === listingId); if (found) found.quantityKg += quantityKg; else cart.push({ listingId, quantityKg }); return this.saveCart(cart) },
+  addToCart(listingId: string, quantityKg: number) { const cart = this.cart(); const found = cart.find((item) => item.listingId === listingId && !item.isPooled); if (found) found.quantityKg += quantityKg; else cart.push({ listingId, quantityKg }); return this.saveCart(cart) },
+  addPooledToCart(item: { listingId: string; quantityKg: number; pooledPricePerKg: number; regularPricePerKg: number; savingsPerKg: number; boardId: string; cropId: string }) {
+    const cart = this.cart()
+    const found = cart.find((i) => i.listingId === item.listingId && i.isPooled)
+    if (found) {
+      found.quantityKg += item.quantityKg
+      found.pooledPricePerKg = item.pooledPricePerKg
+      found.regularPricePerKg = item.regularPricePerKg
+      found.savingsPerKg = item.savingsPerKg
+    } else {
+      cart.push({
+        listingId: item.listingId,
+        quantityKg: item.quantityKg,
+        isPooled: true,
+        pooledPricePerKg: item.pooledPricePerKg,
+        regularPricePerKg: item.regularPricePerKg,
+        savingsPerKg: item.savingsPerKg,
+        boardId: item.boardId,
+        cropId: item.cropId,
+      })
+    }
+    return this.saveCart(cart)
+  },
   clearCart() { return this.saveCart([]) },
   async saved() { const state = await prototypeService.getState(); return { listingIds: state.savedListingIds, farmNames: state.savedFarmNames } },
   async toggleSavedListing(listingId: string) { const state = await prototypeService.getState(); state.savedListingIds = state.savedListingIds.includes(listingId) ? state.savedListingIds.filter((value) => value !== listingId) : [...state.savedListingIds, listingId]; await prototypeService.replaceState(state); return state.savedListingIds },

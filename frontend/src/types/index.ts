@@ -181,7 +181,16 @@ export interface FarmerProfileData {
 }
 
 export type ConsumerOrderStatus = 'confirmed' | 'farmer_preparing' | 'pickup_scheduled' | 'collected' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'cancelled'
-export interface CartItem { listingId: string; quantityKg: number }
+export interface CartItem {
+  listingId: string
+  quantityKg: number
+  isPooled?: boolean
+  pooledPricePerKg?: number
+  regularPricePerKg?: number
+  savingsPerKg?: number
+  boardId?: string
+  cropId?: string
+}
 export interface Address { id: string; label: string; recipient: string; phone: string; line1: string; city: string; pincode: string; isDefault: boolean }
 export interface ConsumerOrderItem { listingId: string; crop: string; cropHi: string; farm: string; imageSrc: string; quantityKg: number; ratePerKg: number }
 export interface ConsumerOrder {
@@ -290,6 +299,34 @@ export interface MarketSupplyLot {
   detourKm: number
   /** True for the demo farmer's own lot. */
   own?: boolean
+  /** NCR Origin Region ID (e.g. reg_sonipat, reg_rohtak, reg_meerut, reg_ghaziabad) */
+  regionId?: string
+  /** NCR Origin Region Name (e.g. Sonipat, Rohtak, Meerut, Ghaziabad) */
+  regionName?: string
+}
+
+export interface MarketCropSegment {
+  id: string
+  crop: string
+  cropHi: string
+  grade: FarmerListing['grade']
+  imageSrc: string
+  visual?: ProduceListing['visual']
+  farmerFloorPerKg: number
+  mandiPricePerKg: number
+  buyerCeilingPerKg: number
+  buyerCurrentPerKg: number
+  platformFeePct: number
+  storageType?: 'ambient' | 'cold_chain' | 'dry' | 'delicate'
+  lots: MarketSupplyLot[]
+  commitments: MarketCommitment[]
+}
+
+export interface MarketRegionInfo {
+  id: string
+  name: string
+  nameHi?: string
+  district?: string
 }
 
 export interface MarketMakerBoard {
@@ -327,4 +364,12 @@ export interface MarketMakerBoard {
   consumerOrderId?: string
   pickupIds?: string[]
   deliveryIds?: string[]
+  /** Indicates whether this corridor pools multiple compatible crop types into shared transport */
+  isMultiCrop?: boolean
+  /** Crop segments included in this multi-crop corridor */
+  crops?: MarketCropSegment[]
+  /** Indicates whether this corridor aggregates supply across multiple NCR origin regions */
+  isMultiRegion?: boolean
+  /** Origin regions participating in this corridor */
+  regions?: MarketRegionInfo[]
 }

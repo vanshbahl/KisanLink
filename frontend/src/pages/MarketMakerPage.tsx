@@ -1,5 +1,5 @@
 import {
-  ArrowRight, Boxes, Building2, CalendarClock, Check, CircleAlert, Home, IndianRupee, MapPinned,
+  ArrowRight, Boxes, Building2, CalendarClock, Check, CircleAlert, Home, IndianRupee, Layers, MapPinned,
   PackageCheck, Radar, RotateCcw, Sparkles, Sprout, Truck, Zap,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -14,6 +14,7 @@ import { MarketFreightCurve } from '../components/market/MarketFreightCurve'
 import { MarketUnlockReveal, type MarketCreationResult } from '../components/market/MarketUnlockReveal'
 import { MarketValueSplit } from '../components/market/MarketValueSplit'
 import { MarketWhyPanel } from '../components/market/MarketWhyPanel'
+import { MultiCropCorridorCard } from '../components/market/MultiCropCorridorCard'
 import { DashboardSkeleton } from '../components/LoadingSkeleton'
 import { StatusBadge } from '../components/StatusBadge'
 import { useAuth } from '../contexts/AuthContext'
@@ -65,22 +66,27 @@ export function MarketMakerPage() {
   const { showToast } = useToast()
   const [busy, setBusy] = useState(false)
   const [reveal, setReveal] = useState<MarketCreationResult | null>(null)
+  const [selectedBoardId, setSelectedBoardId] = useState<string>('')
+  const [selectedCropId, setSelectedCropId] = useState<string>('')
   const role = (session?.role ?? 'consumer') as Role
   const l = (en: string, hi: string) => (language === 'hi' ? hi : en)
 
   const { data, loading, refresh } = useAsyncData(async () => {
-    const [view, consumerProfile, bulkProfile] = await Promise.all([
-      marketMakerService.board(),
+    const [views, consumerProfile, bulkProfile] = await Promise.all([
+      marketMakerService.boards(),
       phase2Service.consumerProfile(),
       phase2Service.bulkProfile(),
     ])
-    return { view, consumerProfile, bulkProfile }
+    return { views, consumerProfile, bulkProfile }
   }, [], { live: true })
 
   if (loading && !data) return <DashboardSkeleton />
-  if (!data?.view) return <div className="error-panel"><h2>No market corridor is open</h2><p>Seed the Market Maker scenario from the logistics demo controls to restore it.</p></div>
+  if (!data?.views || data.views.length === 0) return <div className="error-panel"><h2>No market corridor is open</h2><p>Seed the Market Maker scenario from the logistics demo controls to restore it.</p></div>
 
-  const { board, math } = data.view
+  const currentView = data.views.find((v) => v.board.id === selectedBoardId)
+    || data.views.find((v) => v.board.isMultiCrop)
+    || data.views[0]
+  const { board, math } = currentView
   const frame = roleFrame[role]
   const deliveryWindow = language === 'hi'
     ? board.deliveryWindow.replace('Tomorrow', 'कल').replace(' AM', ' बजे').replace(' PM', ' बजे')
@@ -110,8 +116,8 @@ export function MarketMakerPage() {
 
   const commit = (quantityKg: number) => guard(async () => {
     const result = await marketMakerService.commit(board.id, role === 'bulk'
-      ? { source: 'bulk', party: data.bulkProfile.businessName, detail: board.destination, quantityKg, own: true }
-      : { source: 'consumer', party: data.consumerProfile.name, detail: data.consumerProfile.addresses[0]?.line1 ?? data.consumerProfile.defaultLocation, quantityKg, own: true })
+      ? { source: 'bulk', party: data.bulkProfile.businessName, detail: board.destination, quantityKg, own: true, cropId: selectedCropId }
+      : { source: 'consumer', party: data.consumerProfile.name, detail: data.consumerProfile.addresses[0]?.line1 ?? data.consumerProfile.defaultLocation, quantityKg, own: true, cropId: selectedCropId })
     if (result.math.viable) showToast('Break-even reached — this market can be created')
   }, `${quantityKg} kg committed to ${board.corridor}`)
 
@@ -127,6 +133,27 @@ export function MarketMakerPage() {
   if (role === 'farmer') {
     return (
       <div className="page mm-page mm-page-farmer">
+        {/* Corridor Selector Bar for Farmer */}
+        <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.5rem', marginBottom: '0.75rem' }}>
+          {data.views.map((v) => (
+            <button
+              key={v.board.id}
+              type="button"
+              className={`btn ${v.board.id === board.id ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => { setSelectedBoardId(v.board.id); setSelectedCropId('') }}
+              style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem', whiteSpace: 'nowrap' }}
+            >
+              {v.board.isMultiCrop ? '🚛 ' : '🍅 '} {language === 'hi' ? v.board.cropHi : v.board.crop}
+            </button>
+          ))}
+        </div>
+        {board.isMultiCrop && math.multiCropMath && (
+          <MultiCropCorridorCard
+            board={board}
+            math={math}
+            onSelectCrop={(cropId) => setSelectedCropId(cropId)}
+          />
+        )}
         <FarmerMarketMaker
           board={board} math={math} busy={busy} available={own?.availableKg ?? 0}
           onOffer={(extra) => own && guard(() => marketMakerService.offerMore(board.id, own.lot.id, extra), `${extra} kg more released to ${board.corridor}`)}
@@ -150,7 +177,38 @@ export function MarketMakerPage() {
         </StatusBadge>
       </div>
 
+      {/* Corridor Selector Bar */}
+      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
+        {data.views.map((v) => {
+          const isSelected = v.board.id === board.id
+          return (
+            <button
+              key={v.board.id}
+              type="button"
+              className={`btn ${isSelected ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => { setSelectedBoardId(v.board.id); setSelectedCropId('') }}
+              style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}
+            >
+              {v.board.isMultiCrop ? <Layers size={16} /> : <Sprout size={16} />}
+              <span>{language === 'hi' ? v.board.cropHi : v.board.crop}</span>
+              <small style={{ opacity: 0.8, fontSize: '0.75rem', padding: '1px 5px', borderRadius: '4px', background: isSelected ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.05)' }}>
+                {v.board.isMultiCrop ? l('Multi-Crop Shared Transport', 'मल्टी-क्रॉप साझा') : l('Single Crop', 'एकल फसल')}
+              </small>
+            </button>
+          )
+        })}
+      </div>
+
       <MarketStateRail status={board.status} viable={math.viable} blocked={Boolean(structural)} l={l} />
+
+      {/* Render MultiCropCorridorCard when in multi-crop corridor */}
+      {board.isMultiCrop && math.multiCropMath && (
+        <MultiCropCorridorCard
+          board={board}
+          math={math}
+          onSelectCrop={(cropId) => setSelectedCropId(cropId)}
+        />
+      )}
 
       <MarketOutcomeSummary board={board} math={math} l={l} />
 
@@ -212,13 +270,15 @@ export function MarketMakerPage() {
               detail={role === 'bulk' ? board.destination : (data.consumerProfile.addresses[0]?.line1 ?? data.consumerProfile.defaultLocation)}
               unit={role === 'bulk' ? 10 : 1}
               max={role === 'bulk' ? 400 : 40}
+              selectedCropId={selectedCropId}
+              onSelectCrop={(cropId) => setSelectedCropId(cropId)}
               onCommit={commit}
             />
           )}
 
           {!created && role === 'logistics' && (
             <LogisticsLever
-              vehicleId={board.vehicleId} corridorVehicle={data.view.corridorVehicle} math={math} busy={busy}
+              vehicleId={board.vehicleId} corridorVehicle={currentView.assignedVehicle ?? undefined} math={math} busy={busy}
               onHold={() => guard(() => logisticsService.setVehicle(board.vehicleId, 'available'), 'Vehicle released back to the corridor')}
               onWithdraw={() => guard(() => logisticsService.setVehicle(board.vehicleId, 'maintenance'), 'Vehicle withdrawn from the corridor')}
             />

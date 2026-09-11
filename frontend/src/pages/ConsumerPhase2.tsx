@@ -30,12 +30,92 @@ export function ConsumerListingCard({ listing }: { listing: FarmerListing }) {
 }
 
 export function ConsumerCartPage() {
-  const navigate = useNavigate(); const [cart, setCart] = useState<CartItem[]>(phase2Service.cart()); const { data: listings, loading } = useAsyncData(() => phase2Service.listings())
-  const rows = availableForCart(cart, listings ?? []); const costs = orderCosts(rows.map((row) => ({ quantityKg: row.quantityKg, pricePerKg: row.listing.pricePerKg })))
-  const update = (listingId: string, quantityKg: number) => { const listing = listings?.find((item) => item.id === listingId); const next = cart.map((item) => item.listingId === listingId ? { ...item, quantityKg: Math.max(1, Math.min(quantityKg, listing?.remainingKg ?? quantityKg)) } : item); setCart(phase2Service.saveCart(next)) }
+  const navigate = useNavigate()
+  const [cart, setCart] = useState<CartItem[]>(phase2Service.cart())
+  const { data: listings, loading } = useAsyncData(() => phase2Service.listings())
+  const rows = availableForCart(cart, listings ?? [])
+  const costs = orderCosts(rows.map((row) => ({ quantityKg: row.quantityKg, pricePerKg: row.isPooled && row.pooledPricePerKg ? row.pooledPricePerKg : row.listing.pricePerKg })))
+  const totalSavings = rows.reduce((sum, row) => sum + (row.isPooled && row.savingsPerKg ? row.savingsPerKg * row.quantityKg : 0), 0)
+
+  const update = (listingId: string, quantityKg: number) => {
+    const listing = listings?.find((item) => item.id === listingId)
+    const next = cart.map((item) => item.listingId === listingId ? { ...item, quantityKg: Math.max(1, Math.min(quantityKg, listing?.remainingKg ?? quantityKg)) } : item)
+    setCart(phase2Service.saveCart(next))
+  }
   const remove = (listingId: string) => setCart(phase2Service.saveCart(cart.filter((item) => item.listingId !== listingId)))
+
   if (loading) return <DashboardSkeleton />
-  return <div className="page"><PageHead eyebrow="Your basket" title="Cart" copy="Quantities are reserved only when you place the mock order." />{!rows.length ? <EmptyState icon={ShoppingCart} title="Your cart is empty" copy="Fresh produce from nearby farms is waiting for you." actionLabel="Explore produce" actionTo="/consumer/explore" /> : <div className="commerce-grid"><section className="stack-list">{rows.map(({ listing, quantityKg }) => <article className={`line-card ${quantityKg > listing.remainingKg ? 'invalid' : ''}`} key={listing.id}><ProductImage imageSrc={listing.imageSrc} alt={listing.crop} visual={listing.visual} size="mini" /><div><h2>{listing.crop}</h2><p>{listing.farm} · {money(listing.pricePerKg)}/kg</p><div className="qty-stepper"><button onClick={() => update(listing.id, quantityKg - 1)}><Minus size={15} /></button><strong>{quantityKg} kg</strong><button onClick={() => update(listing.id, quantityKg + 1)} disabled={quantityKg >= listing.remainingKg}><Plus size={15} /></button></div>{listing.remainingKg < 20 && <small className="warning-copy">Only {listing.remainingKg} kg available</small>}</div><div className="line-total"><strong>{money(quantityKg * listing.pricePerKg)}</strong><button aria-label="Remove item" onClick={() => remove(listing.id)}><Trash2 size={17} /></button></div></article>)}<button className="btn btn-ghost" onClick={() => setCart(phase2Service.clearCart())}><Trash2 size={16} /> Clear cart</button><div className="gentle-banner"><Truck size={24} /><div><strong>Pooled farm pickup</strong><p>If items come from multiple farms, KisanLink combines nearby pickups into one last-mile delivery for this prototype.</p></div></div><div className="basket-intelligence"><MarketplaceAiTrigger variant="inline" idleLabel="Check basket" idleHint="Is this basket already efficient?" stages={['Checking cart items', 'Reviewing farm origins', 'Applying prototype logistics', 'Checking item stock', 'Preparing basket advice']} run={() => basketOptimizer(cart, listings ?? [])} renderResult={(insight, reset) => <MarketplaceInsightResult {...insight} onClose={reset} onCta={() => insight.ctaLabel === 'View nearby produce' ? navigate('/consumer/explore') : reset()} footer="Logistics values are estimates from the current prototype logistics formula, not route quotes." />} /></div></section><PriceSummary {...costs} action={<Link className="btn btn-primary btn-full btn-large" to="/consumer/checkout">Proceed to checkout <ArrowRight size={17} /></Link>} /></div>}</div>
+
+  return (
+    <div className="page">
+      <PageHead eyebrow="Your basket" title="Cart" copy="Quantities are reserved only when you place the mock order." />
+      {!rows.length ? (
+        <EmptyState icon={ShoppingCart} title="Your cart is empty" copy="Fresh produce from nearby farms is waiting for you." actionLabel="Explore produce" actionTo="/consumer/explore" />
+      ) : (
+        <div className="commerce-grid">
+          <section className="stack-list">
+            {totalSavings > 0 && (
+              <div style={{ background: '#064e3b', color: '#6ee7b7', padding: '0.85rem 1.15rem', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.9rem', fontWeight: 600 }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Truck size={18} /> 🚛 NCR Pool Savings Active
+                </span>
+                <strong>Total Saved: ₹{totalSavings.toFixed(2)}</strong>
+              </div>
+            )}
+            {rows.map(({ listing, quantityKg, isPooled, pooledPricePerKg, regularPricePerKg, savingsPerKg }) => {
+              const effectivePrice = isPooled && pooledPricePerKg ? pooledPricePerKg : listing.pricePerKg
+              const originalPrice = isPooled && regularPricePerKg ? regularPricePerKg : listing.pricePerKg
+              const lineTotal = quantityKg * effectivePrice
+              const lineSavings = isPooled && savingsPerKg ? savingsPerKg * quantityKg : 0
+
+              return (
+                <article className={`line-card ${quantityKg > listing.remainingKg ? 'invalid' : ''}`} key={listing.id}>
+                  <ProductImage imageSrc={listing.imageSrc} alt={listing.crop} visual={listing.visual} size="mini" />
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <h2>{listing.crop}</h2>
+                      {isPooled && <StatusBadge tone="green">NCR Group Buy</StatusBadge>}
+                    </div>
+                    <p>
+                      {listing.farm} · {isPooled ? (
+                        <>
+                          <span style={{ textDecoration: 'line-through', opacity: 0.6, marginRight: '0.35rem' }}>{money(originalPrice)}/kg</span>
+                          <strong style={{ color: '#059669' }}>{money(effectivePrice)}/kg</strong>
+                        </>
+                      ) : (
+                        <>{money(listing.pricePerKg)}/kg</>
+                      )}
+                    </p>
+                    {isPooled && lineSavings > 0 && (
+                      <small style={{ color: '#059669', fontWeight: 600, display: 'block', marginTop: '0.2rem' }}>
+                        Save ₹{savingsPerKg?.toFixed(2)}/kg · Total item savings: ₹{lineSavings.toFixed(2)}
+                      </small>
+                    )}
+                    <div className="qty-stepper" style={{ marginTop: '0.5rem' }}>
+                      <button onClick={() => update(listing.id, quantityKg - 1)}><Minus size={15} /></button>
+                      <strong>{quantityKg} kg</strong>
+                      <button onClick={() => update(listing.id, quantityKg + 1)} disabled={quantityKg >= listing.remainingKg}><Plus size={15} /></button>
+                    </div>
+                    {listing.remainingKg < 20 && <small className="warning-copy">Only {listing.remainingKg} kg available</small>}
+                  </div>
+                  <div className="line-total">
+                    <strong>{money(lineTotal)}</strong>
+                    <button aria-label="Remove item" onClick={() => remove(listing.id)}><Trash2 size={17} /></button>
+                  </div>
+                </article>
+              )
+            })}
+            <button className="btn btn-ghost" onClick={() => setCart(phase2Service.clearCart())}><Trash2 size={16} /> Clear cart</button>
+            <div className="gentle-banner"><Truck size={24} /><div><strong>Pooled farm pickup</strong><p>If items come from multiple farms, KisanLink combines nearby pickups into one last-mile delivery for this prototype.</p></div></div>
+            <div className="basket-intelligence">
+              <MarketplaceAiTrigger variant="inline" idleLabel="Check basket" idleHint="Is this basket already efficient?" stages={['Checking cart items', 'Reviewing farm origins', 'Applying prototype logistics', 'Checking item stock', 'Preparing basket advice']} run={() => basketOptimizer(cart, listings ?? [])} renderResult={(insight, reset) => <MarketplaceInsightResult {...insight} onClose={reset} onCta={() => insight.ctaLabel === 'View nearby produce' ? navigate('/consumer/explore') : reset()} footer="Logistics values are estimates from the current prototype logistics formula, not route quotes." />} />
+            </div>
+          </section>
+          <PriceSummary {...costs} action={<Link className="btn btn-primary btn-full btn-large" to="/consumer/checkout">Proceed to checkout <ArrowRight size={17} /></Link>} />
+        </div>
+      )}
+    </div>
+  )
 }
 
 export function ConsumerCheckoutPage() {
