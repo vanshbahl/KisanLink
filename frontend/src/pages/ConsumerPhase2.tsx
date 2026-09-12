@@ -86,10 +86,17 @@ export function ConsumerCartPage() {
                         <>{money(listing.pricePerKg)}/kg</>
                       )}
                     </p>
-                    {isPooled && lineSavings > 0 && (
-                      <small style={{ color: '#059669', fontWeight: 600, display: 'block', marginTop: '0.2rem' }}>
-                        Save ₹{savingsPerKg?.toFixed(2)}/kg · Total item savings: ₹{lineSavings.toFixed(2)}
-                      </small>
+                    {isPooled && (
+                      <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '6px', padding: '0.35rem 0.6rem', marginTop: '0.35rem', fontSize: '0.8rem' }}>
+                        <div style={{ color: '#065f46' }}>
+                          Regular: <strong>₹{Math.round(quantityKg * originalPrice)}</strong> · Market Maker: <strong>₹{Math.round(lineTotal)}</strong>
+                        </div>
+                        {lineSavings > 0 && (
+                          <div style={{ color: '#059669', fontWeight: 800, marginTop: '0.15rem' }}>
+                            YOU SAVE ₹{Math.round(lineSavings)}
+                          </div>
+                        )}
+                      </div>
                     )}
                     <div className="qty-stepper" style={{ marginTop: '0.5rem' }}>
                       <button onClick={() => update(listing.id, quantityKg - 1)}><Minus size={15} /></button>

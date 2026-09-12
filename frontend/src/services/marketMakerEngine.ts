@@ -224,7 +224,8 @@ export function resolveLotAvailability(lot: MarketSupplyLot, listings: FarmerLis
   if (!lot.listingId) return lot.offeredKg
   const listing = listings.find((item) => item.id === lot.listingId)
   if (!listing) return lot.offeredKg
-  return Math.max(0, Math.min(lot.offeredKg, listing.remainingKg))
+  const effectiveStock = listing.remainingKg + (listing.marketMakerCommittedKg || 0)
+  return Math.max(0, Math.min(lot.offeredKg, effectiveStock))
 }
 
 /**

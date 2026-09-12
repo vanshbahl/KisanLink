@@ -147,7 +147,51 @@ export function AppShell() {
           </div>
         </header>
         <header className="desktop-topbar">
-          <div><span>{t('deliveringTo')}</span><strong>{session.role === 'farmer' ? t('location') : user.location}</strong></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div><span>{t('deliveringTo')}</span><strong>{session.role === 'farmer' ? t('location') : user.location}</strong></div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: '0.5rem' }}>
+              <NavLink
+                to="/deal-room"
+                style={({ isActive }) => ({
+                  padding: '0.35rem 0.75rem',
+                  borderRadius: '8px',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  textDecoration: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  background: isActive ? '#059669' : '#f1f5f9',
+                  color: isActive ? '#ffffff' : '#334155',
+                  border: '1px solid',
+                  borderColor: isActive ? '#059669' : '#cbd5e1',
+                  transition: 'all 0.15s',
+                })}
+              >
+                <span>🤝</span> Deal Room
+              </NavLink>
+              <NavLink
+                to="/recovery"
+                style={({ isActive }) => ({
+                  padding: '0.35rem 0.75rem',
+                  borderRadius: '8px',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  textDecoration: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  background: isActive ? '#dc2626' : '#f1f5f9',
+                  color: isActive ? '#ffffff' : '#334155',
+                  border: '1px solid',
+                  borderColor: isActive ? '#dc2626' : '#cbd5e1',
+                  transition: 'all 0.15s',
+                })}
+              >
+                <span>🚚</span> Broken Truck
+              </NavLink>
+            </div>
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <GlobalModeIndicator />
             {session.role === 'farmer' && <LanguageSwitcher />}

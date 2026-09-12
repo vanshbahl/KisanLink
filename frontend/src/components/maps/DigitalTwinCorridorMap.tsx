@@ -23,7 +23,7 @@ export interface CorridorRoute {
   cropName: string
   quantityKg: number
   distanceKm: number
-  status: 'IN_TRANSIT' | 'ASSIGNED' | 'DELIVERED' | 'PICKUP_IN_PROGRESS'
+  status: 'IN_TRANSIT' | 'ASSIGNED' | 'DELIVERED' | 'PICKUP_IN_PROGRESS' | 'BROKEN' | 'RECOVERED'
   /** [lng, lat] — GeoJSON order, matching what maplibre expects. */
   farmerCoords: [number, number]
   buyerCoords: [number, number]
@@ -190,17 +190,18 @@ export const DigitalTwinCorridorMap: FC<DigitalTwinCorridorMapProps> = ({ nodes,
             source: sourceId,
             layout: { 'line-join': 'round', 'line-cap': 'round' },
             paint: {
-              'line-color': route.status === 'DELIVERED' ? '#8aa398' : '#236747',
-              'line-width': 3.5,
-              'line-opacity': .9,
-              // A [1, 0] dash array is invalid (zero-length gap) and silently drops the
-              // line on some GPUs — a solid line is expressed by omitting the property.
-              ...(route.status === 'ASSIGNED' ? { 'line-dasharray': [2, 1.6] as [number, number] } : {}),
+              'line-color': route.status === 'BROKEN' ? '#ef4444' : route.status === 'RECOVERED' ? '#059669' : route.status === 'DELIVERED' ? '#8aa398' : '#236747',
+              'line-width': route.status === 'BROKEN' ? 4.5 : 3.5,
+              'line-opacity': 0.95,
+              ...(route.status === 'ASSIGNED' || route.status === 'BROKEN' ? { 'line-dasharray': [2, 1.6] as [number, number] } : {}),
             },
           })
           map.on('click', layerId, () => setSelectedItem({ type: 'ROUTE', data: route }))
           map.on('mouseenter', layerId, () => { map.getCanvas().style.cursor = 'pointer' })
           map.on('mouseleave', layerId, () => { map.getCanvas().style.cursor = '' })
+        } else {
+          // Dynamic update if route status changed on existing layer
+          map.setPaintProperty(layerId, 'line-color', route.status === 'BROKEN' ? '#ef4444' : route.status === 'RECOVERED' ? '#059669' : route.status === 'DELIVERED' ? '#8aa398' : '#236747')
         }
       })
 

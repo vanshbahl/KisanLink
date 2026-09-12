@@ -1,199 +1,346 @@
-import { ArrowRight, Info, MapPin, ShoppingCart, Truck } from 'lucide-react'
+import { ArrowRight, Check, Info, MapPin, ShoppingCart, Sparkles, TrendingUp } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useToast } from '../../contexts/ToastContext'
 import type { CropSegmentMath } from '../../services/marketMakerEngine'
 import { marketMakerService, type MarketView } from '../../services/marketMakerService'
+import { extractUserRegion, rankMarketMakerOpportunities } from '../../services/marketRankingService'
 import { phase2Service } from '../../services/phase2Service'
+import type { ConsumerProfileData } from '../../types'
 
 export function NcrGroupBuyCard() {
   const [views, setViews] = useState<MarketView[]>([])
   const [activeBoardId, setActiveBoardId] = useState<string>('')
-  const [quantities, setQuantities] = useState<Record<string, number>>({})
+  const [consumerProfile, setConsumerProfile] = useState<ConsumerProfileData | null>(null)
+  const [selectedCropId, setSelectedCropId] = useState<string>('')
+  const [quantityKg, setQuantityKg] = useState<number>(5)
   const { showToast } = useToast()
 
-  const loadMarkets = async () => {
-    const data = await marketMakerService.boards()
-    if (data && data.length > 0) {
-      setViews(data)
-      if (!activeBoardId) {
-        // Default to Gurgaon or first board
-        const gurgaon = data.find((v) => v.board.id === 'MM-GURGAON-001')
-        setActiveBoardId(gurgaon?.board.id ?? data[0].board.id)
-      }
+  const loadData = async () => {
+    const [marketViews, profile] = await Promise.all([
+      marketMakerService.boards(),
+      phase2Service.consumerProfile(),
+    ])
+    if (marketViews && marketViews.length > 0) {
+      setViews(marketViews)
+      setConsumerProfile(profile)
     }
   }
 
   useEffect(() => {
-    loadMarkets()
-    const handleSync = () => loadMarkets()
+    loadData()
+    const handleSync = () => loadData()
     window.addEventListener('kisanlink-state', handleSync)
     return () => window.removeEventListener('kisanlink-state', handleSync)
   }, [])
 
-  const currentView = views.find((v) => v.board.id === activeBoardId) || views[0]
-  if (!currentView || !views.length) return null
+  if (!views.length) return null
+
+  // Deterministic regional ranking based on actual consumer profile
+  const userRegion = extractUserRegion('consumer', { consumerProfile })
+  const ranking = rankMarketMakerOpportunities(views, userRegion)
+  const currentView = (activeBoardId ? views.find((v) => v.board.id === activeBoardId) : null) || ranking.hero
+  const otherViews = views.filter((v) => v.board.id !== currentView.board.id)
 
   const { board, math } = currentView
-  const gapKg = Math.max(0, math.thresholdKg - math.committedKg)
-  const isUnlocked = math.viable || gapKg === 0
   const cropMaths: CropSegmentMath[] = math.multiCropMath?.cropMaths ?? []
 
-  const handleAddToCart = (cropSegmentId: string, cropName: string, regularPrice: number, pooledPrice: number, savingsPerKg: number) => {
-    const qty = quantities[cropSegmentId] || 2
+  // Active crop segment
+  const activeCropMath: CropSegmentMath | undefined = cropMaths.length > 0
+    ? (selectedCropId ? cropMaths.find((cm) => cm.segment.id === selectedCropId) : cropMaths[0]) || cropMaths[0]
+    : undefined
+
+  const regionName = board.regions?.[0]?.name ?? 'NCR'
+  const isRegionMatched = ranking.userRegionMatched && ranking.matchedRegionName?.toLowerCase() === regionName.toLowerCase()
+
+  // Real economics
+  const regularPrice = activeCropMath
+    ? activeCropMath.segment.buyerCurrentPerKg
+    : board.buyerCurrentPerKg
+  const pooledPrice = activeCropMath
+    ? (activeCropMath.deliveredPerKg || activeCropMath.segment.buyerCeilingPerKg)
+    : (math.deliveredPerKg || board.buyerCeilingPerKg)
+
+  const savingsPerKg = Math.max(0, regularPrice - pooledPrice)
+  const hasDiscount = savingsPerKg > 0
+
+  const validQty = Math.max(1, Number(quantityKg) || 1)
+  const normalPriceTotal = Math.round(validQty * regularPrice)
+  const kisanlinkPriceTotal = Math.round(validQty * pooledPrice)
+  const totalSavings = Math.round(savingsPerKg * validQty)
+
+  const gapKg = Math.max(0, math.thresholdKg - math.committedKg)
+  const isUnlocked = math.viable || gapKg === 0
+
+  const handleAddToCart = () => {
+    const cropSegmentId = activeCropMath?.segment.id || board.crops?.[0]?.id || 'seg_tomato'
+    const cropTitle = activeCropMath?.segment.crop || board.crop
     const listingId = cropSegmentId.includes('tomato') ? 'listing_001' : cropSegmentId.includes('onion') ? 'listing_draft_1' : 'listing_sold_1'
     const regionId = board.regions?.[0]?.id ?? 'reg_ncr'
-    
+
     phase2Service.addPooledToCart({
       listingId,
-      quantityKg: qty,
+      quantityKg: validQty,
       pooledPricePerKg: pooledPrice,
       regularPricePerKg: regularPrice,
-      savingsPerKg: Math.max(0, savingsPerKg),
+      savingsPerKg,
       boardId: board.id,
       cropId: cropSegmentId,
       regionId,
     })
 
-    const totalSave = (Math.max(0, savingsPerKg) * qty).toFixed(2)
-    showToast(`Added ${qty} kg ${cropName} from ${board.crop} to basket with ₹${totalSave} Pool Savings!`)
+    showToast(`Added ${validQty} kg ${cropTitle} to cart · Saved ₹${totalSavings}!`)
   }
 
   return (
-    <div className="card ncr-group-buy-card" style={{ background: 'linear-gradient(135deg, #064e3b 0%, #022c22 100%)', color: '#ffffff', padding: '1.5rem', borderRadius: '16px', marginBottom: '2rem', boxShadow: '0 10px 25px -5px rgba(6, 78, 59, 0.4)' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
+    <div
+      className="card ncr-group-buy-card"
+      style={{
+        background: 'linear-gradient(145deg, #022c22 0%, #064e3b 60%, #065f46 100%)',
+        color: '#ffffff',
+        padding: '1.75rem',
+        borderRadius: '20px',
+        marginBottom: '2rem',
+        boxShadow: '0 12px 30px -6px rgba(6, 78, 59, 0.45)',
+        border: '1px solid #047857',
+      }}
+    >
+      {/* 1. BENEFIT HERO HEADER */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
         <div>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255, 255, 255, 0.15)', padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.85rem', fontWeight: 600, color: '#34d399', marginBottom: '0.5rem' }}>
-            <Truck size={15} /> NCR MARKET MAKER OPPORTUNITIES & GROUP BUY DISCOUNTS
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: isRegionMatched ? 'rgba(52, 211, 153, 0.2)' : 'rgba(255, 255, 255, 0.12)', border: '1px solid rgba(52, 211, 153, 0.4)', padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.82rem', fontWeight: 700, color: '#6ee7b7', marginBottom: '0.5rem' }}>
+            <MapPin size={14} />
+            <span>
+              {isRegionMatched
+                ? `BEST DISCOUNT FOR YOUR REGION · ${regionName.toUpperCase()} GROUP BUY`
+                : `NCR MARKET MAKER DISCOUNTS · ${regionName.toUpperCase()} GROUP BUY`}
+            </span>
           </div>
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0, color: '#ffffff' }}>
-            Regional Group Buys · Direct Farm Savings
+
+          <h2 style={{ fontSize: '1.85rem', fontWeight: 800, margin: 0, color: '#ffffff', letterSpacing: '-0.3px' }}>
+            {hasDiscount ? (
+              <span style={{ color: '#34d399' }}>
+                SAVE ₹{savingsPerKg.toFixed(2)}/kg
+              </span>
+            ) : (
+              <span>Farm-Direct Pooled Rate</span>
+            )}
           </h2>
-          <p style={{ margin: '0.25rem 0 0', opacity: 0.85, fontSize: '0.9rem', maxWidth: '640px' }}>
-            Pool household produce demand in your region to unlock wholesale farm-gate prices and shared freight savings.
+
+          <p style={{ margin: '0.25rem 0 0', opacity: 0.9, fontSize: '0.9rem', color: '#d1fae5' }}>
+            {board.corridor} · Pooled household delivery without retail store markups.
           </p>
         </div>
 
-        <div style={{ textAlign: 'right', background: 'rgba(0, 0, 0, 0.25)', padding: '0.75rem 1rem', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-          <div style={{ fontSize: '0.8rem', opacity: 0.8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{board.crop}</div>
-          <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#6ee7b7' }}>
+        {/* Progress Badge */}
+        <div style={{ background: 'rgba(0, 0, 0, 0.3)', padding: '0.65rem 1rem', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.1)', textAlign: 'right' }}>
+          <div style={{ fontSize: '0.75rem', color: '#a7f3d0', textTransform: 'uppercase', fontWeight: 600 }}>Market Progress</div>
+          <div style={{ fontSize: '1.15rem', fontWeight: 700, color: '#6ee7b7' }}>
             {math.committedKg.toLocaleString('en-IN')} / {Number.isFinite(math.thresholdKg) ? math.thresholdKg.toLocaleString('en-IN') : '—'} kg
           </div>
-          <div style={{ fontSize: '0.8rem', marginTop: '0.2rem', color: isUnlocked ? '#34d399' : '#fbbf24', fontWeight: 600 }}>
-            {isUnlocked ? '✓ Market Unlocked · Savings Live' : `⌛ ${gapKg} kg more needed`}
+          <div style={{ fontSize: '0.78rem', marginTop: '0.15rem', color: isUnlocked ? '#34d399' : '#fbbf24', fontWeight: 600 }}>
+            {isUnlocked ? '✓ Market Unlocked' : `${gapKg} kg more needed`}
           </div>
         </div>
       </div>
 
-      {/* Regional Selector Pills */}
-      <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.5rem', marginBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-        {views.map((v) => {
-          const isSelected = v.board.id === activeBoardId
-          const regionName = v.board.regions?.[0]?.name ?? v.board.crop.split(' ')[0]
-          return (
-            <button
-              key={v.board.id}
-              type="button"
-              onClick={() => setActiveBoardId(v.board.id)}
-              style={{
-                background: isSelected ? '#10b981' : 'rgba(255, 255, 255, 0.1)',
-                color: '#ffffff',
-                border: isSelected ? '1px solid #34d399' : '1px solid rgba(255,255,255,0.15)',
-                padding: '0.4rem 0.85rem',
-                borderRadius: '8px',
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-              }}
-            >
-              <MapPin size={13} />📍 {regionName}
-            </button>
-          )
-        })}
-      </div>
+      {/* 2. ACTION: SIMPLE CROP & QUANTITY INPUT WITH SAVINGS BREAKDOWN */}
+      <div style={{ background: '#ffffff', color: '#111827', borderRadius: '16px', padding: '1.25rem', boxShadow: '0 4px 16px rgba(0,0,0,0.12)', marginBottom: '1.25rem' }}>
+        {/* Crop Selection Tabs if multiple crops */}
+        {cropMaths.length > 1 && (
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+            {cropMaths.map((cm) => {
+              const isSelected = (activeCropMath?.segment.id === cm.segment.id)
+              const icon = cm.segment.crop.toLowerCase().includes('tomato') ? '🍅' : cm.segment.crop.toLowerCase().includes('onion') ? '🧅' : '🥔'
+              const cropSave = Math.max(0, cm.segment.buyerCurrentPerKg - (cm.deliveredPerKg || cm.segment.buyerCeilingPerKg))
 
-      {/* Crop Cards inside Selected Regional Pool */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', marginTop: '0.5rem' }}>
-        {cropMaths.length > 0 ? (
-          cropMaths.map((cm: CropSegmentMath) => {
-            const regularPrice = cm.segment.buyerCurrentPerKg
-            const pooledPrice = cm.deliveredPerKg || cm.segment.buyerCeilingPerKg
-            const savingsPerKg = Math.max(0, regularPrice - pooledPrice)
-            const qty = quantities[cm.segment.id] || 2
-
-            return (
-              <div key={cm.segment.id} style={{ background: 'rgba(255, 255, 255, 0.08)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '12px', padding: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, color: '#ffffff' }}>
-                      {cm.segment.crop}
-                    </h3>
-                    <span style={{ fontSize: '0.75rem', background: 'rgba(52, 211, 153, 0.2)', color: '#34d399', padding: '0.15rem 0.5rem', borderRadius: '4px', fontWeight: 600 }}>
-                      Save ₹{savingsPerKg.toFixed(2)}/kg
+              return (
+                <button
+                  key={cm.segment.id}
+                  type="button"
+                  onClick={() => setSelectedCropId(cm.segment.id)}
+                  style={{
+                    background: isSelected ? '#047857' : '#f3f4f6',
+                    color: isSelected ? '#ffffff' : '#374151',
+                    border: isSelected ? '1px solid #047857' : '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    padding: '0.45rem 0.75rem',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                  }}
+                >
+                  <span>{icon}</span>
+                  <span>{cm.segment.crop}</span>
+                  {cropSave > 0 && (
+                    <span style={{ fontSize: '0.75rem', background: isSelected ? 'rgba(255,255,255,0.2)' : '#ecfdf5', color: isSelected ? '#ffffff' : '#047857', padding: '1px 5px', borderRadius: '4px' }}>
+                      -₹{cropSave.toFixed(0)}/kg
                     </span>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', margin: '0.75rem 0 0.5rem' }}>
-                    <span style={{ fontSize: '1.3rem', fontWeight: 800, color: '#6ee7b7' }}>
-                      ₹{pooledPrice.toFixed(2)}
-                    </span>
-                    <span style={{ fontSize: '0.9rem', color: '#9ca3af', textDecoration: 'line-through' }}>
-                      ₹{regularPrice.toFixed(2)}
-                    </span>
-                    <span style={{ fontSize: '0.8rem', color: '#d1d5db' }}>/kg</span>
-                  </div>
-
-                  <div style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    <Info size={13} /> {board.corridor} · Shared freight
-                  </div>
-                </div>
-
-                <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.3)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                    <button
-                      onClick={() => setQuantities({ ...quantities, [cm.segment.id]: Math.max(1, qty - 1) })}
-                      style={{ background: 'none', border: 'none', color: '#fff', padding: '0.35rem 0.6rem', cursor: 'pointer' }}
-                    >
-                      -
-                    </button>
-                    <span style={{ padding: '0 0.5rem', fontSize: '0.85rem', fontWeight: 600 }}>{qty} kg</span>
-                    <button
-                      onClick={() => setQuantities({ ...quantities, [cm.segment.id]: qty + 1 })}
-                      style={{ background: 'none', border: 'none', color: '#fff', padding: '0.35rem 0.6rem', cursor: 'pointer' }}
-                    >
-                      +
-                    </button>
-                  </div>
-
-                  <button
-                    onClick={() => handleAddToCart(cm.segment.id, cm.segment.crop, regularPrice, pooledPrice, savingsPerKg)}
-                    style={{ flex: 1, background: '#10b981', color: '#ffffff', border: 'none', borderRadius: '6px', padding: '0.45rem 0.75rem', fontWeight: 600, fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem', cursor: 'pointer', transition: 'background 0.2s' }}
-                  >
-                    <ShoppingCart size={15} /> Add to Basket
-                  </button>
-                </div>
-              </div>
-            )
-          })
-        ) : (
-          <div style={{ padding: '1rem', opacity: 0.8 }}>
-            Regular Price: ₹{board.buyerCurrentPerKg}/kg · Market Maker Price: ₹{math.deliveredPerKg || board.buyerCeilingPerKg}/kg
+                  )}
+                </button>
+              )
+            })}
           </div>
         )}
+
+        {/* Price & Quantity Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.85rem', marginBottom: '1rem', background: '#f8fafc', padding: '0.85rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+          <div>
+            <div style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Regular Price</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#64748b', textDecoration: 'line-through' }}>
+              ₹{regularPrice.toFixed(2)}/kg
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Retail / Mandi shop</div>
+          </div>
+
+          <div>
+            <div style={{ fontSize: '0.75rem', color: '#047857', textTransform: 'uppercase', fontWeight: 700 }}>Market Maker Price</div>
+            <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#059669' }}>
+              ₹{pooledPrice.toFixed(2)}/kg
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#047857' }}>Direct farm group buy</div>
+          </div>
+
+          <div>
+            <div style={{ fontSize: '0.75rem', color: '#374151', textTransform: 'uppercase', fontWeight: 600 }}>Quantity</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.2rem' }}>
+              <button
+                type="button"
+                onClick={() => setQuantityKg(Math.max(1, validQty - 1))}
+                style={{ background: '#e2e8f0', border: 'none', borderRadius: '4px', width: '28px', height: '28px', fontWeight: 700, cursor: 'pointer' }}
+              >
+                -
+              </button>
+              <input
+                type="number"
+                min={1}
+                max={50}
+                value={quantityKg}
+                onChange={(e) => setQuantityKg(Math.max(1, parseInt(e.target.value) || 1))}
+                style={{ width: '55px', textAlign: 'center', padding: '0.25rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontWeight: 700 }}
+              />
+              <button
+                type="button"
+                onClick={() => setQuantityKg(validQty + 1)}
+                style={{ background: '#e2e8f0', border: 'none', borderRadius: '4px', width: '28px', height: '28px', fontWeight: 700, cursor: 'pointer' }}
+              >
+                +
+              </button>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>kg</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Big Savings Breakdown Row */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.75rem', textAlign: 'center', marginBottom: '1.15rem' }}>
+          <div style={{ padding: '0.5rem', background: '#f8fafc', borderRadius: '8px' }}>
+            <div style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase' }}>Normal Price</div>
+            <strong style={{ fontSize: '1.1rem', color: '#475569' }}>₹{normalPriceTotal}</strong>
+          </div>
+
+          <div style={{ padding: '0.5rem', background: '#f8fafc', borderRadius: '8px' }}>
+            <div style={{ fontSize: '0.72rem', color: '#047857', textTransform: 'uppercase' }}>KisanLink Price</div>
+            <strong style={{ fontSize: '1.1rem', color: '#047857' }}>₹{kisanlinkPriceTotal}</strong>
+          </div>
+
+          <div style={{ padding: '0.5rem', background: '#ecfdf5', borderRadius: '8px', border: '1px solid #a7f3d0' }}>
+            <div style={{ fontSize: '0.72rem', color: '#047857', textTransform: 'uppercase', fontWeight: 800 }}>YOU SAVE</div>
+            <strong style={{ fontSize: '1.35rem', color: '#059669', fontWeight: 900 }}>₹{totalSavings}</strong>
+          </div>
+        </div>
+
+        {/* Primary CTA: ADD TO CART */}
+        <button
+          type="button"
+          onClick={handleAddToCart}
+          style={{
+            width: '100%',
+            background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+            color: '#ffffff',
+            border: 'none',
+            borderRadius: '12px',
+            padding: '0.9rem 1.5rem',
+            fontSize: '1rem',
+            fontWeight: 800,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.5rem',
+            boxShadow: '0 4px 12px rgba(5, 150, 105, 0.25)',
+          }}
+        >
+          <ShoppingCart size={18} />
+          <span>ADD {validQty} KG TO CART · SAVE ₹{totalSavings}</span>
+          <ArrowRight size={16} />
+        </button>
       </div>
 
-      {/* Footer link to exact board */}
-      <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', fontSize: '0.85rem', color: '#d1d5db' }}>
+      {/* 3. OTHER NCR DISCOUNTS (Compact Directory) */}
+      {otherViews.length > 0 && (
         <div>
-          📍 Region: <strong>{board.regions?.[0]?.name ?? 'NCR'}</strong> → Destination: <strong>{board.destination}</strong>
+          <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#a7f3d0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.65rem' }}>
+            OTHER NCR MARKET MAKER DISCOUNTS
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.65rem' }}>
+            {otherViews.map((ov) => {
+              const otherRegion = ov.board.regions?.[0]?.name ?? ov.board.crop.split(' ')[0]
+              const otherCrop = ov.board.crops?.[0]
+              const otherReg = otherCrop ? otherCrop.buyerCurrentPerKg : ov.board.buyerCurrentPerKg
+              const otherPool = otherCrop ? (otherCrop.buyerCeilingPerKg || otherCrop.farmerFloorPerKg + 6) : (ov.math.deliveredPerKg || ov.board.buyerCeilingPerKg)
+              const otherSave = Math.max(0, otherReg - otherPool)
+
+              return (
+                <div
+                  key={ov.board.id}
+                  onClick={() => {
+                    setActiveBoardId(ov.board.id)
+                    setSelectedCropId('')
+                  }}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.08)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    borderRadius: '10px',
+                    padding: '0.75rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#ffffff' }}>
+                      📍 {otherRegion}
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: '#9ca3af', marginTop: '0.15rem' }}>
+                      {otherCrop ? otherCrop.crop : ov.board.crop}
+                    </div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#34d399', marginTop: '0.2rem' }}>
+                      {otherSave > 0 ? `Save ₹${otherSave.toFixed(0)}/kg` : 'Pooled Price'}
+                    </div>
+                  </div>
+
+                  <span style={{ fontSize: '0.75rem', background: 'rgba(255,255,255,0.1)', color: '#fff', padding: '0.25rem 0.5rem', borderRadius: '4px', fontWeight: 600 }}>
+                    Select
+                  </span>
+                </div>
+              )
+            })}
+          </div>
         </div>
+      )}
+
+      {/* Footer Link */}
+      <div style={{ marginTop: '1.25rem', paddingTop: '0.85rem', borderTop: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.82rem', color: '#d1d5db' }}>
+        <span>Destination: <strong>{board.destination}</strong></span>
         <Link to={`/consumer/market?boardId=${board.id}`} style={{ color: '#34d399', textDecoration: 'none', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-          View {board.crop} Group Buy <ArrowRight size={14} />
+          See Market Details <ArrowRight size={14} />
         </Link>
       </div>
     </div>

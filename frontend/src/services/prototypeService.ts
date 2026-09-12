@@ -620,7 +620,7 @@ const normalize = (value: Partial<PrototypeState>): PrototypeState => {
   return state
 }
 const readLocal = (): PrototypeState => {
-  try { return normalize(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '') as Partial<PrototypeState>) } catch { const state = cloneSeed(); localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); return state }
+  try { return normalize(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '') as Partial<PrototypeState>) } catch { const state = normalize(cloneSeed()); localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); return state }
 }
 /**
  * Persists shared state and announces it only when it actually changed. `readState()` also

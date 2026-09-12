@@ -1,16 +1,16 @@
 import {
-  ArrowRight, Boxes, Building2, CalendarClock, Check, CircleAlert, Home, IndianRupee, Layers, MapPin, MapPinned,
-  PackageCheck, Radar, RotateCcw, Sparkles, Sprout, Truck, Zap,
+  ArrowRight, Check, ChevronDown, ChevronUp, CircleAlert, Info, Layers, MapPin, MapPinned,
+  Radar, RotateCcw, ShoppingCart, Sparkles, Sprout, TrendingUp, Truck, Zap
 } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { FarmerMarketMaker } from '../components/market/FarmerMarketMaker'
 import { MarketCommitPanel } from '../components/market/MarketCommitPanel'
-import { MarketHowItWorks } from '../components/market/MarketHowItWorks'
-import { MarketInfographics } from '../components/market/MarketInfographics'
 import { MarketConvergence } from '../components/market/MarketConvergence'
 import { MarketDemandRing } from '../components/market/MarketDemandRing'
 import { MarketFreightCurve } from '../components/market/MarketFreightCurve'
+import { MarketHowItWorks } from '../components/market/MarketHowItWorks'
+import { MarketInfographics } from '../components/market/MarketInfographics'
 import { MarketUnlockReveal, type MarketCreationResult } from '../components/market/MarketUnlockReveal'
 import { MarketValueSplit } from '../components/market/MarketValueSplit'
 import { MarketWhyPanel } from '../components/market/MarketWhyPanel'
@@ -22,43 +22,13 @@ import { useLanguage } from '../contexts/LanguageContext'
 import { useToast } from '../contexts/ToastContext'
 import { useAsyncData } from '../hooks/useAsyncData'
 import { logisticsService } from '../services/logisticsService'
-import { marketMakerService } from '../services/marketMakerService'
+import { marketMakerService, type MarketView } from '../services/marketMakerService'
+import { extractUserRegion, rankMarketMakerOpportunities } from '../services/marketRankingService'
 import { phase2Service } from '../services/phase2Service'
 import { prototypeService } from '../services/prototypeService'
 import type { Role, Vehicle } from '../types'
 
 const money = (value: number) => `₹${Math.round(value).toLocaleString('en-IN')}`
-
-const roleFrame: Record<Role, { eyebrow: string; title: string; copy: string }> = {
-  farmer: {
-    eyebrow: 'Your produce, pooled into a market',
-    title: 'A buyer big enough for your lot',
-    copy: 'Small lots are combined until a direct trip is worth running. Your minimum price never moves.',
-  },
-  consumer: {
-    eyebrow: 'Buying together, straight from the farm',
-    title: 'Farm-direct opens at a certain size',
-    copy: 'One van costs the same at 15 kg or 300 kg. Enough neighbours, and farm-direct beats the shop.',
-  },
-  bulk: {
-    eyebrow: 'Pooled procurement corridors',
-    title: 'Requirements that are too small, made viable',
-    copy: 'Your requirement alone cannot justify this corridor. Pooled with household demand, it clears break-even.',
-  },
-  logistics: {
-    eyebrow: 'Corridor feasibility',
-    title: 'Trips that only exist once the load does',
-    copy: 'A vehicle is held against a corridor with the load it needs to pay for itself. Nothing dispatches before that.',
-  },
-}
-
-/** One deep visualisation per role — the question that role actually asks of the market. */
-const roleDeepView: Record<Role, { eyebrow: string; title: string }> = {
-  farmer: { eyebrow: 'Why volume matters', title: 'Delivered price against committed volume' },
-  consumer: { eyebrow: 'Who benefits', title: 'Where the price actually goes' },
-  bulk: { eyebrow: 'What is being combined', title: 'Where the supply is coming from' },
-  logistics: { eyebrow: 'Why volume matters', title: 'Delivered price against committed volume' },
-}
 
 export function MarketMakerPage() {
   const { session } = useAuth()
@@ -70,26 +40,57 @@ export function MarketMakerPage() {
   const [reveal, setReveal] = useState<MarketCreationResult | null>(null)
   const [selectedBoardId, setSelectedBoardId] = useState<string>('')
   const [selectedCropId, setSelectedCropId] = useState<string>('')
+  const [consumerQty, setConsumerQty] = useState<number>(5)
+  const [bulkQty, setBulkQty] = useState<number>(500)
+  const [showTechnicalDetails, setShowTechnicalDetails] = useState<boolean>(false)
+
   const role = (session?.role ?? 'consumer') as Role
   const l = (en: string, hi: string) => (language === 'hi' ? hi : en)
 
   const { data, loading, refresh } = useAsyncData(async () => {
-    const [views, consumerProfile, bulkProfile] = await Promise.all([
+    const [views, consumerProfile, bulkProfile, farmerProfile, state] = await Promise.all([
       marketMakerService.boards(),
       phase2Service.consumerProfile(),
       phase2Service.bulkProfile(),
+      prototypeService.getProfile(),
+      prototypeService.getState(),
     ])
-    return { views, consumerProfile, bulkProfile }
+    return {
+      views,
+      consumerProfile,
+      bulkProfile,
+      farmerProfile,
+      logisticsProfile: state.logisticsProfile,
+    }
   }, [], { live: true })
 
   if (loading && !data) return <DashboardSkeleton />
-  if (!data?.views || data.views.length === 0) return <div className="error-panel"><h2>No market corridor is open</h2><p>Seed the Market Maker scenario from the logistics demo controls to restore it.</p></div>
+  if (!data?.views || data.views.length === 0) {
+    return (
+      <div className="error-panel">
+        <h2>No market corridor is open</h2>
+        <p>Seed the Market Maker scenario from the logistics demo controls to restore it.</p>
+      </div>
+    )
+  }
 
+  // 1. Determine user region deterministically from active profile fields
+  const userRegion = extractUserRegion(role, {
+    farmerProfile: data.farmerProfile,
+    consumerProfile: data.consumerProfile,
+    bulkProfile: data.bulkProfile,
+    logisticsProfile: data.logisticsProfile,
+  })
+
+  // 2. Rank opportunities deterministically: user's region first
+  const ranking = rankMarketMakerOpportunities(data.views, userRegion)
   const effectiveBoardId = selectedBoardId || queryBoardId
-  const currentView = data.views.find((v) => v.board.id === effectiveBoardId)
-    || data.views.find((v) => v.board.isMultiCrop)
-    || data.views[0]
+  const currentView = (effectiveBoardId ? data.views.find((v) => v.board.id === effectiveBoardId) : null) || ranking.hero
+  const otherViews = data.views.filter((v) => v.board.id !== currentView.board.id)
+
   const { board, math } = currentView
+  const regionName = board.regions?.[0]?.name ?? 'NCR'
+  const isRegionMatched = ranking.userRegionMatched && ranking.matchedRegionName?.toLowerCase() === regionName.toLowerCase()
 
   const handleSelectBoard = (boardId: string) => {
     setSelectedBoardId(boardId)
@@ -97,404 +98,606 @@ export function MarketMakerPage() {
     setSearchParams({ boardId })
   }
 
-  const frame = roleFrame[role]
-  const deliveryWindow = language === 'hi'
-    ? board.deliveryWindow.replace('Tomorrow', 'कल').replace(' AM', ' बजे').replace(' PM', ' बजे')
-    : board.deliveryWindow
-  const own = math.allocations.find((entry) => entry.lot.own)
-  const blocker = math.blockers[0]
-  const structural = math.blockers.find((item) => item.kind !== 'demand')
-  const created = board.status === 'created'
-  const blockerTitle = language === 'hi' && blocker
-    ? blocker.kind === 'demand' ? `सीधा बाज़ार बनने के लिए ${math.gapKg} किलो और चाहिए`
-      : blocker.kind === 'vehicle' ? 'इस कॉरिडोर के लिए वाहन उपलब्ध नहीं है'
-        : blocker.kind === 'supply' ? 'ज़रूरी मात्रा के लिए फसल कम है'
-          : 'उपलब्ध वाहन में ज़रूरी मात्रा नहीं आ सकती'
-    : blocker?.title
-  const blockerDetail = language === 'hi' && blocker
-    ? blocker.kind === 'demand'
-      ? `${math.committedKg} किलो मांग पक्की है। ${math.thresholdKg} किलो पर तय ढुलाई लागत बंटने से डिलीवरी कीमत खरीदार की सीमा में आ जाएगी।`
-      : 'मांग मौजूद है, लेकिन बाज़ार बनाने से पहले पर्याप्त फसल और सही वाहन दोनों उपलब्ध होने चाहिए।'
-    : blocker?.detail
-
   const guard = async (action: () => Promise<unknown>, success: string) => {
     setBusy(true)
-    try { await action(); showToast(success) }
-    catch (reason) { showToast(reason instanceof Error ? reason.message : 'That change could not be applied.') }
-    finally { setBusy(false); refresh() }
+    try {
+      await action()
+      showToast(success)
+    } catch (reason) {
+      showToast(reason instanceof Error ? reason.message : 'That change could not be applied.')
+    } finally {
+      setBusy(false)
+      refresh()
+    }
   }
 
-  const commit = (quantityKg: number) => guard(async () => {
-    const result = await marketMakerService.commit(board.id, role === 'bulk'
-      ? { source: 'bulk', party: data.bulkProfile.businessName, detail: board.destination, quantityKg, own: true, cropId: selectedCropId }
-      : { source: 'consumer', party: data.consumerProfile.name, detail: data.consumerProfile.addresses[0]?.line1 ?? data.consumerProfile.defaultLocation, quantityKg, own: true, cropId: selectedCropId })
-    if (result.math.viable) showToast('Break-even reached — this market can be created')
-  }, `${quantityKg} kg committed to ${board.corridor}`)
+  const handleConsumerAddToCart = () => {
+    const cropSegment = board.crops?.find((c) => c.id === selectedCropId) || board.crops?.[0]
+    const cropTitle = cropSegment ? cropSegment.crop : board.crop
+    const cropMath = math.multiCropMath?.cropMaths?.find((cm) => cropSegment ? cm.segment.id === cropSegment.id : true)
+    const regPrice = cropSegment ? cropSegment.buyerCurrentPerKg : board.buyerCurrentPerKg
+    const poolPrice = cropMath ? (cropMath.deliveredPerKg || cropSegment?.buyerCeilingPerKg || 28) : (math.deliveredPerKg || board.buyerCeilingPerKg)
+    const savePerKg = Math.max(0, regPrice - poolPrice)
+    const listingId = cropSegment?.id?.includes('tomato') ? 'listing_001' : cropSegment?.id?.includes('onion') ? 'listing_draft_1' : 'listing_sold_1'
+    const regionId = board.regions?.[0]?.id ?? 'reg_ncr'
+
+    phase2Service.addPooledToCart({
+      listingId,
+      quantityKg: consumerQty,
+      pooledPricePerKg: poolPrice,
+      regularPricePerKg: regPrice,
+      savingsPerKg: savePerKg,
+      boardId: board.id,
+      cropId: cropSegment?.id || 'seg_default',
+      regionId,
+    })
+
+    const totalSaved = Math.round(savePerKg * consumerQty)
+    showToast(l(
+      `Added ${consumerQty} kg ${cropTitle} to cart · Saved ₹${totalSaved}!`,
+      `${consumerQty} किलो ${cropTitle} कार्ट में जोड़ा गया · ₹${totalSaved} की बचत!`
+    ))
+  }
+
+  const handleBulkCommit = () => {
+    const cropSegment = board.crops?.find((c) => c.id === selectedCropId) || board.crops?.[0]
+    const cropTitle = cropSegment ? cropSegment.crop : board.crop
+    const cropMath = math.multiCropMath?.cropMaths?.find((cm) => cropSegment ? cm.segment.id === cropSegment.id : true)
+    const stdLanded = cropSegment ? cropSegment.buyerCurrentPerKg : board.buyerCurrentPerKg
+    const mmLanded = cropMath ? (cropMath.deliveredPerKg || cropSegment?.buyerCeilingPerKg || 27) : (math.deliveredPerKg || board.buyerCeilingPerKg)
+    const savePerKg = Math.max(0, stdLanded - mmLanded)
+    const totalSaved = Math.round(savePerKg * bulkQty)
+
+    guard(async () => {
+      await marketMakerService.commit(board.id, {
+        source: 'bulk',
+        party: data.bulkProfile.businessName,
+        detail: `${regionName} Bulk Procurement · ${cropTitle}`,
+        quantityKg: bulkQty,
+        own: true,
+        cropId: cropSegment?.id,
+      })
+    }, `Committed ${bulkQty} kg ${cropTitle} to ${regionName} Pool · Saved ₹${totalSaved}!`)
+  }
 
   const create = async () => {
     setBusy(true)
     try {
       const result = await marketMakerService.createMarket(board.id)
-      setReveal({ routeId: result.routeId, farmerOrderIds: result.farmerOrderIds, bulkOrderId: result.bulkOrderId, consumerOrderId: result.consumerOrderId, pickupIds: result.pickupIds, deliveryIds: result.deliveryIds })
-    } catch (reason) { showToast(reason instanceof Error ? reason.message : 'This market could not be created.') }
-    finally { setBusy(false); refresh() }
+      setReveal({
+        routeId: result.routeId,
+        farmerOrderIds: result.farmerOrderIds,
+        bulkOrderId: result.bulkOrderId,
+        consumerOrderId: result.consumerOrderId,
+        pickupIds: result.pickupIds,
+        deliveryIds: result.deliveryIds,
+      })
+    } catch (reason) {
+      showToast(reason instanceof Error ? reason.message : 'This market could not be created.')
+    } finally {
+      setBusy(false)
+      refresh()
+    }
   }
 
+  // Active crop segment for Consumer and Bulk views
+  const activeCropSegment = board.crops?.find((c) => c.id === selectedCropId) || board.crops?.[0]
+  const activeCropMath = math.multiCropMath?.cropMaths?.find((cm) =>
+    activeCropSegment ? cm.segment.id === activeCropSegment.id : true
+  )
+
+  const gapKg = Math.max(0, math.thresholdKg - math.committedKg)
+  const isUnlocked = math.viable || gapKg === 0
+
+  // Consumer calculations
+  const consumerRegularPrice = activeCropSegment ? activeCropSegment.buyerCurrentPerKg : board.buyerCurrentPerKg
+  const consumerPooledPrice = activeCropMath ? (activeCropMath.deliveredPerKg || activeCropSegment?.buyerCeilingPerKg || 28) : (math.deliveredPerKg || board.buyerCeilingPerKg)
+  const consumerSavingsPerKg = Math.max(0, consumerRegularPrice - consumerPooledPrice)
+  const consumerTotalSavings = Math.round(consumerSavingsPerKg * consumerQty)
+
+  // Bulk calculations
+  const bulkStdLanded = activeCropSegment ? activeCropSegment.buyerCurrentPerKg : board.buyerCurrentPerKg
+  const bulkMmLanded = activeCropMath ? (activeCropMath.deliveredPerKg || activeCropSegment?.buyerCeilingPerKg || 27) : (math.deliveredPerKg || board.buyerCeilingPerKg)
+  const bulkSavingsPerKg = Math.max(0, bulkStdLanded - bulkMmLanded)
+  const bulkTotalSavings = Math.round(bulkSavingsPerKg * bulkQty)
+
   return (
-    <div className={`page mm-page mm-page-${role}`}>
-      <div className="page-title-row mm-head">
-        <div>
-          <span className="eyebrow"><Radar size={15} /> {l('KisanLink Regional Market Maker Ecosystem', 'किसानलिंक क्षेत्रीय मार्केट मेकर')} · {l(frame.eyebrow, 'साझा मांग से सीधा बाज़ार')}</span>
-          <h1>{l(frame.title, 'सीधा बाज़ार बनाना')}</h1>
-          <p>{l(frame.copy, 'बिखरी हुई मांग और सप्लाई को जोड़कर सीधा व्यापार संभव बनाया जाता है, और किसान का न्यूनतम भाव सुरक्षित रहता है।')}</p>
-        </div>
-        <StatusBadge tone={created ? 'green' : math.viable ? 'green' : structural ? 'red' : 'amber'}>
-          {created ? l('Market created', 'बाज़ार बन गया') : math.viable ? l('Ready to create', 'बनाने के लिए तैयार') : structural ? l('Blocked', 'रुका हुआ') : l('Forming', 'बन रहा है')}
-        </StatusBadge>
-      </div>
-
-      {/* Directory Hero Grid of Regional Market Maker Opportunities */}
-      <section style={{ marginBottom: '1.75rem', background: '#042f2e', color: '#ffffff', borderRadius: '16px', padding: '1.25rem', border: '1px solid #115e59' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <div>
-            <div style={{ fontSize: '0.8rem', color: '#34d399', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              NCR MARKET MAKER OPPORTUNITIES DIRECTORY
+    <div className={`page mm-page mm-page-${role}`} style={{ maxWidth: '1080px', margin: '0 auto', paddingBottom: '3rem' }}>
+      {/* Role-Specific Simple Experience */}
+      {role === 'farmer' ? (
+        <FarmerMarketMaker
+          views={data.views}
+          activeBoardId={currentView.board.id}
+          onSelectBoard={handleSelectBoard}
+          userRegion={userRegion}
+          onRefresh={refresh}
+        />
+      ) : role === 'consumer' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {/* CONSUMER BENEFIT-FIRST HERO */}
+          <section
+            style={{
+              background: 'linear-gradient(145deg, #022c22 0%, #064e3b 60%, #065f46 100%)',
+              color: '#ffffff',
+              borderRadius: '20px',
+              padding: '1.75rem',
+              boxShadow: '0 12px 32px -8px rgba(6, 78, 59, 0.45)',
+              border: '1px solid #047857',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.85rem' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: isRegionMatched ? 'rgba(52, 211, 153, 0.2)' : 'rgba(255, 255, 255, 0.12)', border: '1px solid rgba(52, 211, 153, 0.4)', color: '#6ee7b7', padding: '0.3rem 0.85rem', borderRadius: '9999px', fontSize: '0.82rem', fontWeight: 700 }}>
+                <MapPin size={14} />
+                <span>
+                  {isRegionMatched
+                    ? l(`BEST DISCOUNT FOR YOUR REGION · ${regionName.toUpperCase()} GROUP BUY`, `आपके क्षेत्र के लिए सर्वश्रेष्ठ छूट · ${regionName.toUpperCase()} ग्रुप बाय`)
+                    : l(`NCR MARKET MAKER DISCOUNTS · ${regionName.toUpperCase()} GROUP BUY`, `एनसीआर मार्केट मेकर छूट · ${regionName.toUpperCase()} ग्रुप बाय`)}
+                </span>
+              </div>
+              <StatusBadge tone={isUnlocked ? 'green' : 'amber'}>
+                {isUnlocked ? l('Market Unlocked', 'बाज़ार खुल गया') : l('Opportunity Building', 'अवसर बन रहा है')}
+              </StatusBadge>
             </div>
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: '0.1rem 0 0', color: '#ffffff' }}>
-              {l('Find a profitable shared transport corridor near you', 'अपने पास एक लाभप्रद साझा परिवहन कॉरिडोर चुनें')}
-            </h2>
-          </div>
-          <span style={{ fontSize: '0.8rem', background: 'rgba(255,255,255,0.1)', padding: '0.2rem 0.6rem', borderRadius: '6px', opacity: 0.8 }}>
-            {data.views.length} {l('Regional Pools Active', 'क्षेत्रीय पूल सक्रीय')}
-          </span>
-        </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.85rem' }}>
-          {data.views.map((v) => {
-            const isSelected = v.board.id === board.id
-            const poolMath = v.math
-            const pct = Math.min(100, Math.round((poolMath.committedKg / (poolMath.thresholdKg || 1)) * 100))
-            const cropsList = v.board.crops?.map((c) => c.crop).join(' • ') ?? v.board.crop
-            const regionName = v.board.regions?.[0]?.name ?? v.board.crop.split(' ')[0]
+            <div style={{ marginBottom: '1.25rem' }}>
+              <h1 style={{ fontSize: '2.1rem', fontWeight: 800, margin: '0.25rem 0', color: '#ffffff' }}>
+                {consumerSavingsPerKg > 0 ? (
+                  <span style={{ color: '#34d399' }}>
+                    {l(`SAVE ₹${consumerSavingsPerKg.toFixed(2)}/kg`, `प्रति किलो ₹${consumerSavingsPerKg.toFixed(2)} बचाएं`)}
+                  </span>
+                ) : (
+                  <span>{l('Farm-Direct Group Buy', 'खेत से सीधा ग्रुप बाय')}</span>
+                )}
+              </h1>
+              <p style={{ margin: 0, color: '#d1fae5', fontSize: '0.92rem' }}>
+                {board.corridor} · {l('Buy together directly from farm clusters at wholesale freight rates.', 'थोक मालभाड़ा दरों पर सीधे खेत समूहों से मिलकर खरीदें।')}
+              </p>
+            </div>
 
-            return (
-              <div
-                key={v.board.id}
-                onClick={() => handleSelectBoard(v.board.id)}
+            {/* Price Columns */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem', background: 'rgba(0,0,0,0.25)', borderRadius: '14px', padding: '1rem', border: '1px solid rgba(255,255,255,0.1)', marginBottom: '1.5rem' }}>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 600 }}>{l('Regular Price', 'सामान्य खुदरा भाव')}</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#9ca3af', textDecoration: 'line-through' }}>₹{consumerRegularPrice.toFixed(2)}/kg</div>
+                <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{l('Retail shop / market', 'दुकान का भाव')}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: '#6ee7b7', textTransform: 'uppercase', fontWeight: 600 }}>{l('Market Maker Price', 'मार्केट मेकर भाव')}</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#34d399' }}>₹{consumerPooledPrice.toFixed(2)}/kg</div>
+                <div style={{ fontSize: '0.75rem', color: '#a7f3d0' }}>{l('Direct farm-gate pool', 'सीधा खेत पूल भाव')}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: '#6ee7b7', textTransform: 'uppercase', fontWeight: 600 }}>{l('Your Savings', 'आपकी बचत')}</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#34d399' }}>₹{consumerSavingsPerKg.toFixed(2)}/kg</div>
+                <div style={{ fontSize: '0.75rem', color: '#a7f3d0' }}>{l('Direct savings per kg', 'प्रति किलो सीधी बचत')}</div>
+              </div>
+            </div>
+
+            {/* Action Box */}
+            <div style={{ background: '#ffffff', color: '#111827', borderRadius: '16px', padding: '1.25rem' }}>
+              {board.crops && board.crops.length > 1 && (
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                  {board.crops.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setSelectedCropId(c.id)}
+                      style={{
+                        background: (activeCropSegment?.id === c.id) ? '#047857' : '#f3f4f6',
+                        color: (activeCropSegment?.id === c.id) ? '#ffffff' : '#374151',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        padding: '0.45rem 0.8rem',
+                        fontWeight: 700,
+                        fontSize: '0.85rem',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {c.crop}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                <span style={{ fontWeight: 600, color: '#4b5563' }}>{l('Quantity:', 'मात्रा:')}</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={50}
+                  value={consumerQty}
+                  onChange={(e) => setConsumerQty(Math.max(1, parseInt(e.target.value) || 1))}
+                  style={{ width: '80px', padding: '0.4rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontWeight: 700, textAlign: 'center' }}
+                />
+                <span style={{ fontWeight: 600, color: '#6b7280' }}>kg {activeCropSegment?.crop || board.crop}</span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem', textAlign: 'center', marginBottom: '1.15rem' }}>
+                <div style={{ padding: '0.5rem', background: '#f8fafc', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase' }}>{l('Normal Price', 'सामान्य कीमत')}</div>
+                  <strong style={{ fontSize: '1.1rem', color: '#64748b' }}>₹{Math.round(consumerRegularPrice * consumerQty)}</strong>
+                </div>
+                <div style={{ padding: '0.5rem', background: '#f8fafc', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '0.72rem', color: '#047857', textTransform: 'uppercase' }}>{l('KisanLink Price', 'किसानलिंक कीमत')}</div>
+                  <strong style={{ fontSize: '1.1rem', color: '#047857' }}>₹{Math.round(consumerPooledPrice * consumerQty)}</strong>
+                </div>
+                <div style={{ padding: '0.5rem', background: '#ecfdf5', borderRadius: '8px', border: '1px solid #a7f3d0' }}>
+                  <div style={{ fontSize: '0.72rem', color: '#047857', textTransform: 'uppercase', fontWeight: 800 }}>{l('YOU SAVE', 'आपकी बचत')}</div>
+                  <strong style={{ fontSize: '1.4rem', color: '#059669', fontWeight: 900 }}>₹{consumerTotalSavings}</strong>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleConsumerAddToCart}
                 style={{
-                  background: isSelected ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255, 255, 255, 0.05)',
-                  border: isSelected ? '2px solid #34d399' : '1px solid rgba(255, 255, 255, 0.12)',
+                  width: '100%',
+                  background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                  color: '#ffffff',
+                  border: 'none',
                   borderRadius: '12px',
-                  padding: '1rem',
+                  padding: '0.9rem 1.5rem',
+                  fontSize: '1.05rem',
+                  fontWeight: 800,
                   cursor: 'pointer',
-                  transition: 'all 0.2s',
                   display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
                 }}
               >
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#34d399', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                      <MapPin size={14} /> {regionName.toUpperCase()}
-                    </span>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: poolMath.viable ? '#34d399' : '#fbbf24', background: 'rgba(0,0,0,0.3)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>
-                      {poolMath.viable ? l('UNLOCKED', 'अनलॉक्ड') : `${pct}% FUNDED`}
-                    </span>
-                  </div>
+                <ShoppingCart size={18} />
+                <span>{l(`ADD ${consumerQty} KG TO CART · SAVE ₹${consumerTotalSavings}`, `${consumerQty} किलो कार्ट में जोड़ें · ₹${consumerTotalSavings} बचाएं`)}</span>
+              </button>
+            </div>
+          </section>
 
-                  <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: '0 0 0.25rem', color: '#ffffff' }}>
-                    {v.board.crop}
-                  </h3>
+          {/* PROGRESS */}
+          <section style={{ background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '16px', padding: '1.25rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: 700 }}>
+              <span>{l('Market Progress', 'बाज़ार प्रगति')}</span>
+              <span style={{ color: isUnlocked ? '#059669' : '#2563eb' }}>{math.committedKg} / {math.thresholdKg} kg {l('ready', 'तैयार')}</span>
+            </div>
+            <div style={{ width: '100%', height: '10px', background: '#e2e8f0', borderRadius: '5px', overflow: 'hidden' }}>
+              <div style={{ width: `${Math.min(100, Math.round((math.committedKg / (math.thresholdKg || 1)) * 100))}%`, height: '100%', background: isUnlocked ? '#059669' : '#2563eb' }} />
+            </div>
+          </section>
 
-                  <div style={{ fontSize: '0.8rem', color: '#9ca3af', marginBottom: '0.6rem' }}>
-                    {cropsList}
-                  </div>
-
-                  <div style={{ fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem', color: '#d1d5db' }}>
-                    <span>{l('Pooled Volume', 'पूल वॉल्यूम')}:</span>
-                    <strong style={{ color: '#6ee7b7' }}>{poolMath.committedKg} / {poolMath.thresholdKg} kg</strong>
-                  </div>
-
-                  {/* Progress Bar */}
-                  <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden', marginBottom: '0.75rem' }}>
-                    <div style={{ width: `${pct}%`, height: '100%', background: poolMath.viable ? '#10b981' : '#3b82f6', transition: 'width 0.3s' }} />
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); handleSelectBoard(v.board.id) }}
-                  style={{
-                    width: '100%',
-                    background: isSelected ? '#10b981' : 'rgba(255, 255, 255, 0.1)',
-                    color: '#ffffff',
-                    border: 'none',
-                    borderRadius: '6px',
-                    padding: '0.4rem 0.6rem',
-                    fontSize: '0.8rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.3rem',
-                  }}
-                >
-                  {isSelected ? l('Viewing Market Maker', 'देख रहे हैं') : l('Open Market Maker', 'मार्केट मेकर खोलें')} <ArrowRight size={14} />
-                </button>
+          {/* OTHER REGIONS */}
+          {otherViews.length > 0 && (
+            <section style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '1.25rem' }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
+                {l('OTHER NCR MARKET MAKER DISCOUNTS', 'अन्य एनसीआर मार्केट मेकर छूट')}
               </div>
-            )
-          })}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.65rem' }}>
+                {otherViews.map((ov) => (
+                  <div
+                    key={ov.board.id}
+                    onClick={() => handleSelectBoard(ov.board.id)}
+                    style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '0.75rem', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                  >
+                    <div>
+                      <strong style={{ fontSize: '0.85rem' }}>📍 {ov.board.regions?.[0]?.name ?? ov.board.crop.split(' ')[0]}</strong>
+                      <div style={{ fontSize: '0.78rem', color: '#64748b' }}>{ov.board.crop}</div>
+                    </div>
+                    <button type="button" style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '0.25rem 0.5rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>
+                      {l('View', 'देखें')}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
-      </section>
+      ) : role === 'bulk' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {/* BULK BUYER BENEFIT-FIRST HERO */}
+          <section
+            style={{
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: '20px',
+              padding: '1.75rem',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.06)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '1rem' }}>
+              <div>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+                  <MapPin size={14} />
+                  <span>
+                    {isRegionMatched
+                      ? `BEST PROCUREMENT OPPORTUNITY · ${regionName.toUpperCase()} MARKET MAKER`
+                      : `NCR PROCUREMENT OPPORTUNITY · ${regionName.toUpperCase()} MARKET MAKER`}
+                  </span>
+                </div>
+                <h1 style={{ fontSize: '2.1rem', fontWeight: 800, margin: 0, color: '#0f172a' }}>
+                  {bulkSavingsPerKg > 0 ? (
+                    <span style={{ color: '#047857' }}>
+                      SAVE ₹{bulkSavingsPerKg.toFixed(2)}/kg ON LANDED COST
+                    </span>
+                  ) : (
+                    <span>Direct Farm Pooled Sourcing</span>
+                  )}
+                </h1>
+                <p style={{ margin: '0.25rem 0 0', color: '#64748b', fontSize: '0.92rem' }}>
+                  {board.corridor} → {board.destination} · Direct aggregate farm sourcing.
+                </p>
+              </div>
 
-      {/* Corridor Selector Bar */}
-      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
-        {data.views.map((v) => {
-          const isSelected = v.board.id === board.id
-          return (
-            <button
-              key={v.board.id}
-              type="button"
-              className={`btn ${isSelected ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => handleSelectBoard(v.board.id)}
-              style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}
-            >
-              {v.board.isMultiCrop ? <Layers size={16} /> : <Sprout size={16} />}
-              <span>{language === 'hi' ? v.board.cropHi : v.board.crop}</span>
-              <small style={{ opacity: 0.8, fontSize: '0.75rem', padding: '1px 5px', borderRadius: '4px', background: isSelected ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.05)' }}>
-                {v.board.regions?.[0]?.name ?? 'NCR'}
-              </small>
-            </button>
-          )
-        })}
-      </div>
+              <StatusBadge tone={isUnlocked ? 'green' : 'amber'}>
+                {isUnlocked ? 'Market Viable' : `${gapKg} kg remaining`}
+              </StatusBadge>
+            </div>
 
-      <MarketStateRail status={board.status} viable={math.viable} blocked={Boolean(structural)} l={l} />
+            {/* Landed Cost Columns */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem', background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '1rem' }}>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Standard Landed Cost</div>
+                <div style={{ fontSize: '1.35rem', fontWeight: 700, color: '#64748b', textDecoration: 'line-through' }}>₹{bulkStdLanded.toFixed(2)}/kg</div>
+                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Mandi + Trader commission</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: '#047857', textTransform: 'uppercase', fontWeight: 700 }}>Market Maker Landed Cost</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#047857' }}>₹{bulkMmLanded.toFixed(2)}/kg</div>
+                <div style={{ fontSize: '0.75rem', color: '#059669' }}>Farm Gate + Pooled Freight</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: '#047857', textTransform: 'uppercase', fontWeight: 700 }}>Landed Saving</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#047857' }}>₹{bulkSavingsPerKg.toFixed(2)}/kg</div>
+                <div style={{ fontSize: '0.75rem', color: '#059669' }}>Net margin gain</div>
+              </div>
+            </div>
 
-      {/* Render MultiCropCorridorCard when in multi-crop corridor */}
-      {board.isMultiCrop && math.multiCropMath && (
-        <MultiCropCorridorCard
-          board={board}
-          math={math}
-          onSelectCrop={(cropId) => setSelectedCropId(cropId)}
-        />
+            {/* Input and Commit */}
+            <div style={{ background: '#ffffff', borderRadius: '12px', padding: '1rem', border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                <span style={{ fontWeight: 600, color: '#1e293b' }}>Procurement Demand:</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={gapKg || 1000}
+                  value={bulkQty}
+                  onChange={(e) => setBulkQty(Math.max(1, parseInt(e.target.value) || 0))}
+                  style={{ width: '100px', padding: '0.4rem 0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontWeight: 700, fontSize: '1rem' }}
+                />
+                <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>kg</span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem', textAlign: 'center', marginBottom: '1.15rem' }}>
+                <div style={{ padding: '0.5rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase' }}>Standard Total</div>
+                  <strong style={{ fontSize: '1.15rem', color: '#64748b' }}>₹{Math.round(bulkStdLanded * bulkQty).toLocaleString('en-IN')}</strong>
+                </div>
+                <div style={{ padding: '0.5rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '0.72rem', color: '#047857', textTransform: 'uppercase' }}>Market Maker Total</div>
+                  <strong style={{ fontSize: '1.15rem', color: '#047857' }}>₹{Math.round(bulkMmLanded * bulkQty).toLocaleString('en-IN')}</strong>
+                </div>
+                <div style={{ padding: '0.5rem', background: '#ecfdf5', borderRadius: '8px', border: '1px solid #a7f3d0' }}>
+                  <div style={{ fontSize: '0.72rem', color: '#047857', textTransform: 'uppercase', fontWeight: 800 }}>TOTAL SAVING</div>
+                  <strong style={{ fontSize: '1.4rem', color: '#059669', fontWeight: 900 }}>₹{bulkTotalSavings.toLocaleString('en-IN')}</strong>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleBulkCommit}
+                disabled={busy || bulkQty <= 0 || gapKg <= 0}
+                style={{
+                  width: '100%',
+                  background: '#047857',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '12px',
+                  padding: '0.9rem 1.5rem',
+                  fontWeight: 800,
+                  fontSize: '1rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                }}
+              >
+                <span>COMMIT {bulkQty.toLocaleString('en-IN')} KG DEMAND · SAVE ₹{bulkTotalSavings.toLocaleString('en-IN')}</span>
+                <ArrowRight size={16} />
+              </button>
+            </div>
+          </section>
+
+          {/* PROGRESS */}
+          <section style={{ background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '16px', padding: '1.25rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: 700 }}>
+              <span>Market Progress</span>
+              <span style={{ color: isUnlocked ? '#059669' : '#047857' }}>{math.committedKg} / {math.thresholdKg} kg ready</span>
+            </div>
+            <div style={{ width: '100%', height: '10px', background: '#e2e8f0', borderRadius: '5px', overflow: 'hidden' }}>
+              <div style={{ width: `${Math.min(100, Math.round((math.committedKg / (math.thresholdKg || 1)) * 100))}%`, height: '100%', background: '#047857' }} />
+            </div>
+          </section>
+
+          {/* OTHER REGIONS */}
+          {otherViews.length > 0 && (
+            <section style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '1.25rem' }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
+                OTHER NCR PROCUREMENT OPPORTUNITIES
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.65rem' }}>
+                {otherViews.map((ov) => (
+                  <div
+                    key={ov.board.id}
+                    onClick={() => handleSelectBoard(ov.board.id)}
+                    style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '0.75rem', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                  >
+                    <div>
+                      <strong style={{ fontSize: '0.85rem' }}>📍 {ov.board.regions?.[0]?.name ?? ov.board.crop.split(' ')[0]}</strong>
+                      <div style={{ fontSize: '0.78rem', color: '#64748b' }}>{ov.board.crop}</div>
+                    </div>
+                    <button type="button" style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '0.25rem 0.5rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>
+                      View
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+      ) : (
+        /* LOGISTICS VIEW (Part L - keeps operational dispatch & vehicle utilization focus) */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <section style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '16px', padding: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div>
+                <span style={{ fontSize: '0.8rem', color: '#1d4ed8', fontWeight: 700, textTransform: 'uppercase' }}>
+                  LOGISTICS DISPATCH · SHARED CORRIDOR
+                </span>
+                <h1 style={{ fontSize: '1.6rem', fontWeight: 800, margin: '0.2rem 0', color: '#0f172a' }}>
+                  {board.corridor}
+                </h1>
+                <p style={{ margin: 0, color: '#64748b', fontSize: '0.88rem' }}>
+                  Pooled Load: <strong>{math.committedKg} / {math.capacityKg} kg</strong> · Vehicle Utilization: <strong>{math.utilisationPct}%</strong>
+                </p>
+              </div>
+              <StatusBadge tone={math.viable ? 'green' : 'amber'}>
+                {math.viable ? 'Viable for Route Creation' : 'Load Forming'}
+              </StatusBadge>
+            </div>
+
+            {math.viable && board.status !== 'created' && (
+              <button type="button" className="btn btn-primary btn-large" onClick={create} disabled={busy} style={{ width: '100%', marginBottom: '1rem' }}>
+                <Zap size={18} /> Create Pooled Dispatch Route
+              </button>
+            )}
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
+              <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '8px' }}>
+                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Assigned Fleet</div>
+                <strong>{math.vehicle?.registration ?? 'VEH-02'} ({math.vehicle?.type ?? 'Medium truck'})</strong>
+              </div>
+              <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '8px' }}>
+                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Threshold Volume</div>
+                <strong>{math.thresholdKg} kg break-even</strong>
+              </div>
+              <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '8px' }}>
+                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Pooled Route Distance</div>
+                <strong>{board.routeDistanceKm} km</strong>
+              </div>
+            </div>
+          </section>
+
+          {/* OTHER CORRIDORS FOR LOGISTICS */}
+          {otherViews.length > 0 && (
+            <section style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '1.25rem' }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
+                OTHER NCR CORRIDORS
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.65rem' }}>
+                {otherViews.map((ov) => (
+                  <div
+                    key={ov.board.id}
+                    onClick={() => handleSelectBoard(ov.board.id)}
+                    style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '0.75rem', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                  >
+                    <div>
+                      <strong style={{ fontSize: '0.85rem' }}>{ov.board.corridor}</strong>
+                      <div style={{ fontSize: '0.78rem', color: '#64748b' }}>{ov.math.committedKg} / {ov.math.capacityKg} kg ({ov.math.utilisationPct}%)</div>
+                    </div>
+                    <span style={{ fontSize: '0.75rem', background: '#f1f5f9', padding: '0.2rem 0.5rem', borderRadius: '4px', fontWeight: 700 }}>
+                      View
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
       )}
 
-      <MarketOutcomeSummary board={board} math={math} l={l} />
-
-      <section className="mm-hero">
-        <div className="mm-hero-ring">
-          <MarketDemandRing board={board} math={math} />
-          <div className="mm-hero-corridor">
-            <strong>{language === 'hi' ? board.cropHi : board.crop} · {board.grade}</strong>
-            <span><MapPinned size={13} /> {language === 'hi' ? board.corridorHi : board.corridor} · {board.routeDistanceKm} km</span>
-            <span><CalendarClock size={13} /> {deliveryWindow}</span>
-          </div>
-        </div>
-
-        <div className="mm-hero-body">
-          {created ? (
-            <div className="mm-verdict is-created">
-              <span className="mm-verdict-icon"><Sparkles size={18} /></span>
-              <div>
-                <h2>{l('Direct Market Created', 'सीधा बाज़ार बन गया')}</h2>
-                <p>{l(`${math.committedKg} kg moves on ${board.routeId} in one pooled trip. ${money(math.farmerGainTotal)} more reached the farms and ${money(Math.max(0, math.buyerSavingTotal))} stayed with the buyers.`, `${math.committedKg} किलो एक साझा यात्रा में ${board.routeId} पर जाएगा। किसानों को ${money(math.farmerGainTotal)} अधिक मिला और खरीदारों ने ${money(Math.max(0, math.buyerSavingTotal))} बचाए।`)}</p>
+      {/* 5. COLLAPSIBLE TECHNICAL DETAILS SECTION FOR ALL ROLES */}
+      <section style={{ marginTop: '1.5rem', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', overflow: 'hidden' }}>
+        <button
+          type="button"
+          onClick={() => setShowTechnicalDetails(!showTechnicalDetails)}
+          style={{
+            width: '100%',
+            padding: '1rem 1.25rem',
+            background: 'none',
+            border: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            cursor: 'pointer',
+            textAlign: 'left',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Info size={16} color="#059669" />
+            <div>
+              <strong style={{ fontSize: '0.95rem', color: '#0f172a' }}>
+                {l('See Market Details & Underlying Economics', 'बाज़ार विवरण एवं अंतर्निहित अर्थशास्त्र देखें')}
+              </strong>
+              <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                {l('Infographics, freight curve, floor/ceiling calculations, and shared logistics', 'इन्फोग्राफिक्स, भाड़ा वक्र, फ्लोर/सीलिंग गणना और साझा परिवहन')}
               </div>
             </div>
-          ) : math.viable ? (
-            <div className="mm-verdict is-viable">
-              <span className="mm-verdict-icon"><Check size={18} /></span>
-              <div>
-                <h2>{l('Enough demand, supply and logistics have aligned', 'मांग, सप्लाई और परिवहन तैयार हैं')}</h2>
-                <p>{l(`${math.committedKg} kg against a ${math.thresholdKg} kg break-even. Delivered price settles at ₹${math.deliveredPerKg.toFixed(2)}/kg.`, `${math.thresholdKg} किलो की ज़रूरत के मुकाबले ${math.committedKg} किलो मांग पक्की है। डिलीवरी कीमत ₹${math.deliveredPerKg.toFixed(2)}/किलो है।`)}</p>
-              </div>
-            </div>
-          ) : (
-            <div className={`mm-verdict ${structural ? 'is-blocked' : 'is-forming'}`}>
-              <span className="mm-verdict-icon">{structural ? <CircleAlert size={18} /> : <Radar size={18} />}</span>
-              <div>
-                <h2>{blockerTitle ?? l('Direct trade is not viable yet', 'सीधा व्यापार अभी संभव नहीं है')}</h2>
-                <p>{blockerDetail}</p>
-              </div>
-            </div>
-          )}
-
-          {!created && math.viable && (
-            <button type="button" className="btn btn-primary btn-large btn-full mm-create" disabled={busy} onClick={create}>
-              <Zap size={18} /> {l('Create the direct market', 'सीधा बाज़ार बनाएं')}
-            </button>
-          )}
-
-          <div className="mm-hero-stats">
-            <article><span>{l('Delivered price', 'डिलीवरी कीमत')}</span><strong>{math.committedKg ? `₹${math.deliveredPerKg.toFixed(2)}` : '—'}</strong><small>{l(`limit ₹${board.buyerCeilingPerKg.toFixed(2)} · today ₹${board.buyerCurrentPerKg.toFixed(2)}`, `सीमा ₹${board.buyerCeilingPerKg.toFixed(2)} · आज ₹${board.buyerCurrentPerKg.toFixed(2)}`)}</small></article>
-            <article><span>{l('Farmer price protected', 'किसान की सुरक्षित कीमत')}</span><strong>₹{math.farmerGatePerKg.toFixed(2)}</strong><small>{l(`mandi pays ₹${board.mandiPricePerKg.toFixed(2)}`, `मंडी में ₹${board.mandiPricePerKg.toFixed(2)} मिलते हैं`)}</small></article>
-            <article><span>{l('Freight per kg', 'प्रति किलो ढुलाई')}</span><strong>{math.committedKg ? `₹${math.freightPerKg.toFixed(2)}` : '—'}</strong><small>₹{math.freightTotal.toLocaleString('en-IN')} ÷ {math.committedKg} kg</small></article>
-            <article><span>{l('Vehicle load', 'वाहन में भार')}</span><strong>{math.utilisationPct}%</strong><small>{math.vehicle ? `${math.vehicle.registration} · ${math.capacityKg} kg` : l('none held', 'कोई वाहन नहीं')}</small></article>
           </div>
-
-          {!created && (role === 'consumer' || role === 'bulk') && (
-            <MarketCommitPanel
-              board={board} math={math} busy={busy}
-              source={role === 'bulk' ? 'bulk' : 'consumer'}
-              party={role === 'bulk' ? data.bulkProfile.businessName : data.consumerProfile.name}
-              detail={role === 'bulk' ? board.destination : (data.consumerProfile.addresses[0]?.line1 ?? data.consumerProfile.defaultLocation)}
-              unit={role === 'bulk' ? 10 : 1}
-              max={role === 'bulk' ? 400 : 40}
-              selectedCropId={selectedCropId}
-              onSelectCrop={(cropId) => setSelectedCropId(cropId)}
-              onCommit={commit}
-            />
-          )}
-
-          {!created && role === 'logistics' && (
-            <LogisticsLever
-              vehicleId={board.vehicleId} corridorVehicle={currentView.assignedVehicle ?? undefined} math={math} busy={busy}
-              onHold={() => guard(() => logisticsService.setVehicle(board.vehicleId, 'available'), 'Vehicle released back to the corridor')}
-              onWithdraw={() => guard(() => logisticsService.setVehicle(board.vehicleId, 'maintenance'), 'Vehicle withdrawn from the corridor')}
-            />
-          )}
-
-          {created && <CreatedLinks board={board} role={role} l={l} />}
-        </div>
-      </section>
-
-      <MarketInfographics role={role} board={board} math={math} />
-
-      <section className="section-block">
-        <div className="section-heading">
-          <div>
-            <span className="eyebrow">{roleDeepView[role].eyebrow}</span>
-            <h2>{roleDeepView[role].title}</h2>
-          </div>
-        </div>
-        {role === 'consumer' ? <MarketValueSplit board={board} math={math} />
-          : role === 'bulk' ? <MarketConvergence board={board} math={math} />
-            : <MarketFreightCurve board={board} math={math} />}
-      </section>
-
-      <MarketHowItWorks board={board} math={math} />
-
-      <MarketWhyPanel board={board} math={math} defaultOpen={Boolean(structural)} />
-
-      <section className="mm-footer-note">
-        <p>{l('Market Maker is deterministic: break-even volume, freight, delivered price and payouts are computed from listings, fleet and commitments in shared prototype state.', 'मार्केट मेकर की गणना तय है: ज़रूरी मात्रा, ढुलाई, डिलीवरी कीमत और भुगतान साझा प्रोटोटाइप की लिस्टिंग, वाहन और पक्की मांग से निकाले जाते हैं।')}</p>
-        <button type="button" className="mm-reset" disabled={busy} onClick={() => guard(() => prototypeService.seedScenario('market'), l('Corridor reset to the forming state', 'कॉरिडोर फिर से बनती हुई स्थिति में है'))}>
-          <RotateCcw size={14} /> {l('Reset corridor', 'कॉरिडोर रीसेट करें')}
+          {showTechnicalDetails ? <ChevronUp size={20} color="#64748b" /> : <ChevronDown size={20} color="#64748b" />}
         </button>
+
+        {showTechnicalDetails && (
+          <div style={{ padding: '1.25rem', borderTop: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {board.isMultiCrop && math.multiCropMath && (
+              <MultiCropCorridorCard board={board} math={math} onSelectCrop={(cropId) => setSelectedCropId(cropId)} />
+            )}
+
+            <MarketInfographics role={role} board={board} math={math} />
+
+            <section className="section-block">
+              <div className="section-heading">
+                <div>
+                  <span className="eyebrow">{role === 'consumer' ? 'Who benefits' : role === 'bulk' ? 'What is being combined' : 'Why volume matters'}</span>
+                  <h2>{role === 'consumer' ? 'Where the price actually goes' : role === 'bulk' ? 'Where the supply is coming from' : 'Delivered price against committed volume'}</h2>
+                </div>
+              </div>
+              {role === 'consumer' ? (
+                <MarketValueSplit board={board} math={math} />
+              ) : role === 'bulk' ? (
+                <MarketConvergence board={board} math={math} />
+              ) : (
+                <MarketFreightCurve board={board} math={math} />
+              )}
+            </section>
+
+            <MarketHowItWorks board={board} math={math} />
+            <MarketWhyPanel board={board} math={math} defaultOpen={false} />
+
+            <div style={{ fontSize: '0.8rem', color: '#64748b', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '1rem', borderTop: '1px solid #e2e8f0' }}>
+              <span>Market Maker calculations are strictly deterministic and based on live fleet and listing data.</span>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                style={{ fontSize: '0.78rem' }}
+                onClick={() => guard(() => prototypeService.seedScenario('market'), 'Corridor reset to forming state')}
+              >
+                <RotateCcw size={13} /> Reset Scenario
+              </button>
+            </div>
+          </div>
+        )}
       </section>
 
-      {reveal && <MarketUnlockReveal board={board} math={math} result={reveal} role={role} onClose={() => { setReveal(null); refresh() }} />}
-    </div>
-  )
-}
-
-function MarketOutcomeSummary({ board, math, l }: {
-  board: { mandiPricePerKg: number; buyerCurrentPerKg: number }
-  math: { farmerGatePerKg: number; deliveredPerKg: number; deliveredAtThresholdPerKg: number; viable: boolean }
-  l: (en: string, hi: string) => string
-}) {
-  const directPrice = math.viable ? math.deliveredPerKg : math.deliveredAtThresholdPerKg
-  return (
-    <section className="mm-outcome-summary">
-      <div className="mm-outcome-label">
-        <span className="eyebrow">{l('The idea in one glance', 'एक नज़र में पूरी बात')}</span>
-        <h2>{l('A better price on both sides', 'दोनों तरफ बेहतर कीमत')}</h2>
-        <p>{l('Pooled demand shares one fixed logistics cost across more kilograms.', 'साझा मांग से एक तय ढुलाई लागत अधिक किलो में बंट जाती है।')}</p>
-      </div>
-      <div className="mm-outcome-state is-before">
-        <span>{l('Without Market Maker', 'मार्केट मेकर के बिना')}</span>
-        <p>{l('Farmer gets', 'किसान को मिलता है')} <strong>₹{board.mandiPricePerKg}/kg</strong></p>
-        <p>{l('Buyer pays', 'खरीदार देता है')} <strong>₹{board.buyerCurrentPerKg}/kg</strong></p>
-        <small>{l('Existing retail / traditional-chain price', 'मौजूदा खुदरा / पारंपरिक श्रृंखला की कीमत')}</small>
-      </div>
-      <ArrowRight className="mm-outcome-arrow" aria-hidden="true" />
-      <div className="mm-outcome-state is-after">
-        <span>{l('With Market Maker', 'मार्केट मेकर के साथ')}</span>
-        <p>{l('Farmer gets', 'किसान को मिलता है')} <strong>₹{math.farmerGatePerKg}/kg</strong></p>
-        <p>{l('Buyer pays', 'खरीदार देता है')} <strong>₹{directPrice.toFixed(2)}/kg</strong></p>
-        <small>{l('At the pooled market threshold', 'साझा बाज़ार की ज़रूरी मात्रा पर')}</small>
-      </div>
-    </section>
-  )
-}
-
-function MarketStateRail({ status, viable, blocked, l }: { status: string; viable: boolean; blocked: boolean; l: (en: string, hi: string) => string }) {
-  const stage = status === 'created' ? 2 : viable ? 1 : 0
-  const steps = [
-    { label: blocked ? l('Needs attention', 'ध्यान देना ज़रूरी') : l('Market is forming', 'बाज़ार बन रहा है'), detail: l('Small needs are being pooled', 'छोटी ज़रूरतें जोड़ी जा रही हैं') },
-    { label: l('Ready to create', 'बनाने के लिए तैयार'), detail: l('Demand threshold reached', 'मांग की सीमा पूरी') },
-    { label: l('Direct market created', 'सीधा बाज़ार बन गया'), detail: l('Orders, pickups and a route exist', 'ऑर्डर, पिकअप और रूट बन गए हैं') },
-  ]
-  return (
-    <ol className={`mm-rail stage-${stage} ${blocked ? 'is-blocked' : ''}`}>
-      {steps.map((step, index) => (
-        <li key={step.label} className={index < stage ? 'is-done' : index === stage ? 'is-active' : ''}>
-          <span>{index < stage ? <Check size={13} /> : index + 1}</span>
-          <div><strong>{step.label}</strong><small>{step.detail}</small></div>
-        </li>
-      ))}
-    </ol>
-  )
-}
-
-function LogisticsLever({ vehicleId, corridorVehicle, math, busy, onHold, onWithdraw }: {
-  vehicleId: string
-  corridorVehicle?: Vehicle
-  math: { vehicle: Vehicle | null; thresholdKg: number; capacityKg: number }
-  busy?: boolean; onHold: () => void; onWithdraw: () => void
-}) {
-  // "Held" means the corridor's own vehicle is the one being quoted. When it has been pulled
-  // away the engine falls back to a costlier vehicle, and the break-even volume moves with it.
-  const held = Boolean(corridorVehicle && math.vehicle?.id === corridorVehicle.id)
-  const threshold = Number.isFinite(math.thresholdKg) ? math.thresholdKg.toLocaleString('en-IN') : '—'
-  return (
-    <div className="mm-lever">
-      <div>
-        <span className="eyebrow">Your lever</span>
-        <h3>{held && math.vehicle
-          ? `${math.vehicle.registration} · ${math.vehicle.type} is held for this corridor`
-          : math.vehicle
-            ? `Quoting ${math.vehicle.registration} · ${math.vehicle.type} instead`
-            : `${vehicleId} is unavailable and nothing else can be quoted`}</h3>
-        <p>{math.vehicle
-          ? held
-            ? `Break-even load is ${threshold} kg of ${math.capacityKg} kg. Withdrawing this vehicle re-quotes the corridor against whatever else is free — a larger vehicle costs more per trip, so the break-even volume rises with it.`
-            : `${corridorVehicle ? `${corridorVehicle.registration} is ${corridorVehicle.status.replaceAll('_', ' ')}` : `${vehicleId} is unavailable`}, so this corridor is priced on a ${math.capacityKg} kg vehicle and now needs ${threshold} kg to break even.`
-          : 'Nothing in the fleet can be quoted for this corridor right now, so the market cannot become viable regardless of how much demand arrives.'}</p>
-      </div>
-      <div className="mm-lever-actions">
-        {held
-          ? <button type="button" className="btn btn-secondary" disabled={busy} onClick={onWithdraw}><Truck size={16} /> Withdraw {vehicleId} from corridor</button>
-          : <button type="button" className="btn btn-primary" disabled={busy} onClick={onHold}><Truck size={16} /> Hold {vehicleId} for this corridor</button>}
-        <Link className="btn btn-ghost" to="/logistics/vehicles">Fleet <ArrowRight size={15} /></Link>
-      </div>
-    </div>
-  )
-}
-
-function CreatedLinks({ board, role, l }: { board: { routeId?: string; farmerOrderIds?: string[]; bulkOrderId?: string; consumerOrderId?: string; pickupIds?: string[] }; role: Role; l: (en: string, hi: string) => string }) {
-  const links: Array<{ icon: typeof Sprout; label: string; to: string }> = []
-  if (board.farmerOrderIds?.[0]) links.push({ icon: Sprout, label: l(`Farmer order ${board.farmerOrderIds[0]}`, `किसान ऑर्डर ${board.farmerOrderIds[0]}`), to: `/farmer/orders/${board.farmerOrderIds[0]}` })
-  if (board.farmerOrderIds?.[0]) links.push({ icon: IndianRupee, label: l('Farmer earnings', 'किसान की कमाई'), to: '/farmer/earnings' })
-  if (board.bulkOrderId) links.push({ icon: Building2, label: l(`Procurement ${board.bulkOrderId}`, `खरीद ${board.bulkOrderId}`), to: `/bulk/orders/${board.bulkOrderId}` })
-  if (board.consumerOrderId) links.push({ icon: Home, label: l('Consumer order', 'ग्राहक ऑर्डर'), to: `/consumer/orders/${board.consumerOrderId}` })
-  if (board.pickupIds?.length) links.push({ icon: Boxes, label: l(`${board.pickupIds.length} farm pickups`, `${board.pickupIds.length} खेत पिकअप`), to: '/logistics/pickups' })
-  if (board.routeId) links.push({ icon: MapPinned, label: l(`Route ${board.routeId}`, `रूट ${board.routeId}`), to: '/logistics/routes' })
-  links.push({ icon: PackageCheck, label: l('Deliveries', 'डिलीवरी'), to: '/logistics/deliveries' })
-
-  return (
-    <div className="mm-created-links">
-      <h3>{l('This market created', 'इस बाज़ार ने ये बनाए')}</h3>
-      <div>
-        {links.map((link) => (
-          <Link key={link.to + link.label} to={link.to} className={link.to.startsWith(`/${role}`) ? 'is-mine' : ''}>
-            <link.icon size={15} /><span>{link.label}</span><ArrowRight size={14} />
-          </Link>
-        ))}
-      </div>
-      <small>{l('Each link opens a record written into shared prototype state. Other roles require switching accounts.', 'हर लिंक साझा प्रोटोटाइप में बना रिकॉर्ड खोलता है। दूसरी भूमिका के लिए खाता बदलना होगा।')}</small>
+      {reveal && (
+        <MarketUnlockReveal
+          board={board}
+          math={math}
+          result={reveal}
+          role={role}
+          onClose={() => {
+            setReveal(null)
+            refresh()
+          }}
+        />
+      )}
     </div>
   )
 }

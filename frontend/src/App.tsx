@@ -14,6 +14,7 @@ import { FarmerProducePage } from './pages/FarmerProducePage'
 import { ListingDetailPage } from './pages/ListingDetailPage'
 import { MarketMakerPage } from './pages/MarketMakerPage'
 import { LogisticsDashboard, LogisticsDeliveriesPage, LogisticsDeliveryDetailPage, LogisticsPickupsPage, LogisticsPickupDetailPage, LogisticsProfilePage, LogisticsRoutesPage, LogisticsVehiclesPage } from './pages/LogisticsExperience'
+import { DealRoomAndRecoveryPage } from './pages/DealRoomAndRecoveryPage'
 import { OtpPage } from './pages/OtpPage'
 import { WelcomePage } from './pages/WelcomePage'
 import type { Role } from './types'
@@ -96,6 +97,9 @@ export default function App() {
         </Route>
 
         <Route path="market-maker" element={<MarketMakerPage />} />
+        <Route path="deal-room" element={<DealRoomAndRecoveryPage initialTab="deal-room" />} />
+        <Route path="recovery" element={<DealRoomAndRecoveryPage initialTab="recovery" />} />
+        <Route path="deal-room-recovery" element={<DealRoomAndRecoveryPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -1112,6 +1112,15 @@ body.ai-analysis-active { overflow:hidden; }
 .mm-ring-flag.is-good { background: rgba(143, 208, 168, .2); color: #a8e6c1; }
 .mm-ring-flag.is-blocked { background: rgba(217, 97, 60, .22); color: #f0b5a1; }
 
+.mm-ring.is-light .mm-ring-track { stroke: #e2e8f0; }
+.mm-ring.is-light .mm-ring-gap { stroke: #cbd5e1; }
+.mm-ring.is-light .mm-ring-marker line { stroke: #047857; }
+.mm-ring.is-light .mm-ring-core strong { color: #0f172a; }
+.mm-ring.is-light .mm-ring-core > span { color: #475569; font-weight: 700; }
+.mm-ring.is-light .mm-ring-flag { background: #fef3c7; color: #92400e; }
+.mm-ring.is-light .mm-ring-flag.is-good { background: #ecfdf5; color: #047857; }
+.mm-ring.is-light .mm-ring-flag.is-blocked { background: #fef2f2; color: #b91c1c; }
+
 /* --- Verdict + hero stats --- */
 .mm-verdict { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 13px; align-items: start; border-radius: 20px; padding: 17px; border: 1px solid var(--border); background: #fff; animation: mmFadeUp .34s ease both; }
 .mm-verdict h2 { font-size: 18px; letter-spacing: -.03em; line-height: 1.28; }

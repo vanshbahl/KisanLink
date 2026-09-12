@@ -1,4 +1,4 @@
-import type { ConsumerOrder, MarketCommitment, MarketCommitmentSource, MarketCropSegment, MarketMakerBoard, Role, Vehicle } from '../types'
+import type { ConsumerOrder, FarmerListing, MarketCommitment, MarketCommitmentSource, MarketCropSegment, MarketMakerBoard, MarketSupplyLot, Role, Vehicle } from '../types'
 import { evaluateMarket, type MarketMath } from './marketMakerEngine'
 import { prototypeService, type PrototypeState } from './prototypeService'
 
@@ -137,6 +137,191 @@ export const marketMakerService = {
 
     await prototypeService.replaceState(state)
     return { board, math: after }
+  },
+
+  /**
+   * The farmer's direct action: contributes produce directly to a regional Market Maker opportunity.
+   * Synchronizes with Farmer Produce listings, supply lots, and corridor commitments.
+   */
+  async contributeProduce(
+    boardId: string,
+    input: {
+      cropName: string
+      cropId?: string
+      quantityKg: number
+    }
+  ) {
+    const targetId = resolveBoardId(boardId) || boardId
+    const state = await prototypeService.getState()
+    const board = state.markets.find((item) => item.id === targetId)
+    if (!board) throw new Error('This market is no longer open.')
+    if (board.status === 'created') throw new Error('This market has already been created.')
+
+    const qty = Number(input.quantityKg)
+    if (!Number.isFinite(qty) || qty <= 0) {
+      throw new Error('Please enter a valid quantity greater than 0 kg.')
+    }
+
+    const before = evaluateMarket(board, state.listings, state.vehicles)
+    const headroom = Math.max(0, before.thresholdKg - before.committedKg)
+    if (headroom <= 0) {
+      throw new Error('This corridor has reached its break-even volume threshold and is fully unlocked.')
+    }
+    if (qty > headroom) {
+      throw new Error(`Maximum ${headroom} kg can currently be added to this opportunity.`)
+    }
+
+    // Resolve target crop segment
+    let targetCrop: MarketCropSegment | undefined
+    if (board.isMultiCrop && board.crops && board.crops.length > 0) {
+      targetCrop = board.crops.find((c) =>
+        (input.cropId && (c.id === input.cropId || c.id.toLowerCase().includes(input.cropId.toLowerCase()))) ||
+        c.crop.toLowerCase().includes(input.cropName.toLowerCase()) ||
+        input.cropName.toLowerCase().includes(c.crop.toLowerCase())
+      ) || board.crops[0]
+    }
+
+    const cropName = targetCrop ? targetCrop.crop : board.crop
+    const cropHi = targetCrop ? targetCrop.cropHi : board.cropHi
+    const regionName = board.regions?.[0]?.name ?? 'Sonipat'
+    const regionId = board.regions?.[0]?.id ?? `reg_${regionName.toLowerCase()}`
+
+    // 1. Synchronize with Farmer Produce listings
+    let listing = state.listings.find((l) =>
+      l.status === 'active' &&
+      (l.crop.toLowerCase().includes(cropName.toLowerCase()) || cropName.toLowerCase().includes(l.crop.toLowerCase()))
+    )
+
+    if (listing) {
+      if (listing.remainingKg >= qty) {
+        listing.remainingKg -= qty
+        listing.allocatedKg = (listing.allocatedKg || 0) + qty
+      } else {
+        const extraNeeded = qty - listing.remainingKg
+        listing.quantityKg += extraNeeded
+        listing.allocatedKg = (listing.allocatedKg || 0) + qty
+        listing.remainingKg = 0
+      }
+      listing.marketMakerId = board.id
+      listing.marketMakerName = `${regionName} Market Maker`
+      listing.marketMakerCommittedKg = (listing.marketMakerCommittedKg || 0) + qty
+      listing.regionId = regionId
+      listing.regionName = regionName
+    } else {
+      const newListingId = `listing_mm_${Date.now()}`
+      listing = {
+        id: newListingId,
+        crop: cropName,
+        cropHi: cropHi,
+        category: 'Vegetables',
+        imageSrc: targetCrop?.imageSrc || board.imageSrc || '/assets/produce/tomato.webp',
+        visual: targetCrop?.visual || board.visual || 'tomato',
+        quantityKg: qty,
+        remainingKg: 0,
+        allocatedKg: qty,
+        unit: 'kg',
+        grade: targetCrop?.grade || board.grade || 'Grade A',
+        harvestDate: now().slice(0, 10),
+        availableFrom: now().slice(0, 10),
+        farmingMethod: 'Natural farming',
+        notes: `Direct contribution to ${regionName} Market Maker`,
+        pricePerKg: targetCrop?.farmerFloorPerKg || board.farmerFloorPerKg,
+        mandiPricePerKg: targetCrop?.mandiPricePerKg || board.mandiPricePerKg,
+        farm: state.profile.farmName || 'Green Field Farm',
+        pickupDate: day(1),
+        pickupWindow: board.deliveryWindow,
+        fulfillment: 'pickup',
+        status: 'active',
+        assisted: false,
+        views: 1,
+        inquiries: 0,
+        marketMakerId: board.id,
+        marketMakerName: `${regionName} Market Maker`,
+        marketMakerCommittedKg: qty,
+        regionId: regionId,
+        regionName: regionName,
+        createdAt: now().slice(0, 10),
+      }
+      state.listings.unshift(listing)
+    }
+
+    // 2. Synchronize Market Maker supply lots
+    const farmerName = state.profile.name || 'Ramesh Kumar'
+    const updateLots = (lots: MarketSupplyLot[]) => {
+      let ownLot = lots.find((l) => l.own || l.farmer === farmerName)
+      if (ownLot) {
+        ownLot.offeredKg = Math.max(ownLot.offeredKg, ownLot.offeredKg + qty)
+        if (!ownLot.listingId) ownLot.listingId = listing?.id
+      } else {
+        ownLot = {
+          id: `lot_farmer_${Date.now()}`,
+          farmer: farmerName,
+          farm: state.profile.farmName || 'Green Field Farm',
+          location: `${state.profile.village || 'Murthal'}, ${regionName}`,
+          offeredKg: Math.max(1000, qty * 2),
+          detourKm: 2,
+          regionId: regionId,
+          regionName: regionName,
+          own: true,
+          listingId: listing?.id,
+        }
+        lots.unshift(ownLot)
+      }
+    }
+    updateLots(board.lots)
+    if (targetCrop) updateLots(targetCrop.lots)
+
+    // 3. Add commitment to Board / Crop Segment
+    const commitDetail = `${regionName} Produce Allocation · ${cropName}`
+
+    if (targetCrop) {
+      const existingCropCommit = targetCrop.commitments.find((item: MarketCommitment) => item.own && item.party === farmerName && item.source === 'farmer')
+      if (existingCropCommit) {
+        existingCropCommit.quantityKg += qty
+      } else {
+        targetCrop.commitments.push({
+          id: `mmc_f_${Date.now()}`,
+          source: 'farmer',
+          party: farmerName,
+          detail: commitDetail,
+          quantityKg: qty,
+          committedAt: now(),
+          own: true,
+        })
+      }
+    }
+
+    const existingBoardCommit = board.commitments.find((item) => item.own && item.party === farmerName && item.source === 'farmer')
+    if (existingBoardCommit) {
+      existingBoardCommit.quantityKg += qty
+    } else {
+      board.commitments.push({
+        id: `mmc_f_${Date.now()}`,
+        source: 'farmer',
+        party: farmerName,
+        detail: commitDetail,
+        quantityKg: qty,
+        committedAt: now(),
+        own: true,
+      })
+    }
+
+    // 4. Re-evaluate
+    const after = evaluateMarket(board, state.listings, state.vehicles)
+    board.status = after.viable ? 'viable' : 'forming'
+
+    if (after.viable && !before.viable) {
+      board.unlockedAt = now()
+      note(state, 'farmer', 'Direct market is now viable', 'सीधा बाज़ार अब संभव है', `${board.crop} · ${after.committedKg} kg committed.`, 'मांग तैयार है।', '/farmer/market')
+      note(state, 'consumer', 'Farm-direct price unlocked', 'सीधा खेत भाव खुल गया', `${board.crop} delivered at ${perKg(after.deliveredPerKg)}.`, 'सीधा भाव खुल गया है।', '/consumer/market')
+      note(state, 'bulk', 'Pooled corridor is viable', 'साझा कॉरिडोर व्यवहार्य है', `${board.destination} · ${after.committedKg} kg viable.`, 'साझा कॉरिडोर व्यवहार्य हो गया है।', '/bulk/market')
+      note(state, 'logistics', 'Corridor reached break-even load', 'कॉरिडोर ब्रेक-ईवन पर पहुंचा', `${board.corridor} · ${after.committedKg} kg ready.`, 'कॉरिडोर अब चलाया जा सकता है।', '/logistics/market')
+    } else {
+      note(state, 'farmer', 'Produce added to Market Maker', 'मार्केट मेकर में फसल जोड़ी गई', `${qty} kg ${cropName} added · ${after.gapKg} kg still needed.`, `${qty} किलो ${cropHi} जोड़ा गया।`, '/farmer/produce')
+    }
+
+    await prototypeService.replaceState(state)
+    return { board, math: after, listing }
   },
 
   /**

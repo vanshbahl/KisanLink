@@ -99,6 +99,11 @@ export interface FarmerListing {
   isUrgentRescue?: boolean
   rescueDiscountPricePerKg?: number
   rescueStatus?: string
+  marketMakerId?: string
+  marketMakerName?: string
+  marketMakerCommittedKg?: number
+  regionId?: string
+  regionName?: string
   createdAt: string
 }
 
@@ -275,7 +280,7 @@ export interface OperatorAuditLog {
  * no single farmer could serve, and it is evaluated against live logistics capacity.
  * Every number below is an input to a deterministic calculation — nothing is predicted.
  */
-export type MarketCommitmentSource = 'consumer' | 'bulk'
+export type MarketCommitmentSource = 'consumer' | 'bulk' | 'farmer'
 export type MarketStatus = 'forming' | 'viable' | 'created'
 
 export interface MarketCommitment {
