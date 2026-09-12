@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 import { AppShell } from './layouts/AppShell'
 import { AuthPage } from './pages/AuthPage'
@@ -8,9 +8,15 @@ import { BulkOrderDetailPage, BulkOrdersPage, BulkProfilePage, BulkRequestDetail
 import { ConsumerExplorePage } from './pages/ConsumerExplorePage'
 import { ConsumerHome } from './pages/ConsumerHome'
 import { ConsumerCartPage, ConsumerCheckoutPage, ConsumerHowItWorksPage, ConsumerOrderDetailPage, ConsumerOrdersPage, ConsumerProfilePage, ConsumerSavedPage } from './pages/ConsumerPhase2'
-import { FarmerDashboard } from './pages/FarmerDashboard'
-import { FarmerEarningsPage, FarmerInsightsPage, FarmerOrderDetailPage, FarmerOrdersPage, FarmerPickupsPage, FarmerProduceDetailPage, FarmerProfilePage, SellProducePage } from './pages/FarmerExperience'
-import { FarmerProducePage } from './pages/FarmerProducePage'
+import { FarmerCropDetail } from './pages/farmer/FarmerCropDetail'
+import { FarmerDeal } from './pages/farmer/FarmerDeal'
+import { FarmerFasal } from './pages/farmer/FarmerFasal'
+import { FarmerHome } from './pages/farmer/FarmerHome'
+import { FarmerOrderDetail } from './pages/farmer/FarmerOrderDetail'
+import { FarmerOrders } from './pages/farmer/FarmerOrders'
+import { FarmerPaisa } from './pages/farmer/FarmerPaisa'
+import { FarmerProfile } from './pages/farmer/FarmerProfile'
+import { FarmerSell } from './pages/farmer/FarmerSell'
 import { ListingDetailPage } from './pages/ListingDetailPage'
 import { MarketMakerPage } from './pages/MarketMakerPage'
 import { LogisticsDashboard, LogisticsDeliveriesPage, LogisticsDeliveryDetailPage, LogisticsPickupsPage, LogisticsPickupDetailPage, LogisticsProfilePage, LogisticsRoutesPage, LogisticsVehiclesPage } from './pages/LogisticsExperience'
@@ -35,6 +41,12 @@ function RoleGuard({ role, children }: { role: Role; children: React.ReactNode }
   return session.role === role ? children : <Navigate to={roleHome(session.role)} replace />
 }
 
+/** /farmer/produce/:id -> /farmer/fasal/:id, preserving the crop that was linked to. */
+function LegacyProduceRedirect() {
+  const { id } = useParams()
+  return <Navigate to={id ? `/farmer/fasal/${id}` : '/farmer/fasal'} replace />
+}
+
 export default function App() {
   return (
     <Routes>
@@ -44,17 +56,29 @@ export default function App() {
 
       <Route element={<ProtectedShell />}>
         <Route path="farmer">
-          <Route index element={<RoleGuard role="farmer"><FarmerDashboard /></RoleGuard>} />
-          <Route path="produce" element={<RoleGuard role="farmer"><FarmerProducePage /></RoleGuard>} />
-          <Route path="produce/:id" element={<RoleGuard role="farmer"><FarmerProduceDetailPage /></RoleGuard>} />
-          <Route path="sell" element={<RoleGuard role="farmer"><SellProducePage /></RoleGuard>} />
-          <Route path="orders" element={<RoleGuard role="farmer"><FarmerOrdersPage /></RoleGuard>} />
-          <Route path="orders/:id" element={<RoleGuard role="farmer"><FarmerOrderDetailPage /></RoleGuard>} />
-          <Route path="earnings" element={<RoleGuard role="farmer"><FarmerEarningsPage /></RoleGuard>} />
-          <Route path="insights" element={<RoleGuard role="farmer"><FarmerInsightsPage /></RoleGuard>} />
-          <Route path="pickups" element={<RoleGuard role="farmer"><FarmerPickupsPage /></RoleGuard>} />
-          <Route path="market" element={<RoleGuard role="farmer"><MarketMakerPage /></RoleGuard>} />
-          <Route path="profile" element={<RoleGuard role="farmer"><FarmerProfilePage /></RoleGuard>} />
+          <Route index element={<RoleGuard role="farmer"><FarmerHome /></RoleGuard>} />
+          <Route path="fasal" element={<RoleGuard role="farmer"><FarmerFasal /></RoleGuard>} />
+          <Route path="fasal/:id" element={<RoleGuard role="farmer"><FarmerCropDetail /></RoleGuard>} />
+          <Route path="sell" element={<RoleGuard role="farmer"><FarmerSell /></RoleGuard>} />
+          <Route path="orders" element={<RoleGuard role="farmer"><FarmerOrders /></RoleGuard>} />
+          <Route path="orders/:id" element={<RoleGuard role="farmer"><FarmerOrderDetail /></RoleGuard>} />
+          <Route path="paisa" element={<RoleGuard role="farmer"><FarmerPaisa /></RoleGuard>} />
+          <Route path="deal" element={<RoleGuard role="farmer"><FarmerDeal /></RoleGuard>} />
+          <Route path="profile" element={<RoleGuard role="farmer"><FarmerProfile /></RoleGuard>} />
+
+          {/*
+            The farmer IA moved from produce/earnings/insights/pickups/market to
+            fasal/paisa/deal. These paths are still written into shared prototype state —
+            seeded notifications point at /farmer/pickups and /farmer/market, and the Market
+            Maker's "this market created" links point at /farmer/earnings — so they redirect
+            rather than 404.
+          */}
+          <Route path="produce" element={<Navigate to="/farmer/fasal" replace />} />
+          <Route path="produce/:id" element={<LegacyProduceRedirect />} />
+          <Route path="earnings" element={<Navigate to="/farmer/paisa" replace />} />
+          <Route path="insights" element={<Navigate to="/farmer/deal" replace />} />
+          <Route path="pickups" element={<Navigate to="/farmer/orders" replace />} />
+          <Route path="market" element={<Navigate to="/farmer/deal" replace />} />
         </Route>
 
         <Route path="consumer">

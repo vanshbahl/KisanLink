@@ -83,6 +83,7 @@ vite.config.js
 vite.config.d.ts
 
 # IDE & Editor files
+.claude/
 /.claude/
 .vscode/
 !.vscode/settings.json

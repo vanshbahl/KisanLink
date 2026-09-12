@@ -36,7 +36,7 @@ const iso = localDay
  * Seed version. Bumping it invalidates any previously persisted snapshot — local or
  * remote — so a demo build never boots into a half-updated story from an older run.
  */
-const SEED_VERSION = 5
+const SEED_VERSION = 6
 
 /**
  * ONE STORY, TOLD FOUR TIMES.
@@ -84,9 +84,11 @@ const seedState: PrototypeState = {
     { id: 'KL-ORD-1019', buyerName: 'Dwarka Foods', buyerType: 'Bulk Buyer', crop: 'New Potatoes', cropHi: 'नए आलू', listingId: 'listing_sold_1', quantityKg: 500, ratePerKg: 25, total: 12500, farmerPayout: 11250, platformFee: 375, logisticsFee: 875, orderedAt: iso(-14), status: 'delivered', paymentStatus: 'paid', pickupId: 'PK-2011' },
   ],
   pickups: [
-    { id: 'PK-2048', orderId: 'KL-C-2201-1', crop: 'Baby Spinach', cropHi: 'बेबी पालक', quantityKg: 8, date: iso(1), timeWindow: 'Morning · 7–10 AM', driver: 'Suresh Kumar', vehicle: 'HR 10 AK 4821 · Refrigerated mini truck', farmAddress: 'Green Field Farm, Murthal, Sonipat', status: 'driver_assigned' },
-    { id: 'PK-2051', orderId: 'KL-ORD-1042', crop: 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', quantityKg: 300, date: iso(0), timeWindow: 'Evening · 6–7 PM', driver: 'Imran Khan', vehicle: 'DL 1L AC 9082 · Medium truck', farmAddress: 'Green Field Farm, Murthal, Sonipat', status: 'driver_assigned' },
-    { id: 'PK-2011', orderId: 'KL-ORD-1019', crop: 'New Potatoes', cropHi: 'नए आलू', quantityKg: 500, date: iso(-12), timeWindow: 'Morning · 7–10 AM', driver: 'Imran Khan', vehicle: 'DL 1L AC 9082 · Medium truck', farmAddress: 'Green Field Farm, Murthal, Sonipat', status: 'completed' },
+    // pickupOtp mirrors the backend's per-allocation farm-gate code (see types/index.ts).
+    // The farmer reads it out at loading; logistics verifies it on the pickup screen.
+    { id: 'PK-2048', orderId: 'KL-C-2201-1', crop: 'Baby Spinach', cropHi: 'बेबी पालक', quantityKg: 8, date: iso(1), timeWindow: 'Morning · 7–10 AM', driver: 'Suresh Kumar', vehicle: 'HR 10 AK 4821 · Refrigerated mini truck', farmAddress: 'Green Field Farm, Murthal, Sonipat', status: 'driver_assigned', pickupOtp: '408216' },
+    { id: 'PK-2051', orderId: 'KL-ORD-1042', crop: 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', quantityKg: 300, date: iso(0), timeWindow: 'Evening · 6–7 PM', driver: 'Imran Khan', vehicle: 'DL 1L AC 9082 · Medium truck', farmAddress: 'Green Field Farm, Murthal, Sonipat', status: 'driver_assigned', pickupOtp: '735904' },
+    { id: 'PK-2011', orderId: 'KL-ORD-1019', crop: 'New Potatoes', cropHi: 'नए आलू', quantityKg: 500, date: iso(-12), timeWindow: 'Morning · 7–10 AM', driver: 'Imran Khan', vehicle: 'DL 1L AC 9082 · Medium truck', farmAddress: 'Green Field Farm, Murthal, Sonipat', status: 'completed', pickupOtp: '162473' },
   ],
   earnings: [
     { id: 'TX-901', orderId: 'KL-ORD-1019', crop: 'New Potatoes', cropHi: 'नए आलू', gross: 12500, deductions: 1250, net: 11250, mandiEquivalent: 10500, date: iso(-11), status: 'paid' },
@@ -404,7 +406,7 @@ export const prototypeService = {
     } catch (e) {
       console.warn('Backend order status update fallback:', e)
     }
-    const state = await readState(); const order = state.orders.find((item) => item.id === id); if (!order) throw new Error('Order not found'); order.status = status; if (status === 'accepted' && !order.pickupId) { const pickupId = `PK-${Date.now().toString().slice(-4)}`; order.pickupId = pickupId; state.pickups.unshift({ id: pickupId, orderId: order.id, crop: order.crop, cropHi: order.cropHi, quantityKg: order.quantityKg, date: iso(1), timeWindow: 'Morning · 7–10 AM', driver: 'Assigning shortly', vehicle: 'To be assigned', farmAddress: state.profile.pickupLocation, status: 'scheduled' }); state.notifications.unshift({ id: `note_${Date.now()}`, role: 'farmer', title: 'Pickup request created', titleHi: 'पिकअप अनुरोध बना', body: `Pickup ${pickupId} is scheduled for tomorrow.`, bodyHi: `पिकअप ${pickupId} कल के लिए तय है।`, timestamp: new Date().toISOString(), read: false, href: '/farmer/pickups' }) }
+    const state = await readState(); const order = state.orders.find((item) => item.id === id); if (!order) throw new Error('Order not found'); order.status = status; if (status === 'accepted' && !order.pickupId) { const pickupId = `PK-${Date.now().toString().slice(-4)}`; order.pickupId = pickupId; state.pickups.unshift({ id: pickupId, orderId: order.id, crop: order.crop, cropHi: order.cropHi, quantityKg: order.quantityKg, date: iso(1), timeWindow: 'Morning · 7–10 AM', driver: 'Assigning shortly', vehicle: 'To be assigned', farmAddress: state.profile.pickupLocation, status: 'scheduled', pickupOtp: String(Math.floor(100000 + Math.random() * 900000)) }); state.notifications.unshift({ id: `note_${Date.now()}`, role: 'farmer', title: 'Pickup request created', titleHi: 'पिकअप अनुरोध बना', body: `Pickup ${pickupId} is scheduled for tomorrow.`, bodyHi: `पिकअप ${pickupId} कल के लिए तय है।`, timestamp: new Date().toISOString(), read: false, href: '/farmer/pickups' }) }
     const parentId = order.id.replace(/-\d+$/, '')
     const consumerOrder = state.consumerOrders.find((item) => item.id === parentId)
     const consumerMap = { new: 'confirmed', accepted: 'farmer_preparing', preparing: 'farmer_preparing', pickup_scheduled: 'pickup_scheduled', in_transit: 'in_transit', delivered: 'delivered', cancelled: 'cancelled' } as const

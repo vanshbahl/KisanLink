@@ -1,6 +1,6 @@
 import {
   BarChart3, Boxes, ClipboardList, Heart, HelpCircle, Home,
-  LayoutDashboard, ListChecks, MapPinned, PackageCheck, Radar, ShoppingBag, Sprout, Truck, UserRound,
+  LayoutDashboard, ListChecks, MapPinned, PackageCheck, Radar, ShoppingBag, Sprout, Truck, UserRound, WalletCards,
 } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { LanguageSwitcher } from '../components/LanguageSwitcher'
@@ -35,22 +35,28 @@ interface RoleNav {
 }
 
 const navByRole: Record<Role, RoleNav> = {
+  /**
+   * Five destinations, and the same five on desktop.
+   *
+   * The farmer sidebar used to carry eight — Market, Earnings, Demand Insights and Pickup
+   * Support as well — which meant the desktop and phone versions of the product were
+   * different mental models. Insights folded into "बेहतर सौदा", pickups into the order they
+   * belong to, and earnings became "मेरा पैसा". Desktop now spends its extra width on
+   * spacing, not on extra places to get lost in.
+   */
   farmer: {
     mobile: [
       { labelKey: 'home', to: '/farmer', icon: Home, end: true },
       { labelKey: 'orders', to: '/farmer/orders', icon: PackageCheck },
-      { labelKey: 'produce', to: '/farmer/produce', icon: Sprout, primary: true },
-      { labelKey: 'marketMakerNav', to: '/farmer/market', icon: Radar },
+      { labelKey: 'fasal', to: '/farmer/fasal', icon: Sprout, primary: true },
+      { labelKey: 'paisa', to: '/farmer/paisa', icon: WalletCards },
       { labelKey: 'profile', to: '/farmer/profile', icon: UserRound },
     ],
     desktop: [
       { labelKey: 'home', to: '/farmer', icon: Home, end: true },
       { labelKey: 'orders', to: '/farmer/orders', icon: PackageCheck },
-      { labelKey: 'produce', to: '/farmer/produce', icon: Sprout, primary: true },
-      { labelKey: 'marketMakerNav', to: '/farmer/market', icon: Radar },
-      { labelKey: 'earnings', to: '/farmer/earnings', icon: BarChart3 },
-      { labelKey: 'demandInsights', to: '/farmer/insights', icon: BarChart3 },
-      { labelKey: 'pickupSupport', to: '/farmer/pickups', icon: Boxes },
+      { labelKey: 'fasal', to: '/farmer/fasal', icon: Sprout, primary: true },
+      { labelKey: 'paisa', to: '/farmer/paisa', icon: WalletCards },
       { labelKey: 'profile', to: '/farmer/profile', icon: UserRound },
     ],
     headerProfile: false,

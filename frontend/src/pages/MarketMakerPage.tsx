@@ -4,7 +4,6 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { FarmerMarketMaker } from '../components/market/FarmerMarketMaker'
 import { MarketCommitPanel } from '../components/market/MarketCommitPanel'
 import { MarketHowItWorks } from '../components/market/MarketHowItWorks'
 import { MarketInfographics } from '../components/market/MarketInfographics'
@@ -87,7 +86,6 @@ export function MarketMakerPage() {
   const deliveryWindow = language === 'hi'
     ? board.deliveryWindow.replace('Tomorrow', 'कल').replace(' AM', ' बजे').replace(' PM', ' बजे')
     : board.deliveryWindow
-  const own = math.allocations.find((entry) => entry.lot.own)
   const blocker = math.blockers[0]
   const structural = math.blockers.find((item) => item.kind !== 'demand')
   const created = board.status === 'created'
@@ -126,20 +124,9 @@ export function MarketMakerPage() {
     finally { setBusy(false); refresh() }
   }
 
-  if (role === 'farmer') {
-    return (
-      <div className="page mm-page mm-page-farmer">
-        <FarmerMarketMaker
-          board={board} math={math} busy={busy} available={own?.availableKg ?? 0}
-          onOffer={(extra) => own && guard(() => marketMakerService.offerMore(board.id, own.lot.id, extra), `${extra} kg more released to ${board.corridor}`)}
-        />
-        <MarketHowItWorks board={board} math={math} />
-        <RegionalMarketMakerDirectory views={data.views} />
-        {reveal && <MarketUnlockReveal board={board} math={math} result={reveal} role={role} onClose={() => { setReveal(null); refresh() }} />}
-      </div>
-    )
-  }
-
+  // Farmers no longer reach this page: /farmer/market redirects to /farmer/deal, where the
+  // same board is presented as "बेहतर सौदा" without the analytical vocabulary. This page
+  // stays as-is for Consumer, Bulk and Logistics.
   return (
     <div className={`page mm-page mm-page-${role}`}>
       <div className="page-title-row mm-head">

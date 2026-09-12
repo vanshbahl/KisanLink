@@ -163,6 +163,17 @@ export interface Pickup {
   vehicle: string
   farmAddress: string
   status: PickupStatus
+  /**
+   * Farm-gate handover code the farmer reads out once the crop is loaded.
+   *
+   * The canonical backend already stores this per allocation
+   * (`OrderAllocation.pickup_verification_otp`) and verifies it at
+   * `POST /logistics/pickups/verify-otp`, but exposes no read endpoint, so the prototype
+   * carries its own value here. `logisticsService.verifyPickupOtp` tries the real endpoint
+   * first and falls back to accepting any 4+ digit code, so farmer -> driver -> verified
+   * completes either way.
+   */
+  pickupOtp?: string
 }
 
 export interface EarningsTransaction {

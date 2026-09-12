@@ -14,7 +14,18 @@ const LANGUAGE_KEY = 'kisanlink_language'
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth()
-  const [farmerLanguage, setFarmerLanguage] = useState<Language>(() => localStorage.getItem(LANGUAGE_KEY) === 'hi' ? 'hi' : 'en')
+  /**
+   * Farmer-first default.
+   *
+   * The farmer module is built for a Hindi-speaking user, so an untouched install opens in
+   * Hindi rather than making that farmer find a toggle first. An explicit choice always
+   * wins — `localStorage` is only consulted for a value the user actually set, so picking
+   * English sticks. The other three roles remain English-only, as before.
+   */
+  const [farmerLanguage, setFarmerLanguage] = useState<Language>(() => {
+    const stored = localStorage.getItem(LANGUAGE_KEY)
+    return stored === 'en' ? 'en' : 'hi'
+  })
   const language: Language = session && session.role !== 'farmer' ? 'en' : farmerLanguage
 
   useEffect(() => {

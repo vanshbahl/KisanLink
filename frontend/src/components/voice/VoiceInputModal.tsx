@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AlertCircle, Check, Mic, MicOff, RefreshCw, Sparkles, X } from 'lucide-react'
+import { AlertCircle, Check, ChevronDown, Mic, MicOff, RefreshCw, Sparkles, X } from 'lucide-react'
 import { useLanguage } from '../../contexts/LanguageContext'
 import { useToast } from '../../contexts/ToastContext'
 import { apiClient } from '../../services/apiClient'
@@ -89,6 +89,7 @@ export function VoiceInputModal({ isOpen, onClose, onConfirm }: VoiceInputModalP
   const [editWindow, setEditWindow] = useState('Morning · 7–10 AM')
   const [editFulfillment, setEditFulfillment] = useState<'pickup' | 'self_delivery'>('pickup')
   const [editNotes, setEditNotes] = useState('')
+  const [detailsOpen, setDetailsOpen] = useState(false)
 
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
   const latestTranscriptRef = useRef('')
@@ -118,6 +119,7 @@ export function VoiceInputModal({ isOpen, onClose, onConfirm }: VoiceInputModalP
     setParsing(false)
     setError(null)
     setParsedData(null)
+    setDetailsOpen(false)
     latestTranscriptRef.current = ''
     hasErrorRef.current = false
     if (recognitionRef.current) {
@@ -442,58 +444,87 @@ export function VoiceInputModal({ isOpen, onClose, onConfirm }: VoiceInputModalP
           </div>
         )}
 
+        {/*
+          Review, farmer-sized.
+          The three things a spoken sentence is actually about — crop, quantity, price — are
+          large and always visible. Pickup date, place, window, fulfilment and notes are all
+          still here and still flow through to the listing, but behind "और जानकारी": they have
+          working defaults, and a farmer confirming a sentence they just said should not have
+          to read eight fields to do it.
+          The "Understood by Gemini / Smart Parser" line is gone. Which parser ran is an
+          implementation detail, and reading it does not help a farmer check their own numbers.
+        */}
         {parsedData && (
           <div className="voice-parsed-result">
-            <strong><Check size={16} />{language === 'hi' ? 'निकाली गई जानकारी (जांचें/बदलें)' : 'Extracted fields — review & edit'}</strong>
-            <div className="voice-ai-meta">
-              <span>
-                {!parsedData.missing_fields?.length
-                  ? (language === 'hi' ? '✓ सभी जानकारी मिल गई' : '✓ All details extracted')
-                  : (language === 'hi' ? '⚠ कुछ जानकारी की समीक्षा करें' : '⚠ Some details need review')}
-              </span>
-              <small>
-                {parsedData.ai_used
-                  ? (language === 'hi' ? 'Gemini द्वारा समझा गया' : 'Understood by Gemini')
-                  : (language === 'hi' ? 'स्मार्ट पार्सर' : 'Smart Parser')}
-              </small>
-            </div>
+            <strong><Check size={16} />{language === 'hi' ? 'यह समझ आया — जांच लें' : 'This is what we heard — check it'}</strong>
             {parsedData.warning && <p className="voice-fallback-warning">{parsedData.warning}</p>}
-            {!!parsedData.missing_fields?.length && <p className="voice-missing-note">{language === 'hi' ? 'कृपया भरें' : 'Please complete'}: {parsedData.missing_fields.join(', ')}</p>}
-            <div className="voice-parsed-fields">
-              <label>{language === 'hi' ? 'फसल' : 'Crop'}<input type="text" value={editCrop} onChange={(e) => setEditCrop(e.target.value)} /></label>
-              <label>
-                {language === 'hi' ? 'मात्रा' : 'Quantity'}
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 6 }}>
-                  <input type="number" min="1" value={editQty} onChange={(e) => setEditQty(Number(e.target.value))} />
+            {!!parsedData.missing_fields?.length && (
+              <p className="voice-missing-note">
+                {language === 'hi' ? 'यह भरना बाकी है' : 'Still needed'}: {parsedData.missing_fields.join(', ')}
+              </p>
+            )}
+
+            <div className="voice-key-fields">
+              <label className="f-field">
+                <span>{language === 'hi' ? 'फसल' : 'Crop'}</span>
+                <input type="text" value={editCrop} onChange={(e) => setEditCrop(e.target.value)} />
+              </label>
+              <label className="f-field">
+                <span>{language === 'hi' ? 'कितना माल' : 'How much'}</span>
+                <div className="voice-qty">
+                  <input type="number" inputMode="numeric" min="1" value={editQty} onChange={(e) => setEditQty(Number(e.target.value))} />
                   <select value={editUnit} onChange={(e) => setEditUnit(e.target.value as 'kg' | 'quintal' | 'tonne')}>
-                    <option value="kg">kg</option>
+                    <option value="kg">{language === 'hi' ? 'किलो' : 'kg'}</option>
                     <option value="quintal">quintal</option>
                     <option value="tonne">tonne</option>
                   </select>
                 </div>
               </label>
-              <label>{language === 'hi' ? 'कीमत (₹/kg)' : 'Price (₹/kg)'}<input type="number" min="1" value={editPrice} onChange={(e) => setEditPrice(Number(e.target.value))} /></label>
-              <label>{language === 'hi' ? 'पिकअप तारीख' : 'Pickup date'}<input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} /></label>
-              <label>{language === 'hi' ? 'पिकअप स्थान / फार्म' : 'Pickup location / farm'}<input type="text" value={editLocation} onChange={(e) => setEditLocation(e.target.value)} placeholder={language === 'hi' ? 'जैसे Green Field Farm' : 'e.g. Green Field Farm'} /></label>
-              <label>
-                {language === 'hi' ? 'पिकअप समय' : 'Pickup window'}
-                <select value={editWindow} onChange={(e) => setEditWindow(e.target.value)}>
-                  <option value="Morning · 7–10 AM">{language === 'hi' ? 'सुबह · 7–10 AM' : 'Morning · 7–10 AM'}</option>
-                  <option value="Afternoon · 1–4 PM">{language === 'hi' ? 'दोपहर · 1–4 PM' : 'Afternoon · 1–4 PM'}</option>
-                  <option value="Evening · 4–7 PM">{language === 'hi' ? 'शाम · 4–7 PM' : 'Evening · 4–7 PM'}</option>
-                </select>
+              <label className="f-field">
+                <span>{language === 'hi' ? 'दाम (₹ प्रति किलो)' : 'Price (₹ per kg)'}</span>
+                <input type="number" inputMode="numeric" min="1" value={editPrice} onChange={(e) => setEditPrice(Number(e.target.value))} />
               </label>
-              <label>
-                {language === 'hi' ? 'पिकअप का प्रकार' : 'Fulfillment'}
-                <select value={editFulfillment} onChange={(e) => setEditFulfillment(e.target.value as 'pickup' | 'self_delivery')}>
-                  <option value="pickup">{language === 'hi' ? 'खेत से पिकअप (Kisan Pickup)' : 'Pickup from farm'}</option>
-                  <option value="self_delivery">{language === 'hi' ? 'स्वयं डिलीवरी (Self Delivery)' : 'Self delivery to mandi'}</option>
-                </select>
-              </label>
-              <label>{language === 'hi' ? 'नोट्स' : 'Notes'}<input type="text" value={editNotes} onChange={(e) => setEditNotes(e.target.value)} placeholder={language === 'hi' ? 'अतिरिक्त जानकारी...' : 'Additional instructions...'} /></label>
             </div>
-            <button type="button" className="btn btn-primary btn-full" onClick={handleApply}>
-              <Check size={16} />{language === 'hi' ? 'फ़ॉर्म में भरें' : 'Apply to form'}
+
+            <button type="button" className="f-disclose" aria-expanded={detailsOpen} onClick={() => setDetailsOpen(!detailsOpen)}>
+              <span>{language === 'hi' ? 'और जानकारी' : 'More details'}<small>{language === 'hi' ? 'पिकअप तारीख, जगह, समय' : 'Pickup date, place, time'}</small></span>
+              <ChevronDown size={20} className={detailsOpen ? 'is-open' : ''} aria-hidden="true" />
+            </button>
+
+            {detailsOpen && (
+              <div className="voice-more-fields">
+                <label className="f-field">
+                  <span>{language === 'hi' ? 'पिकअप किस दिन' : 'Pickup day'}</span>
+                  <input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} />
+                </label>
+                <label className="f-field">
+                  <span>{language === 'hi' ? 'गाड़ी कहां आएगी' : 'Pickup place'}</span>
+                  <input type="text" value={editLocation} onChange={(e) => setEditLocation(e.target.value)} placeholder="Green Field Farm" />
+                </label>
+                <label className="f-field">
+                  <span>{language === 'hi' ? 'पिकअप का समय' : 'Pickup time'}</span>
+                  <select value={editWindow} onChange={(e) => setEditWindow(e.target.value)}>
+                    <option value="Morning · 7–10 AM">{language === 'hi' ? 'सुबह · 7–10 बजे' : 'Morning · 7–10 AM'}</option>
+                    <option value="Afternoon · 1–4 PM">{language === 'hi' ? 'दोपहर · 1–4 बजे' : 'Afternoon · 1–4 PM'}</option>
+                    <option value="Evening · 4–7 PM">{language === 'hi' ? 'शाम · 4–7 बजे' : 'Evening · 4–7 PM'}</option>
+                  </select>
+                </label>
+                <label className="f-field">
+                  <span>{language === 'hi' ? 'माल कैसे जाएगा' : 'How it moves'}</span>
+                  <select value={editFulfillment} onChange={(e) => setEditFulfillment(e.target.value as 'pickup' | 'self_delivery')}>
+                    <option value="pickup">{language === 'hi' ? 'KisanLink ले जाएगा' : 'KisanLink picks it up'}</option>
+                    <option value="self_delivery">{language === 'hi' ? 'मैं खुद पहुंचाऊंगा' : 'I will take it myself'}</option>
+                  </select>
+                </label>
+                <label className="f-field">
+                  <span>{language === 'hi' ? 'कुछ और बताना है' : 'Anything to add'}</span>
+                  <input type="text" value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />
+                </label>
+              </div>
+            )}
+
+            <button type="button" className="btn btn-primary btn-large btn-full" onClick={handleApply}>
+              <Check size={18} />{language === 'hi' ? 'हां, सही है' : 'Yes, that is right'}
             </button>
           </div>
         )}
