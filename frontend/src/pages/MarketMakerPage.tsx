@@ -14,6 +14,7 @@ import { MarketFreightCurve } from '../components/market/MarketFreightCurve'
 import { MarketUnlockReveal, type MarketCreationResult } from '../components/market/MarketUnlockReveal'
 import { MarketValueSplit } from '../components/market/MarketValueSplit'
 import { MarketWhyPanel } from '../components/market/MarketWhyPanel'
+import { RegionalMarketMakerDirectory } from '../components/market/RegionalMarketMakerDirectory'
 import { DashboardSkeleton } from '../components/LoadingSkeleton'
 import { StatusBadge } from '../components/StatusBadge'
 import { useAuth } from '../contexts/AuthContext'
@@ -69,12 +70,13 @@ export function MarketMakerPage() {
   const l = (en: string, hi: string) => (language === 'hi' ? hi : en)
 
   const { data, loading, refresh } = useAsyncData(async () => {
-    const [view, consumerProfile, bulkProfile] = await Promise.all([
+    const [view, views, consumerProfile, bulkProfile] = await Promise.all([
       marketMakerService.board(),
+      marketMakerService.boards(),
       phase2Service.consumerProfile(),
       phase2Service.bulkProfile(),
     ])
-    return { view, consumerProfile, bulkProfile }
+    return { view, views, consumerProfile, bulkProfile }
   }, [], { live: true })
 
   if (loading && !data) return <DashboardSkeleton />
@@ -132,6 +134,7 @@ export function MarketMakerPage() {
           onOffer={(extra) => own && guard(() => marketMakerService.offerMore(board.id, own.lot.id, extra), `${extra} kg more released to ${board.corridor}`)}
         />
         <MarketHowItWorks board={board} math={math} />
+        <RegionalMarketMakerDirectory views={data.views} />
         {reveal && <MarketUnlockReveal board={board} math={math} result={reveal} role={role} onClose={() => { setReveal(null); refresh() }} />}
       </div>
     )
@@ -245,6 +248,8 @@ export function MarketMakerPage() {
       <MarketHowItWorks board={board} math={math} />
 
       <MarketWhyPanel board={board} math={math} defaultOpen={Boolean(structural)} />
+
+      <RegionalMarketMakerDirectory views={data.views} />
 
       <section className="mm-footer-note">
         <p>{l('Market Maker is deterministic: break-even volume, freight, delivered price and payouts are computed from listings, fleet and commitments in shared prototype state.', 'मार्केट मेकर की गणना तय है: ज़रूरी मात्रा, ढुलाई, डिलीवरी कीमत और भुगतान साझा प्रोटोटाइप की लिस्टिंग, वाहन और पक्की मांग से निकाले जाते हैं।')}</p>

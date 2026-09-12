@@ -378,6 +378,9 @@ export function BulkRequestDetailPage() {
   const navigate = useNavigate()
   const { showToast } = useToast()
   const [converting, setConverting] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [editForm, setEditForm] = useState({ requiredQuantityKg: 100, targetPrice: 1, deliveryLocation: '', notes: '' })
   const [version, setVersion] = useState(0)
   const { data, loading, error } = useAsyncData(async () => {
     const [rfq, listings, state] = await Promise.all([phase2Service.rfq(id), phase2Service.listings(), prototypeService.getState()])
@@ -403,6 +406,25 @@ export function BulkRequestDetailPage() {
     }
   }
 
+  const openEdit = () => {
+    setEditForm({ requiredQuantityKg: rfq.requiredQuantityKg, targetPrice: rfq.targetPrice, deliveryLocation: rfq.deliveryLocation, notes: rfq.notes ?? '' })
+    setEditing(true)
+  }
+
+  const saveEdit = async () => {
+    setSavingEdit(true)
+    try {
+      await phase2Service.updateRfq(rfq.id, editForm)
+      showToast('Requirement details and Market Maker analysis updated.')
+      setEditing(false)
+      setVersion((value) => value + 1)
+    } catch (reason) {
+      showToast(reason instanceof Error ? reason.message : 'This requirement could not be updated.')
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
   return (
     <div className="page bulk-page">
       <Link className="back-link" to="/bulk/requests"><ArrowLeft size={16} /> Requirements</Link>
@@ -414,6 +436,20 @@ export function BulkRequestDetailPage() {
         </div>
         <StatusBadge tone={rfqTone(rfq.status)}>{rfqLabel[rfq.status]}</StatusBadge>
       </div>
+
+      {editing && (
+        <section className="feature-card form-grid" style={{ marginBottom: '1.5rem' }}>
+          <h2 style={{ gridColumn: '1 / -1' }}>Edit requirement details</h2>
+          <label className="field"><span>Required quantity (kg)</span><input type="number" min="100" max="20000" value={editForm.requiredQuantityKg} onChange={(event) => setEditForm({ ...editForm, requiredQuantityKg: Number(event.target.value) })} /></label>
+          <label className="field"><span>Target rate (₹/kg)</span><input type="number" min="1" value={editForm.targetPrice} onChange={(event) => setEditForm({ ...editForm, targetPrice: Number(event.target.value) })} /></label>
+          <label className="field full"><span>Delivery location</span><input value={editForm.deliveryLocation} onChange={(event) => setEditForm({ ...editForm, deliveryLocation: event.target.value })} /></label>
+          <label className="field full"><span>Specifications / notes</span><textarea value={editForm.notes} onChange={(event) => setEditForm({ ...editForm, notes: event.target.value })} /></label>
+          <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+            <button className="btn btn-secondary" type="button" onClick={() => setEditing(false)}>Cancel</button>
+            <button className="btn btn-primary" type="button" disabled={savingEdit} onClick={saveEdit}>{savingEdit ? 'Saving…' : 'Save changes'}</button>
+          </div>
+        </section>
+      )}
 
       <div className="bulk-detail-grid">
         <section className="bulk-detail-main">
@@ -446,6 +482,7 @@ export function BulkRequestDetailPage() {
                 {converting ? 'Creating order…' : 'Accept match & create order'}
               </button>
               <p className="safe-note"><ShieldCheck size={16} /> Creates the procurement order, farmer allocations and the pooled pickup route.</p>
+              <button className="btn btn-secondary btn-full" disabled={converting} onClick={openEdit}><Edit3 size={16} /> Edit details</button>
               <button className="btn btn-ghost btn-full" disabled={converting} onClick={async () => { await phase2Service.closeRfq(rfq.id); setVersion((value) => value + 1) }}>Close requirement</button>
             </>
           )}

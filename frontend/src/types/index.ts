@@ -121,6 +121,12 @@ export interface FarmerListing {
   isUrgentRescue?: boolean
   rescueDiscountPricePerKg?: number
   rescueStatus?: string
+  /** Optional regional Market Maker allocation metadata. */
+  marketMakerId?: string
+  marketMakerName?: string
+  marketMakerCommittedKg?: number
+  regionId?: string
+  regionName?: string
   createdAt: string
 }
 
@@ -203,7 +209,22 @@ export interface FarmerProfileData {
 }
 
 export type ConsumerOrderStatus = 'confirmed' | 'farmer_preparing' | 'pickup_scheduled' | 'collected' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'cancelled'
-export interface CartItem { listingId: string; quantityKg: number }
+export interface CartItem {
+  listingId: string
+  quantityKg: number
+  /** Present only for a regional Market Maker group-buy line. */
+  isPooled?: boolean
+  pooledPricePerKg?: number
+  regularPricePerKg?: number
+  savingsPerKg?: number
+  farmerGatePerKg?: number
+  platformFeePerKg?: number
+  freightPerKg?: number
+  boardId?: string
+  marketMakerId?: string
+  regionId?: string
+  cropId?: string
+}
 export interface Address { id: string; label: string; recipient: string; phone: string; line1: string; city: string; pincode: string; isDefault: boolean }
 export interface ConsumerOrderItem { listingId: string; crop: string; cropHi: string; farm: string; imageSrc: string; quantityKg: number; ratePerKg: number }
 export interface ConsumerOrder {
@@ -378,7 +399,7 @@ export interface OperatorAuditLog {
  * no single farmer could serve, and it is evaluated against live logistics capacity.
  * Every number below is an input to a deterministic calculation — nothing is predicted.
  */
-export type MarketCommitmentSource = 'consumer' | 'bulk'
+export type MarketCommitmentSource = 'consumer' | 'bulk' | 'farmer'
 export type MarketStatus = 'forming' | 'viable' | 'created'
 
 export interface MarketCommitment {
@@ -404,6 +425,32 @@ export interface MarketSupplyLot {
   detourKm: number
   /** True for the demo farmer's own lot. */
   own?: boolean
+  regionId?: string
+  regionName?: string
+}
+
+export interface MarketCropSegment {
+  id: string
+  crop: string
+  cropHi: string
+  grade: FarmerListing['grade']
+  imageSrc: string
+  visual?: ProduceListing['visual']
+  farmerFloorPerKg: number
+  mandiPricePerKg: number
+  buyerCeilingPerKg: number
+  buyerCurrentPerKg: number
+  platformFeePct: number
+  storageType?: 'ambient' | 'cold_chain' | 'dry' | 'delicate'
+  lots: MarketSupplyLot[]
+  commitments: MarketCommitment[]
+}
+
+export interface MarketRegionInfo {
+  id: string
+  name: string
+  nameHi?: string
+  district?: string
 }
 
 export interface MarketMakerBoard {
@@ -441,6 +488,10 @@ export interface MarketMakerBoard {
   consumerOrderId?: string
   pickupIds?: string[]
   deliveryIds?: string[]
+  isMultiCrop?: boolean
+  crops?: MarketCropSegment[]
+  isMultiRegion?: boolean
+  regions?: MarketRegionInfo[]
 }
 
 /* ===================== Lot quality inspection & chain of custody =====================

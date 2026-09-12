@@ -8,6 +8,10 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
+      '/health': {
+        target: `http://127.0.0.1:${backendPort}`,
+        changeOrigin: true,
+      },
       '/api': {
         target: `http://127.0.0.1:${backendPort}`,
         changeOrigin: true,
@@ -20,4 +24,3 @@ export default defineConfig({
     },
   },
 })
-

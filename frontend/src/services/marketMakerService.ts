@@ -38,7 +38,8 @@ export const marketMakerService = {
 
   async board(id?: string): Promise<MarketView | undefined> {
     const views = await this.boards()
-    return id ? views.find((view) => view.board.id === id) : views[0]
+    const resolvedId = id === 'MM-MULTI-SONIPAT' ? 'MM-SONIPAT-001' : id
+    return resolvedId ? views.find((view) => view.board.id === resolvedId) : views[0]
   },
 
   /**
@@ -46,23 +47,35 @@ export const marketMakerService = {
    * immediately afterwards, so crossing the break-even volume flips its status to `viable` and
    * tells every role in the same write.
    */
-  async commit(boardId: string, input: { source: MarketCommitmentSource; party: string; detail: string; quantityKg: number; own?: boolean }) {
+  async commit(boardId: string, input: { source: MarketCommitmentSource; party: string; detail: string; quantityKg: number; own?: boolean; cropId?: string }) {
     const state = await prototypeService.getState()
     const board = state.markets.find((item) => item.id === boardId)
     if (!board) throw new Error('This market is no longer open.')
     if (board.status === 'created') throw new Error('This market has already been created.')
-    if (input.quantityKg < 1) throw new Error('Commit at least 1 kg.')
+    if (!Number.isFinite(input.quantityKg) || input.quantityKg < 1) throw new Error('Commit at least 1 kg.')
+
+    const targetCrop = board.isMultiCrop && board.crops?.length
+      ? input.cropId
+        ? board.crops.find((crop) => crop.id === input.cropId)
+        : board.crops[0]
+      : undefined
+    if (input.cropId && !targetCrop) throw new Error('Specified crop is not part of this multi-crop corridor.')
 
     const before = evaluateMarket(board, state.listings, state.vehicles)
-    const headroomKg = Math.max(0, before.ceilingKg - before.committedKg)
+    const targetCropMath = targetCrop
+      ? before.multiCropMath?.cropMaths.find((crop) => crop.segment.id === targetCrop.id)
+      : undefined
+    const cropHeadroomKg = targetCropMath ? targetCropMath.offeredKg - targetCropMath.committedKg : Number.POSITIVE_INFINITY
+    const headroomKg = Math.max(0, Math.min(before.ceilingKg - before.committedKg, cropHeadroomKg))
     if (input.quantityKg > headroomKg) throw new Error(`Only ${headroomKg} kg of headroom is left in this corridor.`)
 
+    const commitments = targetCrop?.commitments ?? board.commitments
     // Repeat commitments from the same party merge instead of stacking duplicate rows.
-    const existing = board.commitments.find((item) => item.own && item.party === input.party && item.source === input.source)
+    const existing = commitments.find((item) => item.own && item.party === input.party && item.source === input.source)
     if (existing) existing.quantityKg += input.quantityKg
     else {
       const commitment: MarketCommitment = { id: `mmc_${Date.now()}`, source: input.source, party: input.party, detail: input.detail, quantityKg: input.quantityKg, committedAt: now(), own: input.own }
-      board.commitments.push(commitment)
+      commitments.push(commitment)
     }
 
     const after = evaluateMarket(board, state.listings, state.vehicles)
@@ -111,6 +124,9 @@ export const marketMakerService = {
     const board = state.markets.find((item) => item.id === boardId)
     if (!board || board.status === 'created') throw new Error('This market can no longer be changed.')
     board.commitments = board.commitments.filter((item) => item.id !== commitmentId)
+    board.crops?.forEach((crop) => {
+      crop.commitments = crop.commitments.filter((item) => item.id !== commitmentId)
+    })
     board.status = evaluateMarket(board, state.listings, state.vehicles).viable ? 'viable' : 'forming'
     await prototypeService.replaceState(state)
     return { board, math: evaluateMarket(board, state.listings, state.vehicles) }

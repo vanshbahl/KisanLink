@@ -5,6 +5,7 @@ import { DemoControlCenter } from '../components/DemoControlCenter'
 import { DeliveryRiskCard, DispatchPulseCard, PickupSequenceCard, RouteReviewCard } from '../components/ai/LogisticsIntelligenceCards'
 import { EmptyState } from '../components/EmptyState'
 import { MarketPulseCard } from '../components/market/MarketPulseCard'
+import { NcrLogisticsCorridorCard } from '../components/market/NcrLogisticsCorridorCard'
 import { DashboardSkeleton } from '../components/LoadingSkeleton'
 import { StatusBadge } from '../components/StatusBadge'
 import { CaptureInspectionModal, type CaptureTarget } from '../components/inspection/CaptureInspectionModal'
@@ -199,6 +200,7 @@ export function LogisticsDashboard() {
       <section className="logi-section">
         <div className="logi-section-head"><div><h2>{l('Market Maker', 'मार्केट मेकर')}</h2><p>{l('Where the next viable trip is coming from.', 'अगली संभव यात्रा कहां से आ रही है।')}</p></div></div>
         <MarketPulseCard role="logistics" />
+        <NcrLogisticsCorridorCard />
       </section>
 
       <section className="logi-section logi-secondary">

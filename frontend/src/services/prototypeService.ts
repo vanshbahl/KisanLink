@@ -1,6 +1,7 @@
 import type { BulkOrder, BulkProfileData, BulkRfq, ConsumerOrder, ConsumerProfileData, Delivery, DemoScenario, EarningsTransaction, FarmerListing, FarmerOrder, FarmerProfileData, ListingStatus, LogisticsPickup, LogisticsProfileData, LogisticsRoute, LotInspectionState, MarketMakerBoard, OrderStatus, Pickup, PrototypeNotification, Role, Vehicle } from '../types'
 import { apiClient } from './apiClient'
 import { localDay } from '../utils/dates'
+import { createRegionalMarketMakerBoards } from '../data/regionalMarketMaker'
 
 export interface PrototypeState {
   /** Written by the seed; see SEED_VERSION. Absent or stale payloads are discarded. */
@@ -221,6 +222,7 @@ const seedState: PrototypeState = {
       status: 'forming',
       createdAt: iso(-2),
     },
+    ...createRegionalMarketMakerBoards(iso),
   ],
   inspectionLots: {
     // KL-TOM-1048 - Ramesh's own lot (see listing_001 / PK-2051). Declared at the farm gate;
@@ -278,7 +280,9 @@ const normalize = (value: Partial<PrototypeState>): PrototypeState => {
     bulkProfile: value.bulkProfile?.businessName ? value.bulkProfile : base.bulkProfile,
     // A payload that predates Market Maker (older localStorage, or a backend that dropped the
     // key) must fall back to the seeded board rather than leaving the module with no market.
-    markets: Array.isArray(value.markets) && value.markets.length ? value.markets : base.markets,
+    markets: Array.isArray(value.markets) && value.markets.length
+      ? [...value.markets, ...base.markets.filter((market) => !value.markets!.some((item) => item.id === market.id))]
+      : base.markets,
     // The corridor vehicle is part of feasibility, so an older fleet payload is topped up
     // rather than silently leaving the market with nothing to quote against.
     vehicles: value.vehicles?.length

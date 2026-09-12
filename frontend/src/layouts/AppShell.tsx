@@ -6,6 +6,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { LanguageSwitcher } from '../components/LanguageSwitcher'
 import { Logo } from '../components/Logo'
 import { NotificationCenter } from '../components/NotificationCenter'
+import { GlobalModeIndicator } from '../components/GlobalModeIndicator'
 import { useAuth } from '../contexts/AuthContext'
 import { useLanguage } from '../contexts/LanguageContext'
 import type { LucideIcon } from 'lucide-react'
@@ -135,6 +136,7 @@ export function AppShell() {
           <Logo />
           <div>
             {session.role === 'farmer' && <LanguageSwitcher compact />}
+            <GlobalModeIndicator />
             <NotificationCenter />
             {nav.headerProfile && (
               <NavLink to={`/${session.role}/profile`} className="header-avatar" aria-label={t('profile')} title={t('profile')}>
@@ -145,7 +147,7 @@ export function AppShell() {
         </header>
         <header className="desktop-topbar">
           <div><span>{t('deliveringTo')}</span><strong>{session.role === 'farmer' ? t('location') : user.location}</strong></div>
-          <div>{session.role === 'farmer' && <LanguageSwitcher />}<NotificationCenter /><NavLink to={`/${session.role}/profile`} className="topbar-profile"><span>{user.avatarInitials}</span><div><strong>{user.name}</strong><small>{t(roleKey[session.role])}</small></div></NavLink></div>
+          <div>{session.role === 'farmer' && <LanguageSwitcher />}<GlobalModeIndicator /><NotificationCenter /><NavLink to={`/${session.role}/profile`} className="topbar-profile"><span>{user.avatarInitials}</span><div><strong>{user.name}</strong><small>{t(roleKey[session.role])}</small></div></NavLink></div>
         </header>
         <main className="app-main"><Outlet /></main>
       </div>

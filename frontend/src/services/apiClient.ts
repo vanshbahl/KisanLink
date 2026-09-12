@@ -39,6 +39,15 @@ const ROLE_PHONE_MAP: Record<string, { phone: string; preferred_role: string }> 
 class ApiClient {
   private tokenCache: Record<string, string> = {}
 
+  async checkBackendHealth(): Promise<boolean> {
+    try {
+      const response = await fetch('/health', { method: 'GET', signal: AbortSignal.timeout(1500) })
+      return response.ok
+    } catch {
+      return false
+    }
+  }
+
   private async ensureToken(role: 'farmer' | 'consumer' | 'bulk' | 'operator' = 'farmer'): Promise<string> {
     const cached = this.tokenCache[role] || localStorage.getItem(`kisanlink_jwt_${role}`)
     if (cached) {

@@ -2,7 +2,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 
-from app.models import BuyerRequirement, CropListing, FarmerProfile
+from app.models import BuyerRequirement, CropListing, FarmerProfile, ListingStatusEnum
 from app.services.matching_service import MatchingEngine
 
 
@@ -31,8 +31,8 @@ async def test_matching_engine_candidate_search(client: AsyncClient, buyer_token
     candidates = await MatchingEngine.find_candidate_listings(db_session, req)
     assert len(candidates) > 0
     for listing, farmer, c_name, item_lat, item_lon, dist_km in candidates:
-        assert listing.status == "ACTIVE"
-        assert float(listing.expected_price_per_kg) <= float(req.max_price_per_kg)
+        assert listing.status in [ListingStatusEnum.ACTIVE, ListingStatusEnum.RESCUE_ACTIVE]
+        assert MatchingEngine.effective_price(listing) <= float(req.max_price_per_kg)
         assert dist_km >= 0.0
 
 
@@ -65,3 +65,10 @@ async def test_matching_score_determinism(client: AsyncClient, buyer_token: str,
     score2 = MatchingEngine.calculate_match_score(listing, farmer, dist, req, 24.0, 28.0)
     assert score1 == score2
     assert 0.0 <= score1 <= 1.0
+
+    # A rescue discount can put the effective price below the observed candidate range.
+    # That must improve the price factor without ever pushing the total score over 1.0.
+    listing.status = ListingStatusEnum.RESCUE_ACTIVE
+    listing.rescue_discount_price_per_kg = 20.0
+    rescue_score = MatchingEngine.calculate_match_score(listing, farmer, dist, req, 24.0, 28.0)
+    assert 0.0 <= rescue_score <= 1.0

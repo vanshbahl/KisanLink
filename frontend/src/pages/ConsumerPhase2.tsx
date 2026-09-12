@@ -8,7 +8,7 @@ import { StatusBadge } from '../components/StatusBadge'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useToast } from '../contexts/ToastContext'
 import { useAsyncData } from '../hooks/useAsyncData'
-import { availableForCart, orderCosts, phase2Service } from '../services/phase2Service'
+import { availableForCart, consumerCartCosts, phase2Service } from '../services/phase2Service'
 import type { Address, CartItem, ConsumerOrderStatus, ConsumerProfileData, FarmerListing } from '../types'
 import { ProfilePage } from './ProfilePage'
 import { MarketplaceAiTrigger } from '../components/ai/MarketplaceAiTrigger'
@@ -71,7 +71,7 @@ export function ConsumerListingCard({ listing }: { listing: FarmerListing }) {
 
 export function ConsumerCartPage() {
   const navigate = useNavigate(); const [cart, setCart] = useState<CartItem[]>(phase2Service.cart()); const { data: listings, loading } = useAsyncData(() => phase2Service.listings())
-  const rows = availableForCart(cart, listings ?? []); const costs = orderCosts(rows.map((row) => ({ quantityKg: row.quantityKg, pricePerKg: row.listing.pricePerKg })))
+  const rows = availableForCart(cart, listings ?? []).map((row) => row.isPooled ? { ...row, listing: { ...row.listing, pricePerKg: row.pooledPricePerKg ?? row.listing.pricePerKg } } : row); const costs = consumerCartCosts(rows)
   const update = (listingId: string, quantityKg: number) => { const listing = listings?.find((item) => item.id === listingId); const next = cart.map((item) => item.listingId === listingId ? { ...item, quantityKg: Math.max(1, Math.min(quantityKg, listing?.remainingKg ?? quantityKg)) } : item); setCart(phase2Service.saveCart(next)) }
   const remove = (listingId: string) => setCart(phase2Service.saveCart(cart.filter((item) => item.listingId !== listingId)))
   if (loading) return <DashboardSkeleton />
@@ -80,7 +80,7 @@ export function ConsumerCartPage() {
 
 export function ConsumerCheckoutPage() {
   const navigate = useNavigate(); const { showToast } = useToast(); const [submitting, setSubmitting] = useState(false); const [error, setError] = useState(''); const [slot, setSlot] = useState('Tomorrow · 8–11 AM'); const [payment, setPayment] = useState<'UPI' | 'Card' | 'Pay on Delivery'>('UPI'); const [note, setNote] = useState(''); const [addressId, setAddressId] = useState(''); const [adding, setAdding] = useState(false)
-  const { data, loading } = useAsyncData(async () => ({ listings: await phase2Service.listings(), profile: await phase2Service.consumerProfile() })); const cart = phase2Service.cart(); const rows = availableForCart(cart, data?.listings ?? []); const costs = orderCosts(rows.map((row) => ({ quantityKg: row.quantityKg, pricePerKg: row.listing.pricePerKg }))); const addresses = data?.profile.addresses ?? []; const selected = addresses.find((item) => item.id === addressId) ?? addresses.find((item) => item.isDefault)
+  const { data, loading } = useAsyncData(async () => ({ listings: await phase2Service.listings(), profile: await phase2Service.consumerProfile() })); const cart = phase2Service.cart(); const rows = availableForCart(cart, data?.listings ?? []); const costs = consumerCartCosts(rows); const addresses = data?.profile.addresses ?? []; const selected = addresses.find((item) => item.id === addressId) ?? addresses.find((item) => item.isDefault)
   useEffect(() => { if (data) setAddressId(data.profile.addresses.find((item) => item.isDefault)?.id ?? data.profile.addresses[0]?.id ?? '') }, [data])
   if (loading) return <DashboardSkeleton />
   if (!rows.length) return <EmptyState icon={ShoppingCart} title="Nothing to checkout" copy="Add available produce to your cart first." actionLabel="Browse produce" actionTo="/consumer/explore" />

@@ -24,6 +24,37 @@ export const phase2Service = {
   cart(): CartItem[] { try { return JSON.parse(localStorage.getItem(CART_KEY) ?? '[]') as CartItem[] } catch { return [] } },
   saveCart(items: CartItem[]) { localStorage.setItem(CART_KEY, JSON.stringify(items)); window.dispatchEvent(new Event('kisanlink-cart')); return items },
   addToCart(listingId: string, quantityKg: number) { const cart = this.cart(); const found = cart.find((item) => item.listingId === listingId); if (found) found.quantityKg += quantityKg; else cart.push({ listingId, quantityKg }); return this.saveCart(cart) },
+  addPooledToCart(item: { listingId: string; quantityKg: number; pooledPricePerKg: number; regularPricePerKg: number; savingsPerKg: number; farmerGatePerKg: number; platformFeePerKg: number; freightPerKg: number; boardId: string; cropId: string; regionId?: string }) {
+    if (!Number.isFinite(item.quantityKg) || item.quantityKg < 1) throw new Error('Add at least 1 kg to the group buy.')
+    const cart = this.cart()
+    const found = cart.find((entry) => entry.isPooled && entry.boardId === item.boardId && entry.cropId === item.cropId)
+    if (found) {
+      found.quantityKg += item.quantityKg
+      found.pooledPricePerKg = item.pooledPricePerKg
+      found.regularPricePerKg = item.regularPricePerKg
+      found.savingsPerKg = item.savingsPerKg
+      found.farmerGatePerKg = item.farmerGatePerKg
+      found.platformFeePerKg = item.platformFeePerKg
+      found.freightPerKg = item.freightPerKg
+    } else {
+      cart.push({
+        listingId: item.listingId,
+        quantityKg: item.quantityKg,
+        isPooled: true,
+        pooledPricePerKg: item.pooledPricePerKg,
+        regularPricePerKg: item.regularPricePerKg,
+        savingsPerKg: item.savingsPerKg,
+        farmerGatePerKg: item.farmerGatePerKg,
+        platformFeePerKg: item.platformFeePerKg,
+        freightPerKg: item.freightPerKg,
+        boardId: item.boardId,
+        marketMakerId: item.boardId,
+        regionId: item.regionId,
+        cropId: item.cropId,
+      })
+    }
+    return this.saveCart(cart)
+  },
   clearCart() { return this.saveCart([]) },
   async saved() { const state = await prototypeService.getState(); return { listingIds: state.savedListingIds, farmNames: state.savedFarmNames } },
   async toggleSavedListing(listingId: string) { const state = await prototypeService.getState(); state.savedListingIds = state.savedListingIds.includes(listingId) ? state.savedListingIds.filter((value) => value !== listingId) : [...state.savedListingIds, listingId]; await prototypeService.replaceState(state); return state.savedListingIds },
@@ -47,16 +78,21 @@ export const phase2Service = {
     } catch (err) {
       console.warn('Direct order backend sync note:', err)
     }
-    const subtotal = resolved.reduce((sum, entry) => sum + entry.item.quantityKg * entry.listing!.pricePerKg, 0)
-    const logisticsFee = Math.max(35, Math.round(subtotal * .06)); const platformFee = Math.round(subtotal * .03); const farmerShare = subtotal - platformFee; const orderId = id('KL-C')
-    const order: ConsumerOrder = { id: orderId, items: resolved.map(({ item, listing }) => ({ listingId: listing!.id, crop: listing!.crop, cropHi: listing!.cropHi, farm: listing!.farm, imageSrc: listing!.imageSrc, quantityKg: item.quantityKg, ratePerKg: listing!.pricePerKg })), subtotal, logisticsFee, platformFee, farmerShare, total: subtotal + logisticsFee, address: input.address, deliverySlot: input.deliverySlot, eta: day(2), note: input.note, paymentMethod: input.paymentMethod, paymentStatus: input.paymentMethod === 'Pay on Delivery' ? 'Pay on delivery' : 'Mock paid', status: 'confirmed', orderedAt: now(), timeline: [{ status: 'confirmed', label: 'Order confirmed', at: now() }] }
+    const costs = consumerCartCosts(resolved.map(({ item, listing }) => ({ ...item, listing: listing! })))
+    const { subtotal, logistics: logisticsFee, platform: platformFee, farmerShare } = costs
+    const orderId = id('KL-C')
+    const order: ConsumerOrder = { id: orderId, items: resolved.map(({ item, listing }) => ({ listingId: listing!.id, crop: listing!.crop, cropHi: listing!.cropHi, farm: listing!.farm, imageSrc: listing!.imageSrc, quantityKg: item.quantityKg, ratePerKg: item.isPooled ? item.pooledPricePerKg! : listing!.pricePerKg })), subtotal, logisticsFee, platformFee, farmerShare, total: costs.total, address: input.address, deliverySlot: input.deliverySlot, eta: day(2), note: input.note, paymentMethod: input.paymentMethod, paymentStatus: input.paymentMethod === 'Pay on Delivery' ? 'Pay on delivery' : 'Mock paid', status: 'confirmed', orderedAt: now(), timeline: [{ status: 'confirmed', label: 'Order confirmed', at: now() }] }
     state.consumerOrders.unshift(order)
     resolved.forEach(({ item, listing }, index) => {
       listing!.remainingKg -= item.quantityKg; listing!.allocatedKg += item.quantityKg; if (listing!.remainingKg === 0) listing!.status = 'sold'
-      const farmerOrderId = `${orderId}-${index + 1}`; const platform = Math.round(item.quantityKg * listing!.pricePerKg * .03); const logistics = Math.round(item.quantityKg * listing!.pricePerKg * .06); const payout = item.quantityKg * listing!.pricePerKg - platform
-      state.orders.unshift({ id: farmerOrderId, buyerName: state.consumerProfile.name, buyerType: 'Consumer', crop: listing!.crop, cropHi: listing!.cropHi, listingId: listing!.id, quantityKg: item.quantityKg, ratePerKg: listing!.pricePerKg, total: item.quantityKg * listing!.pricePerKg, farmerPayout: payout, platformFee: platform, logisticsFee: logistics, orderedAt: now().slice(0, 10), status: 'new', paymentStatus: input.paymentMethod === 'Pay on Delivery' ? 'pending' : 'paid', pickupId: `PK-${orderId.slice(-7)}-${index + 1}` })
+      const farmerOrderId = `${orderId}-${index + 1}`
+      const farmerRate = item.isPooled ? item.farmerGatePerKg! : listing!.pricePerKg
+      const platform = item.isPooled ? Math.round(item.quantityKg * item.platformFeePerKg!) : Math.round(item.quantityKg * listing!.pricePerKg * .03)
+      const logistics = item.isPooled ? Math.round(item.quantityKg * item.freightPerKg!) : Math.round(item.quantityKg * listing!.pricePerKg * .06)
+      const payout = item.isPooled ? item.quantityKg * farmerRate : item.quantityKg * farmerRate - platform
+      state.orders.unshift({ id: farmerOrderId, buyerName: state.consumerProfile.name, buyerType: 'Consumer', crop: listing!.crop, cropHi: listing!.cropHi, listingId: listing!.id, quantityKg: item.quantityKg, ratePerKg: farmerRate, total: item.quantityKg * farmerRate, farmerPayout: payout, platformFee: platform, logisticsFee: logistics, orderedAt: now().slice(0, 10), status: 'new', paymentStatus: input.paymentMethod === 'Pay on Delivery' ? 'pending' : 'paid', pickupId: `PK-${orderId.slice(-7)}-${index + 1}` })
       state.pickups.unshift({ id: `PK-${orderId.slice(-7)}-${index + 1}`, orderId: farmerOrderId, crop: listing!.crop, cropHi: listing!.cropHi, quantityKg: item.quantityKg, date: day(1).slice(0, 10), timeWindow: 'Morning · 7–10 AM', driver: 'Assigning shortly', vehicle: 'Pooled local route', farmAddress: listing!.farm, status: 'scheduled' })
-      state.earnings.unshift({ id: `TX-${orderId.slice(-7)}-${index + 1}`, orderId: farmerOrderId, crop: listing!.crop, cropHi: listing!.cropHi, gross: item.quantityKg * listing!.pricePerKg, deductions: platform, net: payout, mandiEquivalent: item.quantityKg * listing!.mandiPricePerKg, date: now().slice(0, 10), status: 'pending' })
+      state.earnings.unshift({ id: `TX-${orderId.slice(-7)}-${index + 1}`, orderId: farmerOrderId, crop: listing!.crop, cropHi: listing!.cropHi, gross: item.quantityKg * farmerRate, deductions: item.isPooled ? 0 : platform, net: payout, mandiEquivalent: item.quantityKg * listing!.mandiPricePerKg, date: now().slice(0, 10), status: 'pending' })
     })
     state.notifications.unshift({ id: id('note'), role: 'farmer', title: 'New consumer order received', titleHi: 'नया ग्राहक ऑर्डर मिला', body: `${state.consumerProfile.name} ordered ${order.items.reduce((sum, item) => sum + item.quantityKg, 0)} kg produce.`, bodyHi: 'नया ऑर्डर मिला है। तैयारी शुरू करें।', timestamp: now(), read: false, href: '/farmer/orders' }, { id: id('note'), role: 'consumer', title: 'Order confirmed', titleHi: 'ऑर्डर पक्का हुआ', body: `${orderId} is confirmed. Your farmer is preparing it.`, bodyHi: 'आपका ऑर्डर पक्का हो गया है।', timestamp: now(), read: false, href: `/consumer/orders/${orderId}` }, { id: id('note'), role: 'logistics', title: 'New consumer pickup and delivery', titleHi: 'नया ग्राहक पिकअप और डिलीवरी', body: `${orderId} is ready for logistics assignment.`, bodyHi: `${orderId} लॉजिस्टिक्स असाइनमेंट के लिए तैयार है।`, timestamp: now(), read: false, href: '/logistics/pickups' })
     await prototypeService.replaceState(state); this.clearCart(); return order
@@ -112,6 +148,23 @@ export const phase2Service = {
   async saveBulkProfile(profile: BulkProfileData) { const state = await prototypeService.getState(); state.bulkProfile = profile; await prototypeService.replaceState(state); return profile },
   async rfqs() { await pause(); return (await prototypeService.getState()).rfqs },
   async rfq(rfqId: string) { return (await prototypeService.getState()).rfqs.find((rfq) => rfq.id === rfqId) },
+  async updateRfq(rfqId: string, updates: Pick<BulkRfq, 'requiredQuantityKg' | 'targetPrice' | 'deliveryLocation' | 'notes'>) {
+    const state = await prototypeService.getState()
+    const rfq = state.rfqs.find((item) => item.id === rfqId)
+    if (!rfq) throw new Error('Requirement not found.')
+    if (['converted', 'closed'].includes(rfq.status)) throw new Error('A converted or closed requirement cannot be edited.')
+    if (!Number.isFinite(updates.requiredQuantityKg) || updates.requiredQuantityKg < 100 || updates.requiredQuantityKg > 20000) throw new Error('Quantity must be between 100 and 20,000 kg.')
+    if (!Number.isFinite(updates.targetPrice) || updates.targetPrice < 1) throw new Error('Enter a valid target rate.')
+    if (!updates.deliveryLocation.trim()) throw new Error('Enter a delivery location.')
+
+    Object.assign(rfq, { ...updates, deliveryLocation: updates.deliveryLocation.trim() })
+    const plan = buildProcurementPlan(rfq as unknown as ProcurementRequest, state.listings, state.vehicles)
+    rfq.plan = plan
+    rfq.matches = plan.stops.map((stop) => ({ farmer: stop.farmer, farm: stop.farm, listingId: stop.listingId, quantityKg: stop.quantityKg, ratePerKg: stop.ratePerKg }))
+    rfq.status = plan.shortfallKg === 0 ? 'fully_matched' : rfq.matches.length ? 'partially_matched' : 'matching'
+    await prototypeService.replaceState(state)
+    return rfq
+  },
   /**
    * Runs the Market Maker over a new requirement.
    *
@@ -278,3 +331,16 @@ export const phase2Service = {
 
 export const orderCosts = (items: Array<{ quantityKg: number; pricePerKg: number }>) => { const subtotal = items.reduce((sum, item) => sum + item.quantityKg * item.pricePerKg, 0); const logistics = Math.max(35, Math.round(subtotal * .06)); const platform = Math.round(subtotal * .03); return { subtotal, logistics, platform, farmerShare: subtotal - platform, total: subtotal + logistics } }
 export const availableForCart = (cart: CartItem[], listings: FarmerListing[]) => cart.map((item) => ({ ...item, listing: listings.find((listing) => listing.id === item.listingId) })).filter((item): item is CartItem & { listing: FarmerListing } => Boolean(item.listing))
+export const consumerCartCosts = (items: Array<CartItem & { listing: FarmerListing }>) => {
+  const ordinarySubtotal = items.filter((item) => !item.isPooled).reduce((sum, item) => sum + item.quantityKg * item.listing.pricePerKg, 0)
+  const pooledFarmerShare = items.filter((item) => item.isPooled).reduce((sum, item) => sum + item.quantityKg * (item.farmerGatePerKg ?? item.listing.pricePerKg), 0)
+  const pooledPlatform = items.filter((item) => item.isPooled).reduce((sum, item) => sum + item.quantityKg * (item.platformFeePerKg ?? 0), 0)
+  const pooledFreight = items.filter((item) => item.isPooled).reduce((sum, item) => sum + item.quantityKg * (item.freightPerKg ?? 0), 0)
+  const ordinaryPlatform = Math.round(ordinarySubtotal * .03)
+  const ordinaryLogistics = ordinarySubtotal > 0 ? Math.max(35, Math.round(ordinarySubtotal * .06)) : 0
+  const subtotal = Math.round(ordinarySubtotal + pooledFarmerShare + pooledPlatform)
+  const logistics = Math.round(ordinaryLogistics + pooledFreight)
+  const platform = Math.round(ordinaryPlatform + pooledPlatform)
+  const farmerShare = Math.round(ordinarySubtotal - ordinaryPlatform + pooledFarmerShare)
+  return { subtotal, logistics, platform, farmerShare, total: subtotal + logistics }
+}
