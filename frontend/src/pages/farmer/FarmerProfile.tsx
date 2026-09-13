@@ -77,6 +77,7 @@ export function FarmerProfile() {
           <div className="f-form-grid">
             <label className="f-field"><span>{f('farmName')}</span><input value={profile.farmName} onChange={(event) => update('farmName', event.target.value)} /></label>
             <label className="f-field"><span>{f('village')}</span><input value={profile.village} onChange={(event) => update('village', event.target.value)} /></label>
+            <label className="f-field"><span>{f('locality')}</span><input value={profile.locality ?? ''} onChange={(event) => update('locality', event.target.value)} /></label>
             <label className="f-field"><span>{f('district')}</span><input value={profile.district} onChange={(event) => update('district', event.target.value)} /></label>
             <label className="f-field"><span>{f('state')}</span><input value={profile.state} onChange={(event) => update('state', event.target.value)} /></label>
             <label className="f-field">

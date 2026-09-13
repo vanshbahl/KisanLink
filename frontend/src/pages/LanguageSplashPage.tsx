@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLanguage } from '../contexts/LanguageContext'
 import { translations } from '../i18n'
-import { CHOOSE_LANGUAGE_HEADING, discoverLocale, FALLBACK_LANGUAGE, isFunctionalLanguage, LANGUAGE_OPTIONS, type DiscoveryLanguage, type LocaleDiscovery } from '../services/localeDiscovery'
+import { CHOOSE_LANGUAGE_HEADING, discoverLocale, FALLBACK_LANGUAGE, isFunctionalLanguage, LANGUAGE_OPTIONS, rememberDetectedRegion, type DiscoveryLanguage, type LocaleDiscovery } from '../services/localeDiscovery'
 import type { Language } from '../types'
 
 /**
@@ -46,6 +46,8 @@ export function LanguageSplashPage() {
     let active = true
     Promise.all([discoverLocale(), new Promise((resolve) => setTimeout(resolve, MIN_SPLASH_MS))]).then(([result]) => {
       if (!active) return
+      // Farmer onboarding prefills district and state from this same read.
+      rememberDetectedRegion(result)
       setDiscovery(result)
       setSelected(result.language)
     })

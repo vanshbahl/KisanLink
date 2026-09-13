@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import List, Literal, Optional
 from uuid import UUID
 from pydantic import BaseModel, Field, ConfigDict
 from app.models.user import UserRoleEnum
@@ -144,3 +144,18 @@ class LogisticsProfileOut(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class OnboardingParseRequest(BaseModel):
+    transcript: str = Field(..., min_length=1)
+    field: Literal["name", "farm_size", "crops"]
+    language: Optional[str] = "hi"
+
+
+class OnboardingParseResponse(BaseModel):
+    value: Optional[str] = None
+    value_hi: Optional[str] = None
+    farm_size_acres: Optional[float] = None
+    crops: List[str] = Field(default_factory=list)
+    ai_used: bool = False
+    warning: Optional[str] = None

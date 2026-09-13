@@ -3218,3 +3218,95 @@ html[lang="hi"] .f-tabs button { font-size: 14px; }
 .lang-notice svg { flex: 0 0 auto; margin-top: 2px; }
 @media (min-width: 640px) { .lang-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 520px) { .lang-picker { max-width: 100%; }.lang-picker-footer { position: sticky; bottom: 0; padding: 12px 0 calc(18px + env(safe-area-inset-bottom)); margin-bottom: calc(-24px - env(safe-area-inset-bottom)); background: linear-gradient(to bottom, rgba(247,244,235,0), var(--canvas) 26%); } }
+
+/* ===========================================================================
+ * Farmer onboarding (after OTP) and its full-screen voice mode
+ * ---------------------------------------------------------------------------
+ * Same farmer tokens and primitives as the rest of `.f-page`. The typed form is
+ * the sell wizard's shape: a step rail, one task per screen, 52px targets. Voice
+ * mode is the opposite of a form: one question, most of the screen, no cards.
+ * ======================================================================== */
+.f-onboard { min-height: 100vh; min-height: 100dvh; background: var(--canvas); display: grid; grid-template-rows: auto 1fr auto; animation: pageIn .24s ease both; }
+.f-onboard-top { width: min(100%, 760px); margin: 0 auto; padding: 18px 16px 6px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.f-onboard-body { width: 100%; margin: 0 auto; padding: 10px 16px 24px; }
+.f-onboard-head { display: grid; gap: 14px; }
+.f-onboard-head .back-link { justify-self: start; }
+.f-onboard-detected { display: flex; align-items: flex-start; gap: 8px; color: var(--green-dark); }
+.f-onboard-detected svg { flex: 0 0 auto; margin-top: 3px; }
+.f-field.is-error input { border-color: var(--urgency); }
+.f-field-error { color: var(--urgency); font-size: 14px; font-weight: 700; }
+
+.f-onboard-actions { position: sticky; bottom: 0; width: min(100%, 760px); margin: 0 auto; padding: 12px 16px calc(16px + env(safe-area-inset-bottom)); background: linear-gradient(to bottom, rgba(247,244,235,0), var(--canvas) 30%); }
+
+/* Step 2: five answers, each a full-width row a thumb cannot miss. */
+.f-size-options { display: grid; gap: 10px; }
+.f-size-options button { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 64px; padding: 0 20px; border-radius: 18px; border: 1.5px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; text-align: left; }
+.f-size-options button:hover { border-color: #aab8af; }
+.f-size-options button.is-active { border-color: var(--green); background: var(--green-soft); color: var(--green-dark); }
+.f-size-options strong { font-size: 19px; }
+.f-size-options svg { color: var(--green); flex: 0 0 auto; }
+
+/* Step 3: the sell wizard's crop grid, made multi-select and searchable. */
+.f-onboard-search { position: relative; }
+.f-onboard-search > svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.f-onboard-search input { padding-left: 44px; }
+.f-onboard-crops button { min-height: 112px; }
+.f-crop-initial { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; background: var(--green-soft); color: var(--green-dark); font-size: 24px; font-weight: 800; }
+.f-onboard-add { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: end; }
+.f-onboard-add .btn { min-height: var(--f-tap); }
+
+/* Confirmation: one card, four rows, nothing to configure. */
+.f-onboard-summary { margin: 0; display: grid; gap: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--f-radius); overflow: hidden; }
+.f-onboard-summary > div { display: grid; gap: 4px; padding: 14px 18px; border-top: 1px solid var(--border); }
+.f-onboard-summary > div:first-child { border-top: 0; }
+.f-onboard-summary dt { font-size: 14px; font-weight: 700; color: var(--muted); }
+.f-onboard-summary dd { margin: 0; font-size: 18px; font-weight: 700; line-height: 1.35; }
+.f-onboard-summary dd em { font-style: normal; color: var(--muted); font-weight: 600; }
+
+/* --- Voice mode ---------------------------------------------------------- */
+.f-voice-screen { position: fixed; inset: 0; z-index: 200; display: grid; grid-template-rows: auto 1fr auto; background: var(--canvas); color: var(--text); padding: 12px 20px calc(20px + env(safe-area-inset-bottom)); animation: pageIn .2s ease both; overflow: hidden; }
+.f-voice-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.f-voice-exit { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 14px 0 10px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 15px; font-weight: 700; cursor: pointer; }
+.f-voice-count { font-size: 15px; font-weight: 800; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.f-voice-body { display: grid; align-content: center; justify-items: start; gap: 18px; min-height: 0; padding: 12px 0; }
+.f-voice-ack { font-size: clamp(18px, 4.5vw, 24px); font-weight: 800; color: var(--green); animation: toastIn .25s ease both; }
+.f-voice-question { margin: 0; font-size: clamp(34px, 9vw, 66px); font-weight: 800; line-height: 1.15; letter-spacing: -.025em; text-wrap: balance; animation: toastIn .3s ease both; }
+html[lang="hi"] .f-voice-question { letter-spacing: 0; line-height: 1.3; }
+.f-voice-hint { font-size: clamp(17px, 4.2vw, 22px); color: var(--muted); font-weight: 600; }
+.f-voice-value { display: flex; align-items: center; gap: 10px; font-size: clamp(24px, 6vw, 36px); font-weight: 800; color: var(--green-dark); background: var(--green-soft); border-radius: 18px; padding: 12px 18px; animation: toastIn .25s ease both; max-width: 100%; }
+.f-voice-value svg { flex: 0 0 auto; color: var(--green); }
+
+.f-voice-bottom { display: grid; justify-items: center; gap: 12px; text-align: center; }
+.f-voice-transcript { width: 100%; min-height: 58px; display: grid; gap: 2px; justify-items: center; font-size: clamp(17px, 4.4vw, 22px); font-weight: 700; line-height: 1.4; color: var(--text); transition: opacity .2s ease, color .2s ease; }
+.f-voice-transcript small { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+.f-voice-transcript.is-soft { opacity: .45; }
+.f-voice-transcript-empty { color: var(--muted); }
+.f-voice-message { color: var(--urgency); font-size: 16px; font-weight: 700; line-height: 1.45; max-width: 520px; }
+
+.f-voice-mic { width: 104px; height: 104px; border-radius: 50%; border: 0; display: grid; place-items: center; background: var(--green); color: #fff; cursor: pointer; box-shadow: 0 14px 34px rgba(35,103,71,.28); transition: transform .18s ease, background .18s ease, box-shadow .18s ease; }
+.f-voice-mic:active:not(:disabled) { transform: scale(.96); }
+.f-voice-mic:disabled { cursor: default; }
+.f-voice-mic.is-speaking { background: var(--green-dark); animation: voiceBreathe 1.6s ease-in-out infinite; }
+.f-voice-mic.is-listening { background: var(--urgency); box-shadow: 0 0 0 0 rgba(217,97,60,.35); animation: voiceListen 1.3s ease-out infinite; }
+.f-voice-mic.is-processing { background: var(--surface); color: var(--green); border: 2px solid var(--green-soft); box-shadow: none; }
+.f-voice-mic.is-success, .f-voice-mic.is-done { background: var(--green); animation: voicePop .3s ease both; }
+.f-voice-mic.is-retry, .f-voice-mic.is-error { background: var(--surface); color: var(--green); border: 2px solid var(--green); box-shadow: none; }
+.f-voice-status { font-size: 16px; font-weight: 800; color: var(--muted); min-height: 24px; }
+.f-voice-screen.is-listening .f-voice-status { color: var(--urgency); }
+.f-voice-screen.is-success .f-voice-status, .f-voice-screen.is-done .f-voice-status { color: var(--green); }
+.f-voice-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: 100%; }
+.f-voice-actions .btn { flex: 1 1 140px; }
+.f-voice-mic .spin { animation: spin .9s linear infinite; }
+
+@keyframes voiceBreathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+@keyframes voiceListen { 0% { box-shadow: 0 0 0 0 rgba(217,97,60,.4); } 100% { box-shadow: 0 0 0 26px rgba(217,97,60,0); } }
+@keyframes voicePop { 0% { transform: scale(.9); } 60% { transform: scale(1.06); } 100% { transform: scale(1); } }
+
+@media (min-width: 720px) {
+  .f-voice-screen { padding: 20px max(24px, calc((100vw - 900px) / 2)) 32px; }
+  .f-voice-body { gap: 22px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .f-voice-mic, .f-voice-question, .f-voice-ack, .f-voice-value { animation: none !important; }
+}

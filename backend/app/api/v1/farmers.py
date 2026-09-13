@@ -26,9 +26,30 @@ from app.schemas.user import (
     FarmerUpcomingPickupOut,
     FarmerEarningOut,
     FarmerPickupOut,
+    OnboardingParseRequest,
+    OnboardingParseResponse,
 )
+from app.services.gemini_listing import extract_onboarding_field
+from fastapi.concurrency import run_in_threadpool
 
 router = APIRouter(prefix="/farmers", tags=["Farmers"])
+
+
+@router.post("/parse-onboarding", response_model=OnboardingParseResponse)
+async def parse_onboarding_answer(payload: OnboardingParseRequest):
+    """
+    Gemini extraction for one spoken onboarding answer (name, farm size or crops).
+    Unauthenticated like `/listings/parse-voice`: it only produces a suggestion the
+    farmer reviews on screen, and it runs before a farmer profile exists.
+    """
+    raw_text = payload.transcript.strip()
+    if not raw_text:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Empty or invalid speech transcript.",
+        )
+    data = await run_in_threadpool(extract_onboarding_field, raw_text, payload.field, payload.language or "hi")
+    return OnboardingParseResponse(**data)
 
 
 @router.get("/profile", response_model=FarmerProfileOut)

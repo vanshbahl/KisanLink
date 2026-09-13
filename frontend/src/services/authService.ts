@@ -1,8 +1,12 @@
 import { demoUserIdByRole, demoUsers } from '../data/users'
 import type { Role, Session, User } from '../types'
+import { roleHome } from '../utils/routes'
+import { prototypeService } from './prototypeService'
 
 const SESSION_KEY = 'kisanlink_session'
 const PENDING_KEY = 'kisanlink_pending_auth'
+/** Set while a session that came through the OTP screen still owes the farmer onboarding. */
+const OTP_LOGIN_KEY = 'kisanlink_otp_login'
 
 export interface PendingAuth {
   phone: string
@@ -66,5 +70,27 @@ export const authService = {
   logout(): void {
     localStorage.removeItem(SESSION_KEY)
     sessionStorage.removeItem(PENDING_KEY)
+    sessionStorage.removeItem(OTP_LOGIN_KEY)
+  },
+
+  /** Called by the OTP screen just before verifying, so `postLoginPath` knows this was a real sign-in. */
+  markOtpLogin(): void {
+    try { sessionStorage.setItem(OTP_LOGIN_KEY, '1') } catch { /* private mode: onboarding is simply skipped */ }
+  },
+
+  clearOtpLogin(): void {
+    sessionStorage.removeItem(OTP_LOGIN_KEY)
+  },
+
+  /**
+   * Where a signed-in user lands. A farmer who verified an OTP and has no completed profile
+   * goes through onboarding first; demo logins and every other role go straight home. Both
+   * the OTP screen and the public-route guard use this, so they can never disagree.
+   */
+  postLoginPath(role: Role): string {
+    let viaOtp = false
+    try { viaOtp = sessionStorage.getItem(OTP_LOGIN_KEY) === '1' } catch { /* see markOtpLogin */ }
+    if (role === 'farmer' && viaOtp && prototypeService.farmerNeedsOnboarding()) return '/farmer/onboarding'
+    return roleHome(role)
   },
 }

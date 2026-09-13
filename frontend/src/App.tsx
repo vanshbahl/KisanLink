@@ -12,6 +12,7 @@ import { FarmerDeal } from './pages/farmer/FarmerDeal'
 import { FarmerFasal } from './pages/farmer/FarmerFasal'
 import { FarmerHome } from './pages/farmer/FarmerHome'
 import { FarmerOrderDetail } from './pages/farmer/FarmerOrderDetail'
+import { FarmerOnboarding } from './pages/farmer/FarmerOnboarding'
 import { FarmerOrders } from './pages/farmer/FarmerOrders'
 import { FarmerPaisa } from './pages/farmer/FarmerPaisa'
 import { FarmerProfile } from './pages/farmer/FarmerProfile'
@@ -22,12 +23,13 @@ import { LogisticsDashboard, LogisticsDeliveryDetailPage, LogisticsJobsPage, Log
 import { hasChosenLanguage, LanguageSplashPage } from './pages/LanguageSplashPage'
 import { OtpPage } from './pages/OtpPage'
 import { WelcomePage } from './pages/WelcomePage'
+import { authService } from './services/authService'
 import type { Role } from './types'
 import { roleHome } from './utils/routes'
 
 function PublicOnly({ children }: { children: React.ReactNode }) {
   const { session } = useAuth()
-  return session ? <Navigate to={roleHome(session.role)} replace /> : children
+  return session ? <Navigate to={authService.postLoginPath(session.role)} replace /> : children
 }
 
 /** The phone screen is reached through the language splash once per browser session. */
@@ -65,6 +67,8 @@ export default function App() {
       <Route path="/start" element={<PublicOnly><LanguageSplashPage /></PublicOnly>} />
       <Route path="/auth" element={<PublicOnly><LanguageGate><AuthPage /></LanguageGate></PublicOnly>} />
       <Route path="/verify" element={<PublicOnly><OtpPage /></PublicOnly>} />
+      {/* Post-OTP farmer onboarding: signed in, but outside the shell so there is no nav to wander off into. */}
+      <Route path="/farmer/onboarding" element={<RoleGuard role="farmer"><FarmerOnboarding /></RoleGuard>} />
 
       <Route element={<ProtectedShell />}>
         <Route path="farmer">

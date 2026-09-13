@@ -122,16 +122,63 @@ const STATE_REGIONS: readonly StateRegion[] = [
   { state: 'Jammu and Kashmir', language: 'ur', box: [32.25, 35.00, 73.75, 77.60] },
 ]
 
+/**
+ * Districts the demo corridor runs through, so a farmer onboarding from one of them sees
+ * the district already filled in. Coarse boxes again; anything outside them leaves the
+ * district blank and the farmer types it. Delhi comes first for the same reason as above.
+ */
+const DISTRICT_REGIONS: readonly { district: string; box: [number, number, number, number] }[] = [
+  { district: 'New Delhi', box: [28.40, 28.88, 76.84, 77.35] },
+  { district: 'Gurugram', box: [28.20, 28.55, 76.65, 77.15] },
+  { district: 'Faridabad', box: [28.15, 28.50, 77.15, 77.55] },
+  { district: 'Sonipat', box: [28.80, 29.30, 76.65, 77.25] },
+  { district: 'Panipat', box: [29.20, 29.55, 76.60, 77.15] },
+  { district: 'Karnal', box: [29.45, 29.95, 76.40, 77.20] },
+  { district: 'Rohtak', box: [28.70, 29.10, 76.30, 76.80] },
+  { district: 'Jhajjar', box: [28.35, 28.80, 76.35, 76.85] },
+  { district: 'Ghaziabad', box: [28.55, 28.85, 77.35, 77.65] },
+  { district: 'Meerut', box: [28.80, 29.25, 77.40, 77.95] },
+]
+
 export interface LocaleDiscovery {
   language: DiscoveryLanguage
   /** Set only when the position resolved to a known state. */
   state?: string
+  /** Set only when the position also fell inside a district the app knows. */
+  district?: string
   source: 'location' | 'fallback'
 }
 
 export function regionForCoordinates(lat: number, lng: number): Pick<StateRegion, 'state' | 'language'> | null {
   const hit = STATE_REGIONS.find(({ box: [south, north, west, east] }) => lat >= south && lat <= north && lng >= west && lng <= east)
   return hit ? { state: hit.state, language: hit.language } : null
+}
+
+export function districtForCoordinates(lat: number, lng: number): string | null {
+  const hit = DISTRICT_REGIONS.find(({ box: [south, north, west, east] }) => lat >= south && lat <= north && lng >= west && lng <= east)
+  return hit?.district ?? null
+}
+
+/**
+ * The splash keeps its result for the rest of the browser session so farmer onboarding can
+ * prefill district and state without asking for the position a second time.
+ */
+export interface DetectedRegion { state?: string; district?: string }
+const DETECTED_REGION_KEY = 'kisanlink_detected_region'
+
+export function rememberDetectedRegion(discovery: LocaleDiscovery) {
+  if (discovery.source !== 'location') return
+  const region: DetectedRegion = { state: discovery.state, district: discovery.district }
+  try { sessionStorage.setItem(DETECTED_REGION_KEY, JSON.stringify(region)) } catch { /* private mode: onboarding simply starts blank */ }
+}
+
+export function getDetectedRegion(): DetectedRegion | null {
+  try {
+    const stored = sessionStorage.getItem(DETECTED_REGION_KEY)
+    return stored ? (JSON.parse(stored) as DetectedRegion) : null
+  } catch {
+    return null
+  }
 }
 
 const FALLBACK: LocaleDiscovery = { language: FALLBACK_LANGUAGE, source: 'fallback' }
@@ -157,7 +204,8 @@ export function discoverLocale(timeoutMs = 3500): Promise<LocaleDiscovery> {
       navigator.geolocation.getCurrentPosition(
         ({ coords }) => {
           const region = regionForCoordinates(coords.latitude, coords.longitude)
-          finish(region ? { ...region, source: 'location' } : FALLBACK)
+          const district = districtForCoordinates(coords.latitude, coords.longitude) ?? undefined
+          finish(region ? { ...region, district, source: 'location' } : FALLBACK)
         },
         () => finish(FALLBACK),
         { enableHighAccuracy: false, timeout: timeoutMs, maximumAge: 10 * 60 * 1000 },

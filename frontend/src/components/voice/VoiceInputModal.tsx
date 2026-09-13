@@ -3,20 +3,8 @@ import { AlertCircle, Check, ChevronDown, Mic, MicOff, RefreshCw, Sparkles, X } 
 import { useLanguage } from '../../contexts/LanguageContext'
 import { useToast } from '../../contexts/ToastContext'
 import { apiClient } from '../../services/apiClient'
+import { createSpeechRecognition, speechErrorMessage, speechLang, unsupportedSpeechMessage, type SpeechRecognitionLike } from '../../services/speech'
 import { localDay } from '../../utils/dates'
-
-interface SpeechRecognitionLike {
-  continuous: boolean
-  interimResults: boolean
-  lang: string
-  onstart: (() => void) | null
-  onresult: ((event: { resultIndex: number; results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal?: boolean }> }) => void) | null
-  onerror: ((event: { error: string }) => void) | null
-  onend: (() => void) | null
-  start: () => void
-  stop: () => void
-  abort: () => void
-}
 
 interface VoiceParsedResult {
   crop_name?: string | null
@@ -135,30 +123,22 @@ export function VoiceInputModal({ isOpen, onClose, onConfirm }: VoiceInputModalP
     hasErrorRef.current = false
     latestTranscriptRef.current = ''
 
-    const SpeechRecognition =
-      (window as unknown as { SpeechRecognition?: new () => SpeechRecognitionLike; webkitSpeechRecognition?: new () => SpeechRecognitionLike }).SpeechRecognition ||
-      (window as unknown as { webkitSpeechRecognition?: new () => SpeechRecognitionLike }).webkitSpeechRecognition
+    if (recognitionRef.current) {
+      try { recognitionRef.current.abort() } catch { /* ignore */ }
+    }
 
-    if (!SpeechRecognition) {
+    const recognition = createSpeechRecognition()
+    if (!recognition) {
       console.warn('[VoiceRecognition] SpeechRecognition is not supported in this browser.')
-      setError(
-        language === 'hi'
-          ? 'आपके ब्राउज़र में आवाज़ इनपुट समर्थित नहीं है। आप नीचे लिस्टिंग टाइप कर सकते हैं।'
-          : 'Voice input is not supported in this browser. You can type the listing instead.'
-      )
+      setError(`${unsupportedSpeechMessage(language)} ${language === 'hi' ? 'आप नीचे लिस्टिंग टाइप कर सकते हैं।' : 'You can type the listing instead.'}`)
       return
     }
 
     try {
-      if (recognitionRef.current) {
-        try { recognitionRef.current.abort() } catch { /* ignore */ }
-      }
-
-      const recognition = new SpeechRecognition()
       recognitionRef.current = recognition
       recognition.continuous = true
       recognition.interimResults = true
-      recognition.lang = language === 'hi' ? 'hi-IN' : 'en-IN'
+      recognition.lang = speechLang(language)
 
       recognition.onstart = () => {
         console.log('[VoiceRecognition] onstart: listening started (lang:', recognition.lang, ')')
@@ -187,61 +167,9 @@ export function VoiceInputModal({ isOpen, onClose, onConfirm }: VoiceInputModalP
         console.error('[VoiceRecognition] onerror code:', event.error)
         hasErrorRef.current = true
         setIsListening(false)
-
-        switch (event.error) {
-          case 'no-speech':
-            setError(
-              language === 'hi'
-                ? 'कोई आवाज़ नहीं सुनी गई। माइक दबाएं और दोबारा बोलें।'
-                : 'No speech detected. Tap the microphone and try again.'
-            )
-            break
-          case 'not-allowed':
-            setError(
-              language === 'hi'
-                ? 'माइक अनुमति अवरुद्ध है। ब्राउज़र सेटिंग्स में अनुमति दें और पुनः प्रयास करें।'
-                : 'Microphone access is blocked. Allow microphone access in your browser and try again.'
-            )
-            break
-          case 'audio-capture':
-            setError(
-              language === 'hi'
-                ? 'कोई माइक्रोफ़ोन नहीं मिला।'
-                : 'No microphone was detected.'
-            )
-            break
-          case 'network':
-            setError(
-              language === 'hi'
-                ? 'स्पीच सेवा उपलब्ध नहीं है। Arc/Dia/Brave के बजाय Google Chrome या Edge का उपयोग करें, या नीचे टाइप करें।'
-                : 'Voice recognition service unreachable. If using Arc, Dia, or Brave, use Google Chrome or Edge, or type below.'
-            )
-            break
-          case 'service-not-allowed':
-            setError(
-              language === 'hi'
-                ? 'इस ब्राउज़र में स्पीच सेवा की अनुमति नहीं है। कृपया नीचे टाइप करें।'
-                : 'Speech recognition service is not permitted in this browser. You can type instead.'
-            )
-            break
-          case 'language-not-supported':
-            setError(
-              language === 'hi'
-                ? 'यह भाषा ब्राउज़र स्पीच इंजन में समर्थित नहीं है।'
-                : 'Selected language is not supported by your browser speech engine.'
-            )
-            break
-          case 'aborted':
-            // Intentional cancellation — no error message needed
-            break
-          default:
-            setError(
-              language === 'hi'
-                ? `आवाज़ ठीक से नहीं पहचानी गई (${event.error})। कृपया दोबारा बोलें या नीचे टाइप करें।`
-                : `Could not recognize speech clearly (${event.error}). Try again, or type your phrase below.`
-            )
-            break
-        }
+        // `aborted` is an intentional cancellation and carries no message.
+        const message = speechErrorMessage(event.error, language)
+        if (message) setError(message)
       }
 
       recognition.onend = () => {

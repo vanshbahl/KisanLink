@@ -207,6 +207,8 @@ export interface FarmerProfileData {
   language: Language
   farmName: string
   village: string
+  /** Area or mohalla within the village. Collected at onboarding; older snapshots lack it. */
+  locality?: string
   district: string
   state: string
   farmSizeAcres: number
@@ -217,6 +219,8 @@ export interface FarmerProfileData {
   farmerVerified: boolean
   farmVerified: boolean
   identityStatus: 'Verified' | 'Pending'
+  /** Set once the post-OTP onboarding has been completed; absent on a fresh seed. */
+  onboardingComplete?: boolean
 }
 
 export type ConsumerOrderStatus = 'confirmed' | 'farmer_preparing' | 'pickup_scheduled' | 'collected' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'cancelled'

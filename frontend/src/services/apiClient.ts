@@ -240,6 +240,30 @@ class ApiClient {
 
   }
 
+  // --- Farmer onboarding voice parser (same Gemini service, one field at a time) ---
+  async parseOnboardingVoice(
+    transcript: string,
+    field: 'name' | 'farm_size' | 'crops',
+    language: string = 'hi',
+    timeoutMs = 4500
+  ): Promise<{
+    value?: string | null
+    value_hi?: string | null
+    farm_size_acres?: number | null
+    crops?: string[]
+    ai_used?: boolean
+    warning?: string | null
+  }> {
+    const response = await fetch(`${API_BASE}/farmers/parse-onboarding`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ transcript, field, language }),
+      signal: AbortSignal.timeout(timeoutMs),
+    })
+    if (!response.ok) throw new Error(`Onboarding voice parse failed: ${response.status}`)
+    return response.json()
+  }
+
   // --- Logistics & Route Optimization API ---
   async getShipments(): Promise<any[]> {
     return this.request<any[]>('/logistics/shipments', {}, 'farmer')

@@ -454,3 +454,116 @@ Transcript: {transcript}"""
         logger.info(f"[VoiceParse] normalized={deterministic}")
         logger.info("[VoiceParse] success=True")
         return deterministic
+
+
+# ---------------------------------------------------------------------------
+# Farmer onboarding: one spoken answer -> one profile field.
+#
+# The onboarding voice mode parses most answers on the client (a name is a name,
+# a village is a village). Gemini is only asked for the three answers where plain
+# transcription is not enough: transliterating a Devanagari name, turning
+# "करीब चार एकड़" into a number, and naming crops the client's alias table does not
+# know. Same client, key, model and logging as the listing parser above.
+# ---------------------------------------------------------------------------
+ONBOARDING_FIELDS = ("name", "farm_size", "crops")
+
+ONBOARDING_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "value": {"type": ["string", "null"]},
+        "value_hi": {"type": ["string", "null"]},
+        "farm_size_acres": {"type": ["number", "null"]},
+        "crops": {"type": "array", "items": {"type": "string"}},
+    },
+    "required": ["value", "value_hi", "farm_size_acres", "crops"],
+}
+
+_ONBOARDING_PROMPTS = {
+    "name": (
+        "The farmer was asked for their full name. Extract only the name.\n"
+        "- `value`: the name in Latin script, title case. Transliterate Hindi names "
+        "(for example 'रमेश यादव' becomes 'Ramesh Yadav').\n"
+        "- `value_hi`: the same name in Devanagari script.\n"
+        "- Drop filler such as 'mera naam', 'मेरा नाम ... है', 'my name is', 'ji'.\n"
+        "- Leave `crops` empty and `farm_size_acres` null."
+    ),
+    "farm_size": (
+        "The farmer was asked how much land they farm. Return `farm_size_acres` as a number of acres.\n"
+        "- Convert units: 1 bigha = 0.25 acre, 1 hectare = 2.47 acres, 1 kanal = 0.125 acre.\n"
+        "- Understand Hindi number words: dedh/डेढ़ = 1.5, dhai/ढाई = 2.5, saadhe teen/साढ़े तीन = 3.5, "
+        "chaar/चार = 4, paanch/पांच = 5, das/दस = 10.\n"
+        "- 'karib', 'lagbhag', 'about' mean approximately; keep the number as spoken.\n"
+        "- If a range is spoken ('do teen acre'), return the lower number.\n"
+        "- Set `value` to null, `value_hi` to null and `crops` to an empty list."
+    ),
+    "crops": (
+        "The farmer was asked which crops they sell. Return `crops` as a list of English crop names, "
+        "singular, title case (for example ['Tomato', 'Onion', 'Spinach']).\n"
+        "- Translate Hindi names: tamatar/टमाटर = Tomato, pyaz/प्याज़ = Onion, palak/पालक = Spinach, "
+        "aloo/आलू = Potato, gehu/गेहूं = Wheat, gajar/गाजर = Carrot, gobhi = Cauliflower, "
+        "kheera = Cucumber, chawal/dhan = Rice, sarson = Mustard, ganna = Sugarcane, makka = Maize.\n"
+        "- Ignore filler such as 'bechta hoon', 'ugata hoon', 'aur'.\n"
+        "- Set `value` to null, `value_hi` to null and `farm_size_acres` to null."
+    ),
+}
+
+
+def _empty_onboarding(warning: str | None) -> dict[str, Any]:
+    return {
+        "value": None,
+        "value_hi": None,
+        "farm_size_acres": None,
+        "crops": [],
+        "ai_used": False,
+        "warning": warning,
+    }
+
+
+def extract_onboarding_field(transcript: str, field: str, language: str = "hi") -> dict[str, Any]:
+    """
+    Structured Gemini extraction for a single onboarding answer. Never raises: a missing
+    key or an upstream failure returns an empty payload with `ai_used=False`, and the
+    client keeps whatever it parsed on its own.
+    """
+    if field not in ONBOARDING_FIELDS:
+        raise ValueError(f"Unknown onboarding field: {field}")
+
+    logger.info(f'[OnboardingParse] field={field} transcript="{transcript}"')
+
+    if not settings.GEMINI_API_KEY:
+        logger.info("[OnboardingParse] GEMINI_API_KEY not configured")
+        return _empty_onboarding("Gemini is not configured. The spoken answer was kept as heard.")
+
+    prompt = (
+        "You are helping a farmer sign up for KisanLink. They answered one question out loud; "
+        "the speech may be Hindi, English or Hinglish.\n"
+        f"{_ONBOARDING_PROMPTS[field]}\n"
+        f"Language hint: {language}.\n"
+        f"Transcript: {transcript}"
+    )
+
+    try:
+        client = genai.Client(api_key=settings.GEMINI_API_KEY)
+        response = client.models.generate_content(
+            model=settings.GEMINI_MODEL,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_json_schema=ONBOARDING_SCHEMA,
+                temperature=0.1,
+            ),
+        )
+        parsed = json.loads(response.text or "{}")
+        result = {
+            "value": parsed.get("value") or None,
+            "value_hi": parsed.get("value_hi") or None,
+            "farm_size_acres": parsed.get("farm_size_acres"),
+            "crops": [str(item).strip() for item in parsed.get("crops") or [] if str(item).strip()],
+            "ai_used": True,
+            "warning": None,
+        }
+        logger.info(f"[OnboardingParse] normalized={result}")
+        return result
+    except Exception as exc:
+        logger.error(f"[OnboardingParse] ERROR {type(exc).__name__}: {exc}")
+        return _empty_onboarding("AI service could not be reached. The spoken answer was kept as heard.")

@@ -39,11 +39,12 @@ export function FarmerHome() {
   const { f, language, pick } = useFarmerText()
 
   const { data, loading, error, refresh } = useAsyncData(async () => {
-    const [listings, orders, pickups, earnings] = await Promise.all([
+    const [listings, orders, pickups, earnings, profile] = await Promise.all([
       prototypeService.getMyListings(),
       prototypeService.getOrders(),
       prototypeService.getPickups(),
       prototypeService.getEarnings(),
+      prototypeService.getProfile(),
     ])
     // Only this farm's orders — getOrders() spans the shared prototype story.
     const mine = new Set(listings.map((item) => item.id))
@@ -52,6 +53,7 @@ export function FarmerHome() {
     return {
       listings,
       cropDeals,
+      profileName: profile.name,
       running: myOrders.filter((order) => order.status !== 'delivered' && order.status !== 'cancelled').length,
       pending: earnings.filter((item) => item.status === 'pending').reduce((sum, item) => sum + item.net, 0),
       tasks: buildFarmerTasks({ listings, orders: myOrders, pickups, earnings, deal }, language),
@@ -69,7 +71,8 @@ export function FarmerHome() {
   }
 
   const tasks = data.tasks.slice(0, MAX_TASKS)
-  const firstName = user?.name?.split(' ')[0] ?? ''
+  // The name the farmer gave at onboarding, falling back to the demo account's.
+  const firstName = (data.profileName || user?.name || '').split(' ')[0]
 
   // Live crops, the one with the least selling time first, so the strip reads as a priority.
   const crops = data.listings

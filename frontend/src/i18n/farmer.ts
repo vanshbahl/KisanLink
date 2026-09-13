@@ -201,6 +201,33 @@ const copy = {
     farmerVerified: 'You are verified', farmVerified: 'Farm is verified', idVerified: 'ID: {status}',
     saveChanges: 'Save', profileSaved: 'Saved.', demoHeading: 'Demo',
     switchRole: 'See another role', logOut: 'Log out',
+    locality: 'Area or locality',
+
+    // --- Onboarding (after OTP) ---------------------------------------------
+    onboardTitle: 'Set up your account', onboardStepYou: 'You', onboardStepLand: 'Land', onboardStepCrops: 'Crops',
+    onboardAboutYou: 'Tell us about yourself', onboardSpeak: 'Fill by speaking', onboardSpeakHint: 'We ask one question at a time',
+    fullName: 'Full name', detectedFromLocation: 'Filled from your location. Change it if it is wrong.',
+    onboardFarmSize: 'How much land do you farm?',
+    sizeUnder1: 'Less than 1 acre', size1to3: '1 to 3 acres', size3to5: '3 to 5 acres', size5to10: '5 to 10 acres', size10plus: 'More than 10 acres',
+    onboardCrops: 'Which crops do you sell?', onboardCropsHint: 'Pick all that apply', addCrop: 'Add', selectedCrops: '{count} chosen',
+    noCropMatch: 'No crop found. Add it below.',
+    onboardDone: 'All set!', onboardDoneHint: 'Check once and go to your dashboard.', continueDashboard: 'Continue to dashboard',
+    nameRequired: 'Please tell us your name', notFilled: 'Not filled', land: 'Land', crops: 'Crops', place: 'Place',
+
+    // --- Voice onboarding ----------------------------------------------------
+    voiceQName: 'What is your full name?',
+    voiceQVillage: 'Hello {name}, which village is your farm in?', voiceQVillageNoName: 'Which village is your farm in?',
+    voiceQLocality: 'Which area or locality is the farm in?',
+    voiceQRegion: 'Is your district {district}, {state}?', voiceQRegionHint: 'Say yes or no',
+    voiceQDistrict: 'Which district?', voiceQState: 'Which state?',
+    voiceQFarmSize: 'How much land do you farm?', voiceQFarmSizeHint: 'For example: about four acres',
+    voiceQCrops: 'Which crops do you sell?', voiceQCropsHint: 'For example: tomato, onion and spinach',
+    voiceAllDone: 'Wonderful, that is everything.',
+    voiceAckOk: 'Okay', voiceAckGreat: 'Very good', voiceAckHello: 'Hello {name}',
+    voiceSpeaking: 'Listen', voiceListening: 'Listening', voiceProcessing: 'Understanding', voiceTapToSpeak: 'Tap and speak',
+    voiceHeard: 'You said', voiceNotUnderstood: 'Could not understand. Please say it again.', voiceNothingHeard: 'Did not hear anything.',
+    voiceSpeakAgain: 'Speak again', voiceTypeInstead: 'Type instead', voiceSkip: 'Skip', voiceExit: 'Fill by typing',
+    voiceQuestionOf: '{current} of {total}', voiceUnavailable: 'Voice is not available here. You can type everything instead.',
   },
 
   hi: {
@@ -383,6 +410,33 @@ const copy = {
     farmerVerified: 'आप सत्यापित हैं', farmVerified: 'खेत सत्यापित है', idVerified: 'पहचान: {status}',
     saveChanges: 'सहेजें', profileSaved: 'सहेज लिया।', demoHeading: 'डेमो',
     switchRole: 'दूसरी भूमिका देखें', logOut: 'लॉग आउट',
+    locality: 'इलाका या मोहल्ला',
+
+    // --- Onboarding (after OTP) ---------------------------------------------
+    onboardTitle: 'अपना खाता बनाएं', onboardStepYou: 'आप', onboardStepLand: 'ज़मीन', onboardStepCrops: 'फसल',
+    onboardAboutYou: 'अपने बारे में बताएं', onboardSpeak: 'बोलकर भरें', onboardSpeakHint: 'हम एक-एक सवाल पूछेंगे',
+    fullName: 'पूरा नाम', detectedFromLocation: 'आपकी लोकेशन से भरा गया। गलत हो तो बदल दें।',
+    onboardFarmSize: 'आपके पास कितनी ज़मीन है?',
+    sizeUnder1: '1 एकड़ से कम', size1to3: '1 से 3 एकड़', size3to5: '3 से 5 एकड़', size5to10: '5 से 10 एकड़', size10plus: '10 एकड़ से ज़्यादा',
+    onboardCrops: 'आप कौन सी फसलें बेचते हैं?', onboardCropsHint: 'जितनी हों, सब चुनें', addCrop: 'जोड़ें', selectedCrops: '{count} चुनी',
+    noCropMatch: 'यह फसल नहीं मिली। नीचे जोड़ें।',
+    onboardDone: 'सब तैयार है!', onboardDoneHint: 'एक बार देख लें और अपने डैशबोर्ड पर चलें।', continueDashboard: 'डैशबोर्ड पर चलें',
+    nameRequired: 'कृपया अपना नाम बताएं', notFilled: 'नहीं भरा', land: 'ज़मीन', crops: 'फसल', place: 'जगह',
+
+    // --- Voice onboarding ----------------------------------------------------
+    voiceQName: 'आपका पूरा नाम क्या है?',
+    voiceQVillage: 'नमस्ते {name}, आपका खेत किस गाँव में है?', voiceQVillageNoName: 'आपका खेत किस गाँव में है?',
+    voiceQLocality: 'खेत किस इलाके या मोहल्ले में है?',
+    voiceQRegion: 'क्या आपका ज़िला {district}, {state} है?', voiceQRegionHint: 'हाँ या नहीं बोलें',
+    voiceQDistrict: 'आपका ज़िला कौन सा है?', voiceQState: 'आपका राज्य कौन सा है?',
+    voiceQFarmSize: 'आपके पास कितनी ज़मीन है?', voiceQFarmSizeHint: 'जैसे: करीब चार एकड़',
+    voiceQCrops: 'आप कौन सी फसलें बेचते हैं?', voiceQCropsHint: 'जैसे: टमाटर, प्याज़ और पालक',
+    voiceAllDone: 'बहुत बढ़िया, सब भर गया।',
+    voiceAckOk: 'ठीक है', voiceAckGreat: 'बहुत बढ़िया', voiceAckHello: 'नमस्ते {name}',
+    voiceSpeaking: 'सुनिए', voiceListening: 'सुन रहा हूँ', voiceProcessing: 'समझ रहा हूँ', voiceTapToSpeak: 'दबाएं और बोलें',
+    voiceHeard: 'आपने कहा', voiceNotUnderstood: 'समझ नहीं आया। फिर से बोलें।', voiceNothingHeard: 'कुछ सुनाई नहीं दिया।',
+    voiceSpeakAgain: 'फिर से बोलें', voiceTypeInstead: 'टाइप करें', voiceSkip: 'छोड़ें', voiceExit: 'टाइप करके भरें',
+    voiceQuestionOf: '{total} में से {current}', voiceUnavailable: 'यहां आवाज़ काम नहीं कर रही। आप सब कुछ टाइप कर सकते हैं।',
   },
 } as const
 

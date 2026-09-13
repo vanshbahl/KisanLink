@@ -197,3 +197,39 @@ async def test_parse_voice_exact_user_utterance(client: AsyncClient, farmer_toke
     assert "Farm pickup" in (data["notes"] or "")
 
 
+
+
+@pytest.mark.asyncio
+async def test_parse_onboarding_without_gemini_key(client: AsyncClient, monkeypatch):
+    """Onboarding parse degrades to an empty suggestion when Gemini is not configured."""
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", "")
+    response = await client.post(
+        "/api/v1/farmers/parse-onboarding",
+        json={"transcript": "मेरा नाम रमेश यादव है", "field": "name", "language": "hi"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["ai_used"] is False
+    assert data["value"] is None
+    assert data["crops"] == []
+    assert data["warning"]
+
+
+@pytest.mark.asyncio
+async def test_parse_onboarding_rejects_unknown_field(client: AsyncClient):
+    response = await client.post(
+        "/api/v1/farmers/parse-onboarding",
+        json={"transcript": "टमाटर और प्याज़", "field": "village", "language": "hi"},
+    )
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_parse_onboarding_empty_input(client: AsyncClient):
+    response = await client.post(
+        "/api/v1/farmers/parse-onboarding",
+        json={"transcript": "   ", "field": "crops", "language": "hi"},
+    )
+    assert response.status_code == 400

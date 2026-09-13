@@ -425,6 +425,8 @@ export const prototypeService = {
     return (await readState()).earnings
   },
   async getProfile() { return (await readState()).profile },
+  /** Synchronous on purpose: route guards decide where a fresh session lands during render. */
+  farmerNeedsOnboarding() { return !readLocal().profile.onboardingComplete },
   async saveProfile(profile: FarmerProfileData) { const state = await readState(); state.profile = profile; await persist(state); return profile },
   async getNotifications(role: Role) { return (await readState()).notifications.filter((item) => item.role === role) },
   async markNotificationsRead(role: Role) { const state = await readState(); state.notifications.forEach((item) => { if (item.role === role) item.read = true }); await persist(state) },

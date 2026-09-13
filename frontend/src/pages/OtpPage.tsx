@@ -7,7 +7,6 @@ import { useAuth } from '../contexts/AuthContext'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useToast } from '../contexts/ToastContext'
 import { authService } from '../services/authService'
-import { roleHome } from '../utils/routes'
 
 export function OtpPage() {
   const pending = authService.getPendingAuth()
@@ -37,9 +36,12 @@ export function OtpPage() {
     event.preventDefault()
     setLoading(true); setError('')
     try {
+      // Marked before verifying: the session change re-renders the public-route guard, which
+      // redirects through the same `postLoginPath`, so a new farmer lands on onboarding.
+      authService.markOtpLogin()
       const session = await verifyOtp(digits.join(''))
       showToast(t('phoneVerified'))
-      navigate(roleHome(session.role), { replace: true })
+      navigate(authService.postLoginPath(session.role), { replace: true })
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : t('verificationFailed'))
     } finally { setLoading(false) }
