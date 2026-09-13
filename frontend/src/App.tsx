@@ -19,6 +19,7 @@ import { FarmerSell } from './pages/farmer/FarmerSell'
 import { ListingDetailPage } from './pages/ListingDetailPage'
 import { MarketMakerPage } from './pages/MarketMakerPage'
 import { LogisticsDashboard, LogisticsDeliveryDetailPage, LogisticsJobsPage, LogisticsPickupDetailPage, LogisticsProfilePage, LogisticsRoutesPage, LogisticsVehiclesPage } from './pages/LogisticsExperience'
+import { hasChosenLanguage, LanguageSplashPage } from './pages/LanguageSplashPage'
 import { OtpPage } from './pages/OtpPage'
 import { WelcomePage } from './pages/WelcomePage'
 import type { Role } from './types'
@@ -27,6 +28,11 @@ import { roleHome } from './utils/routes'
 function PublicOnly({ children }: { children: React.ReactNode }) {
   const { session } = useAuth()
   return session ? <Navigate to={roleHome(session.role)} replace /> : children
+}
+
+/** The phone screen is reached through the language splash once per browser session. */
+function LanguageGate({ children }: { children: React.ReactNode }) {
+  return hasChosenLanguage() ? children : <Navigate to="/start" replace />
 }
 
 function ProtectedShell() {
@@ -56,7 +62,8 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<PublicOnly><WelcomePage /></PublicOnly>} />
-      <Route path="/auth" element={<PublicOnly><AuthPage /></PublicOnly>} />
+      <Route path="/start" element={<PublicOnly><LanguageSplashPage /></PublicOnly>} />
+      <Route path="/auth" element={<PublicOnly><LanguageGate><AuthPage /></LanguageGate></PublicOnly>} />
       <Route path="/verify" element={<PublicOnly><OtpPage /></PublicOnly>} />
 
       <Route element={<ProtectedShell />}>
