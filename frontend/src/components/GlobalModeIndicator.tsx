@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Server, Zap } from 'lucide-react'
 import { apiClient } from '../services/apiClient'
 
-export function GlobalModeIndicator() {
+export function GlobalModeIndicator({ compact = false }: { compact?: boolean }) {
   const [isLive, setIsLive] = useState<boolean | null>(null)
   const [showTooltip, setShowTooltip] = useState(false)
 
@@ -22,6 +22,8 @@ export function GlobalModeIndicator() {
   }, [])
 
   if (isLive === null) return null
+
+  if (compact) return <small role="status">{isLive ? 'Backend connected' : 'Demo mode'}</small>
 
   return (
     <div

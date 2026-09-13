@@ -64,17 +64,16 @@ const navByRole: Record<Role, RoleNav> = {
   consumer: {
     mobile: [
       { labelKey: 'home', to: '/consumer', icon: Home, end: true },
-      { labelKey: 'orders', to: '/consumer/orders', icon: PackageCheck },
-      { labelKey: 'cart', to: '/consumer/cart', icon: ShoppingBag, primary: true },
       { labelKey: 'marketMakerNav', to: '/consumer/market', icon: Radar },
+      { labelKey: 'cart', to: '/consumer/cart', icon: ShoppingBag, primary: true },
+      { labelKey: 'orders', to: '/consumer/orders', icon: PackageCheck },
       { labelKey: 'profile', to: '/consumer/profile', icon: UserRound },
     ],
     desktop: [
       { labelKey: 'home', to: '/consumer', icon: Home, end: true },
-      { labelKey: 'orders', to: '/consumer/orders', icon: PackageCheck },
-      { labelKey: 'cart', to: '/consumer/cart', icon: ShoppingBag, primary: true },
       { labelKey: 'marketMakerNav', to: '/consumer/market', icon: Radar },
-      { labelKey: 'saved', to: '/consumer/saved', icon: Heart },
+      { labelKey: 'cart', to: '/consumer/cart', icon: ShoppingBag, primary: true },
+      { labelKey: 'orders', to: '/consumer/orders', icon: PackageCheck },
       { labelKey: 'profile', to: '/consumer/profile', icon: UserRound },
     ],
     headerProfile: false,
@@ -142,7 +141,8 @@ export function AppShell() {
           <Logo />
           <div>
             {session.role === 'farmer' && <LanguageSwitcher compact />}
-            <GlobalModeIndicator />
+            {session.role === 'consumer' && <NavLink to="/consumer/saved" className="header-saved" aria-label="Saved produce" title="Saved produce"><Heart size={19} /></NavLink>}
+            {session.role !== 'consumer' && <GlobalModeIndicator />}
             <NotificationCenter />
             {nav.headerProfile && (
               <NavLink to={`/${session.role}/profile`} className="header-avatar" aria-label={t('profile')} title={t('profile')}>
@@ -153,7 +153,7 @@ export function AppShell() {
         </header>
         <header className="desktop-topbar">
           <div><span>{t('deliveringTo')}</span><strong>{session.role === 'farmer' ? t('location') : user.location}</strong></div>
-          <div>{session.role === 'farmer' && <LanguageSwitcher />}<GlobalModeIndicator /><NotificationCenter /><NavLink to={`/${session.role}/profile`} className="topbar-profile"><span>{user.avatarInitials}</span><div><strong>{user.name}</strong><small>{t(roleKey[session.role])}</small></div></NavLink></div>
+          <div>{session.role === 'farmer' && <LanguageSwitcher />}{session.role === 'consumer' && <NavLink to="/consumer/saved" className="topbar-saved"><Heart size={17} />Saved</NavLink>}{session.role !== 'consumer' && <GlobalModeIndicator />}<NotificationCenter /><NavLink to={`/${session.role}/profile`} className="topbar-profile"><span>{user.avatarInitials}</span><div><strong>{user.name}</strong><small>{t(roleKey[session.role])}</small></div></NavLink></div>
         </header>
         <main className="app-main"><Outlet /></main>
       </div>

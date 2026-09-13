@@ -11,11 +11,11 @@ import { MarketConvergence } from '../components/market/MarketConvergence'
 import { MarketDemandRing } from '../components/market/MarketDemandRing'
 import { MarketFreightCurve } from '../components/market/MarketFreightCurve'
 import { MarketUnlockReveal, type MarketCreationResult } from '../components/market/MarketUnlockReveal'
-import { MarketValueSplit } from '../components/market/MarketValueSplit'
 import { MarketWhyPanel } from '../components/market/MarketWhyPanel'
 import { RegionalMarketMakerDirectory } from '../components/market/RegionalMarketMakerDirectory'
 import { DashboardSkeleton } from '../components/LoadingSkeleton'
 import { StatusBadge } from '../components/StatusBadge'
+import { ConsumerMarketMakerDeal } from '../components/consumer/ConsumerMarketMakerDeal'
 import { useAuth } from '../contexts/AuthContext'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useToast } from '../contexts/ToastContext'
@@ -77,6 +77,18 @@ export function MarketMakerPage() {
     ])
     return { view, views, consumerProfile, bulkProfile }
   }, [], { live: true })
+
+  if (role === 'consumer') {
+    return (
+      <div className="page consumer-market-page">
+        <header className="consumer-market-page-head">
+          <h1>Market Maker</h1>
+          <p>Group buy from nearby farms</p>
+        </header>
+        <ConsumerMarketMakerDeal variant="page" />
+      </div>
+    )
+  }
 
   if (loading && !data) return <DashboardSkeleton />
   if (!data?.view) return <div className="error-panel"><h2>No market corridor is open</h2><p>Seed the Market Maker scenario from the logistics demo controls to restore it.</p></div>
@@ -194,14 +206,14 @@ export function MarketMakerPage() {
             <article><span>{l('Vehicle load', 'वाहन में भार')}</span><strong>{math.utilisationPct}%</strong><small>{math.vehicle ? `${math.vehicle.registration} · ${math.capacityKg} kg` : l('none held', 'कोई वाहन नहीं')}</small></article>
           </div>
 
-          {!created && (role === 'consumer' || role === 'bulk') && (
+          {!created && role === 'bulk' && (
             <MarketCommitPanel
               board={board} math={math} busy={busy}
-              source={role === 'bulk' ? 'bulk' : 'consumer'}
-              party={role === 'bulk' ? data.bulkProfile.businessName : data.consumerProfile.name}
-              detail={role === 'bulk' ? board.destination : (data.consumerProfile.addresses[0]?.line1 ?? data.consumerProfile.defaultLocation)}
-              unit={role === 'bulk' ? 10 : 1}
-              max={role === 'bulk' ? 400 : 40}
+              source="bulk"
+              party={data.bulkProfile.businessName}
+              detail={board.destination}
+              unit={10}
+              max={400}
               onCommit={commit}
             />
           )}
@@ -227,8 +239,7 @@ export function MarketMakerPage() {
             <h2>{roleDeepView[role].title}</h2>
           </div>
         </div>
-        {role === 'consumer' ? <MarketValueSplit board={board} math={math} />
-          : role === 'bulk' ? <MarketConvergence board={board} math={math} />
+        {role === 'bulk' ? <MarketConvergence board={board} math={math} />
             : <MarketFreightCurve board={board} math={math} />}
       </section>
 
