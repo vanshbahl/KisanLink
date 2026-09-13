@@ -214,14 +214,34 @@ async def test_parse_onboarding_without_gemini_key(client: AsyncClient, monkeypa
     assert data["ai_used"] is False
     assert data["value"] is None
     assert data["crops"] == []
+    assert data["unknown"] is False
+    assert data["confirmed"] is None
     assert data["warning"]
+
+
+@pytest.mark.asyncio
+async def test_parse_onboarding_accepts_location_context(client: AsyncClient, monkeypatch):
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", "")
+    response = await client.post(
+        "/api/v1/farmers/parse-onboarding",
+        json={
+            "transcript": "शायद गुरुग्राम पड़ता है",
+            "field": "district",
+            "language": "hi",
+            "context": {"state": "Haryana", "candidates": ["Gurugram", "Faridabad"]},
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["ai_used"] is False
 
 
 @pytest.mark.asyncio
 async def test_parse_onboarding_rejects_unknown_field(client: AsyncClient):
     response = await client.post(
         "/api/v1/farmers/parse-onboarding",
-        json={"transcript": "टमाटर और प्याज़", "field": "village", "language": "hi"},
+        json={"transcript": "टमाटर और प्याज़", "field": "pincode", "language": "hi"},
     )
     assert response.status_code == 422
 

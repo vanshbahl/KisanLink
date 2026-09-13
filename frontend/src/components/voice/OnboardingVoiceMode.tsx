@@ -2,23 +2,29 @@ import { Check, Loader2, Mic, Square, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { CROP_CATALOGUE } from '../../data/crops'
+import { placeLabel } from '../../data/indiaLocations'
 import { useFarmerText, type FarmerKey } from '../../i18n/farmer'
-import { parseOnboardingAnswer, parseYesNo, type FarmSizeId, type OnboardingField } from '../../services/onboardingVoice'
-import { createSpeechRecognition, speak, speechErrorMessage, speechLang, stopSpeaking, type SpeechRecognitionLike } from '../../services/speech'
+import { parseConfirmation, parseOnboardingAnswer, type FarmSizeId, type OnboardingField } from '../../services/onboardingVoice'
+import { createSpeechRecognition, speak, speechErrorMessage, speechLang, stopSpeaking, warmUpVoices, type SpeechRecognitionLike } from '../../services/speech'
 
 /**
  * Voice-guided onboarding: one question at a time, full screen, nothing else.
  *
- * Not a conversation. A fixed queue of questions is read aloud (browser TTS), the
- * microphone opens, the answer is parsed by `parseOnboardingAnswer`, the matching form
+ * Not a conversation. A fixed queue of questions is read aloud (browser TTS, best
+ * available Hindi/English voice), the microphone opens, the answer goes through Gemini
+ * (`parseOnboardingAnswer`) so meaning rather than wording is kept, the matching form
  * field behind this screen is filled through `onFill`, and the next question follows. A
  * short acknowledgement precedes each next question; that is the whole "dialogue".
+ *
+ * Location is asked state first, then district. Where the splash already detected one,
+ * the question is a confirmation ("क्या आपका राज्य दिल्ली है?") and only a "no" opens the
+ * full question. "I don't know" skips a field rather than storing a shrug.
  *
  * Nothing here can trap the farmer: every phase has a way back to the typed form, an
  * unrecognised answer offers "speak again" or "skip", and a denied microphone shows the
  * same message the listing voice modal shows and hands the form back.
  */
-export type VoiceQuestionId = OnboardingField | 'region'
+export type VoiceQuestionId = OnboardingField | 'confirmState' | 'confirmDistrict'
 
 export interface VoiceDraft {
   name: string
@@ -28,8 +34,10 @@ export interface VoiceDraft {
   state: string
   farmSize: FarmSizeId | ''
   crops: string[]
-  /** District and state came from the splash location read and have not been edited. */
-  regionDetected: boolean
+  /** State came from the splash location read and has been neither edited nor confirmed. */
+  stateDetected: boolean
+  /** Same for the district. */
+  districtDetected: boolean
 }
 
 export interface VoiceFill {
@@ -40,8 +48,9 @@ export interface VoiceFill {
   state?: string
   farmSize?: FarmSizeId
   crops?: string[]
-  /** The farmer confirmed the detected district and state by voice. */
-  regionConfirmed?: boolean
+  /** The farmer confirmed the detected state / district by voice. */
+  stateConfirmed?: boolean
+  districtConfirmed?: boolean
 }
 
 interface OnboardingVoiceModeProps {
@@ -61,23 +70,34 @@ const DONE_HOLD_MS = 700
 
 const SIZE_KEY: Record<FarmSizeId, FarmerKey> = { under1: 'sizeUnder1', '1to3': 'size1to3', '3to5': 'size3to5', '5to10': 'size5to10', '10plus': 'size10plus' }
 
-/** Ordered questions, skipping what is already filled; the mic always asks something. */
+/**
+ * Ordered questions, skipping what is already filled; the mic always asks something.
+ * State comes before district so a district can be matched against the right list.
+ * Detected values become confirmation questions; `resolveQuestion` re-checks at ask time,
+ * because a "no" to the state changes what the district question should be.
+ */
 function buildQueue(draft: VoiceDraft, startStep: 1 | 2 | 3): VoiceQuestionId[] {
   const step1: VoiceQuestionId[] = []
   if (!draft.name) step1.push('name')
+  if (draft.state && draft.stateDetected) step1.push('confirmState')
+  else if (!draft.state) step1.push('state')
+  if (draft.district && draft.districtDetected) step1.push('confirmDistrict')
+  else if (!draft.district) step1.push('district')
   if (!draft.village) step1.push('village')
   if (!draft.locality) step1.push('locality')
-  if (draft.district && draft.state && draft.regionDetected) step1.push('region')
-  else {
-    if (!draft.district) step1.push('district')
-    if (!draft.state) step1.push('state')
-  }
   const queue: VoiceQuestionId[] = []
   if (startStep <= 1) queue.push(...step1)
   if (startStep <= 2 && !draft.farmSize) queue.push('farmSize')
   if (startStep <= 3 && !draft.crops.length) queue.push('crops')
   if (queue.length) return queue
-  return startStep === 1 ? ['name', 'village', 'locality', 'district', 'state'] : startStep === 2 ? ['farmSize'] : ['crops']
+  return startStep === 1 ? ['name', 'state', 'district', 'village', 'locality'] : startStep === 2 ? ['farmSize'] : ['crops']
+}
+
+/** A confirmation only makes sense while the detected value is still in the form. */
+function resolveQuestion(id: VoiceQuestionId, draft: VoiceDraft): VoiceQuestionId {
+  if (id === 'confirmState') return draft.state && draft.stateDetected ? id : 'state'
+  if (id === 'confirmDistrict') return draft.district && draft.districtDetected ? id : 'district'
+  return id
 }
 
 export function OnboardingVoiceMode({ draft, startStep, onFill, onClose, onFinished }: OnboardingVoiceModeProps) {
@@ -98,24 +118,33 @@ export function OnboardingVoiceMode({ draft, startStep, onFill, onClose, onFinis
   draftRef.current = draft
   const spokenAckRef = useRef('')
   const ackTurnRef = useRef(0)
+  /** First name in the script it was spoken in, so a Hindi greeting does not read "नमस्ते Ramesh". */
+  const greetNameRef = useRef('')
 
-  const current = queue[index]
+  // Resolved once per index, when the question is asked. Deriving it live from the draft
+  // would flip "confirm district" into "district" the moment the confirmation is applied.
+  const askedRef = useRef<VoiceQuestionId | undefined>(undefined)
+  const [current, setCurrent] = useState<VoiceQuestionId | undefined>(() => (queue[0] ? resolveQuestion(queue[0], draft) : undefined))
   const total = queue.length
 
   const questionText = useCallback((id: VoiceQuestionId | undefined): { text: string; hint?: string } => {
     const live = draftRef.current
     switch (id) {
       case 'name': return { text: f('voiceQName') }
-      case 'village': return { text: live.name ? f('voiceQVillage', { name: live.name.split(' ')[0] }) : f('voiceQVillageNoName') }
-      case 'locality': return { text: f('voiceQLocality') }
-      case 'region': return { text: f('voiceQRegion', { district: live.district, state: live.state }), hint: f('voiceQRegionHint') }
-      case 'district': return { text: f('voiceQDistrict') }
+      case 'confirmState': return { text: f('voiceQConfirmState', { state: placeLabel(language, live.state) }), hint: f('voiceQConfirmHint') }
       case 'state': return { text: f('voiceQState') }
+      case 'confirmDistrict': return { text: f('voiceQConfirmDistrict', { district: placeLabel(language, live.district, live.state) }), hint: f('voiceQConfirmHint') }
+      case 'district': return { text: f('voiceQDistrict') }
+      case 'village': {
+        const first = greetNameRef.current || live.name.split(' ')[0]
+        return { text: first ? f('voiceQVillage', { name: first }) : f('voiceQVillageNoName') }
+      }
+      case 'locality': return { text: f('voiceQLocality') }
       case 'farmSize': return { text: f('voiceQFarmSize'), hint: f('voiceQFarmSizeHint') }
       case 'crops': return { text: f('voiceQCrops'), hint: f('voiceQCropsHint') }
       default: return { text: f('voiceAllDone') }
     }
-  }, [f])
+  }, [f, language])
 
   const stopRecognition = useCallback(() => {
     const recognition = recognitionRef.current
@@ -134,6 +163,7 @@ export function OnboardingVoiceMode({ draft, startStep, onFill, onClose, onFinis
 
   // Mount-only: an inline `onClose` from the parent must not re-run this and cut a question off.
   useEffect(() => {
+    warmUpVoices()
     const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') closeRef.current() }
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -206,8 +236,10 @@ export function OnboardingVoiceMode({ draft, startStep, onFill, onClose, onFinis
       setPhase('error')
       setMessage(copy)
     }
+    let handled = false
     recognition.onend = () => {
-      if (run !== runRef.current || failed) return
+      if (run !== runRef.current || failed || handled) return
+      handled = true
       const text = heard.trim()
       if (!text) {
         setPhase('retry')
@@ -228,27 +260,53 @@ export function OnboardingVoiceMode({ draft, startStep, onFill, onClose, onFinis
   const answer = async (run: number, text: string) => {
     setPhase('processing')
     setMessage('')
-    const id = current
+    const id = askedRef.current
+    if (!id) return
+    const live = draftRef.current
+    const nextAck = () => {
+      ackTurnRef.current += 1
+      return f(ackTurnRef.current % 2 ? 'voiceAckOk' : 'voiceAckGreat')
+    }
+    const succeed = (label: string, ack: string, extra: VoiceQuestionId[] = []) => {
+      spokenAckRef.current = ack
+      setRecognized(label)
+      setPhase('success')
+      window.setTimeout(() => advance(run, extra), SUCCESS_HOLD_MS)
+    }
 
-    if (id === 'region') {
-      const yes = parseYesNo(text)
+    // Yes/no on a detected state or district. "No", "don't know" or anything unclear opens
+    // the full question; a wrong guess must never be kept just because it was pre-filled.
+    if (id === 'confirmState' || id === 'confirmDistrict') {
+      const key = id === 'confirmState' ? 'state' : 'district'
+      const expected = live[key]
+      const result = await parseConfirmation(text, language, { state: live.state, district: live.district, expected })
       if (run !== runRef.current) return
-      if (yes) {
-        onFill({ regionConfirmed: true })
-        setRecognized(`${draftRef.current.district}, ${draftRef.current.state}`)
-        setPhase('success')
-        spokenAckRef.current = f('voiceAckOk')
-        window.setTimeout(() => advance(run), SUCCESS_HOLD_MS)
-      } else {
-        // "No", or nothing clear: ask for both, which is always safe.
-        spokenAckRef.current = f('voiceAckOk')
-        advance(run, ['district', 'state'])
+      if (result.confirmed === true) {
+        onFill(id === 'confirmState' ? { stateConfirmed: true } : { districtConfirmed: true })
+        succeed(placeLabel(language, expected, key === 'district' ? live.state : undefined), f('voiceAckOk'))
+        return
       }
+      if (result.confirmed === false && result.value) {
+        // "No, it is Haryana": the corrected value came with the answer, so use it.
+        const parsed = await parseOnboardingAnswer(key, result.value, language, { state: live.state, district: live.district })
+        if (run !== runRef.current) return
+        if (parsed.recognized && parsed.value && !parsed.unknown) {
+          onFill({ [key]: parsed.value })
+          succeed(placeLabel(language, parsed.value, key === 'district' ? live.state : undefined), nextAck())
+          return
+        }
+      }
+      spokenAckRef.current = f('voiceAckOk')
+      advance(run, [key])
       return
     }
 
-    const result = await parseOnboardingAnswer(id as OnboardingField, text, language)
+    const result = await parseOnboardingAnswer(id as OnboardingField, text, language, { state: live.state, district: live.district })
     if (run !== runRef.current) return
+    if (result.unknown) {
+      succeed(f('voiceAckUnknown'), '')
+      return
+    }
     if (!result.recognized) {
       setPhase('retry')
       setMessage(f('voiceNotUnderstood'))
@@ -256,14 +314,19 @@ export function OnboardingVoiceMode({ draft, startStep, onFill, onClose, onFinis
     }
 
     let label = ''
+    let ack = ''
     if (id === 'name' && result.value) {
       onFill({ name: result.value })
       label = language === 'hi' ? (result.valueHi ?? result.value) : result.value
-      const first = label.split(' ')[0]
-      spokenAckRef.current = f('voiceAckHello', { name: first })
-    } else if ((id === 'village' || id === 'locality' || id === 'district' || id === 'state') && result.value) {
+      greetNameRef.current = label.split(' ')[0]
+      ack = f('voiceAckHello', { name: greetNameRef.current })
+    } else if ((id === 'state' || id === 'district') && result.value) {
       onFill({ [id]: result.value })
-      label = result.value
+      label = placeLabel(language, result.value, id === 'district' ? live.state : undefined)
+      if (label === result.value && result.valueHi && language === 'hi') label = result.valueHi
+    } else if ((id === 'village' || id === 'locality') && result.value) {
+      onFill({ [id]: result.value })
+      label = language === 'hi' ? (result.valueHi ?? result.value) : result.value
     } else if (id === 'farmSize' && result.farmSize) {
       onFill({ farmSize: result.farmSize })
       label = f(SIZE_KEY[result.farmSize])
@@ -274,23 +337,20 @@ export function OnboardingVoiceMode({ draft, startStep, onFill, onClose, onFinis
         return language === 'hi' ? (known?.hi ?? name) : name
       }).join(', ')
     }
-    if (id !== 'name') {
-      ackTurnRef.current += 1
-      spokenAckRef.current = f(ackTurnRef.current % 2 ? 'voiceAckOk' : 'voiceAckGreat')
-    }
-    setRecognized(label)
-    setPhase('success')
-    window.setTimeout(() => advance(run), SUCCESS_HOLD_MS)
+    succeed(label, ack || nextAck())
   }
 
   // Ask the current question: read it aloud, then open the microphone.
   useEffect(() => {
-    if (!current) return
+    const id = queue[index] ? resolveQuestion(queue[index], draftRef.current) : undefined
+    askedRef.current = id
+    setCurrent(id)
+    if (!id) return
     runRef.current += 1
     const run = runRef.current
-    const { text } = questionText(current)
+    const { text } = questionText(id)
     // The village question already greets by name, so it carries no separate "hello".
-    const spokenAck = current === 'village' && spokenAckRef.current.startsWith(f('voiceAckHello', { name: '' }).trim()) ? '' : spokenAckRef.current
+    const spokenAck = id === 'village' && spokenAckRef.current.startsWith(f('voiceAckHello', { name: '' }).trim()) ? '' : spokenAckRef.current
     setAck(spokenAck)
     spokenAckRef.current = ''
     setTranscript('')
@@ -299,7 +359,7 @@ export function OnboardingVoiceMode({ draft, startStep, onFill, onClose, onFinis
     setPhase('speaking')
     void speak(spokenAck ? `${spokenAck}। ${text}` : text, language).then(() => startListening(run))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [index, current])
+  }, [index])
 
   const retry = () => {
     runRef.current += 1

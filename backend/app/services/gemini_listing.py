@@ -459,13 +459,16 @@ Transcript: {transcript}"""
 # ---------------------------------------------------------------------------
 # Farmer onboarding: one spoken answer -> one profile field.
 #
-# The onboarding voice mode parses most answers on the client (a name is a name,
-# a village is a village). Gemini is only asked for the three answers where plain
-# transcription is not enough: transliterating a Devanagari name, turning
-# "करीब चार एकड़" into a number, and naming crops the client's alias table does not
-# know. Same client, key, model and logging as the listing parser above.
+# Every completed voice answer in onboarding comes through here, so the profile
+# stores what the farmer meant ("Daulatabad") rather than what they said
+# ("मेरा खेत पड़ता है जी दौलताबाद में"). The client supplies the field being asked,
+# the language, the state/district already known, and the canonical candidates
+# where a closed list exists (states, a state's districts, the crop catalogue);
+# Gemini returns one structured answer. Same client, key, model and logging as
+# the listing parser above; the client keeps its own deterministic parse for
+# when this is unreachable.
 # ---------------------------------------------------------------------------
-ONBOARDING_FIELDS = ("name", "farm_size", "crops")
+ONBOARDING_FIELDS = ("name", "state", "district", "village", "locality", "farm_size", "crops", "confirm")
 
 ONBOARDING_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -474,8 +477,11 @@ ONBOARDING_SCHEMA: dict[str, Any] = {
         "value_hi": {"type": ["string", "null"]},
         "farm_size_acres": {"type": ["number", "null"]},
         "crops": {"type": "array", "items": {"type": "string"}},
+        "confirmed": {"type": ["boolean", "null"]},
+        "unknown": {"type": "boolean"},
+        "confidence": {"type": "string", "enum": ["high", "medium", "low"]},
     },
-    "required": ["value", "value_hi", "farm_size_acres", "crops"],
+    "required": ["value", "value_hi", "farm_size_acres", "crops", "confirmed", "unknown", "confidence"],
 }
 
 _ONBOARDING_PROMPTS = {
@@ -484,8 +490,36 @@ _ONBOARDING_PROMPTS = {
         "- `value`: the name in Latin script, title case. Transliterate Hindi names "
         "(for example 'रमेश यादव' becomes 'Ramesh Yadav').\n"
         "- `value_hi`: the same name in Devanagari script.\n"
-        "- Drop filler such as 'mera naam', 'मेरा नाम ... है', 'my name is', 'ji'.\n"
-        "- Leave `crops` empty and `farm_size_acres` null."
+        "- Drop filler such as 'mera naam', 'मेरा नाम ... है', 'my name is', 'ji', 'sahab'."
+    ),
+    "state": (
+        "The farmer was asked which Indian state or union territory they farm in.\n"
+        "- `value`: the canonical English name from the candidate list when the answer refers to one of them, "
+        "in any spelling, script or nickname ('Dilli', 'NCT Delhi', 'Delhi NCR' are all 'Delhi'; 'UP' and "
+        "'उत्तर प्रदेश' are 'Uttar Pradesh'; 'हरयाणा' is 'Haryana').\n"
+        "- If it matches no candidate, return the cleaned place name in Latin script and confidence 'low'.\n"
+        "- `value_hi`: the Hindi name of that state."
+    ),
+    "district": (
+        "The farmer was asked which district they farm in.\n"
+        "- `value`: the canonical English district name from the candidate list when the answer refers to one "
+        "of them, including old names and nicknames ('Gurgaon' is 'Gurugram', 'Allahabad' is 'Prayagraj', "
+        "'west delhi' is 'West Delhi').\n"
+        "- If it matches no candidate, return the cleaned district name in Latin script and confidence 'low'.\n"
+        "- `value_hi`: the Hindi name of that district."
+    ),
+    "village": (
+        "The farmer was asked which village their farm is in.\n"
+        "- `value`: only the village name, transliterated to Latin script, title case "
+        "('मेरा खेत पड़ता है जी दौलताबाद में' becomes 'Daulatabad'; 'दौलताबाद है जी' becomes 'Daulatabad').\n"
+        "- Drop 'gaon', 'village', 'mein', 'padta hai', 'ji' and every other filler.\n"
+        "- `value_hi`: the village name in Devanagari."
+    ),
+    "locality": (
+        "The farmer was asked which area, mohalla or locality of the village their farm is in.\n"
+        "- `value`: only the locality name, transliterated to Latin script, title case.\n"
+        "- Drop 'ilaka', 'mohalla', 'area', 'mein', 'ji' and every other filler.\n"
+        "- `value_hi`: the locality name in Devanagari."
     ),
     "farm_size": (
         "The farmer was asked how much land they farm. Return `farm_size_acres` as a number of acres.\n"
@@ -494,16 +528,23 @@ _ONBOARDING_PROMPTS = {
         "chaar/चार = 4, paanch/पांच = 5, das/दस = 10.\n"
         "- 'karib', 'lagbhag', 'about' mean approximately; keep the number as spoken.\n"
         "- If a range is spoken ('do teen acre'), return the lower number.\n"
-        "- Set `value` to null, `value_hi` to null and `crops` to an empty list."
+        "- Leave `value` and `value_hi` null."
     ),
     "crops": (
         "The farmer was asked which crops they sell. Return `crops` as a list of English crop names, "
-        "singular, title case (for example ['Tomato', 'Onion', 'Spinach']).\n"
+        "singular, title case, using the candidate spelling whenever the crop is in the candidate list.\n"
         "- Translate Hindi names: tamatar/टमाटर = Tomato, pyaz/प्याज़ = Onion, palak/पालक = Spinach, "
         "aloo/आलू = Potato, gehu/गेहूं = Wheat, gajar/गाजर = Carrot, gobhi = Cauliflower, "
         "kheera = Cucumber, chawal/dhan = Rice, sarson = Mustard, ganna = Sugarcane, makka = Maize.\n"
         "- Ignore filler such as 'bechta hoon', 'ugata hoon', 'aur'.\n"
-        "- Set `value` to null, `value_hi` to null and `farm_size_acres` to null."
+        "- Leave `value` and `value_hi` null."
+    ),
+    "confirm": (
+        "The farmer was asked a yes/no question about the expected value given below.\n"
+        "- `confirmed`: true if they agree ('haan', 'ji', 'sahi hai', 'yes', 'correct', or they repeat the same "
+        "value), false if they disagree ('nahi', 'no', 'galat', or they name a different value), null if unclear.\n"
+        "- If they name a different value instead, also return it as `value` (canonical candidate when possible).\n"
+        "- Leave `crops` empty and `farm_size_acres` null."
     ),
 }
 
@@ -514,12 +555,20 @@ def _empty_onboarding(warning: str | None) -> dict[str, Any]:
         "value_hi": None,
         "farm_size_acres": None,
         "crops": [],
+        "confirmed": None,
+        "unknown": False,
+        "confidence": "low",
         "ai_used": False,
         "warning": warning,
     }
 
 
-def extract_onboarding_field(transcript: str, field: str, language: str = "hi") -> dict[str, Any]:
+def extract_onboarding_field(
+    transcript: str,
+    field: str,
+    language: str = "hi",
+    context: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """
     Structured Gemini extraction for a single onboarding answer. Never raises: a missing
     key or an upstream failure returns an empty payload with `ai_used=False`, and the
@@ -528,19 +577,40 @@ def extract_onboarding_field(transcript: str, field: str, language: str = "hi") 
     if field not in ONBOARDING_FIELDS:
         raise ValueError(f"Unknown onboarding field: {field}")
 
-    logger.info(f'[OnboardingParse] field={field} transcript="{transcript}"')
+    context = context or {}
+    logger.info(f'[OnboardingParse] field={field} transcript="{transcript}" context={context}')
 
     if not settings.GEMINI_API_KEY:
         logger.info("[OnboardingParse] GEMINI_API_KEY not configured")
         return _empty_onboarding("Gemini is not configured. The spoken answer was kept as heard.")
 
-    prompt = (
-        "You are helping a farmer sign up for KisanLink. They answered one question out loud; "
-        "the speech may be Hindi, English or Hinglish.\n"
-        f"{_ONBOARDING_PROMPTS[field]}\n"
-        f"Language hint: {language}.\n"
-        f"Transcript: {transcript}"
-    )
+    known = []
+    if context.get("state"):
+        known.append(f"state = {context['state']}")
+    if context.get("district"):
+        known.append(f"district = {context['district']}")
+    candidates = [str(item) for item in context.get("candidates") or [] if str(item).strip()]
+    expected = context.get("expected")
+
+    prompt_parts = [
+        "You are helping a farmer sign up for KisanLink. They answered one question out loud; the speech "
+        "is conversational Hindi, Hinglish or Indian English with filler words ('ji', 'padta hai', 'shayad', "
+        "'hai ji', 'mera', 'wahi'). Extract the MEANING for the field asked, never the transcript wording.",
+        "If the farmer says they do not know or wants to skip ('nahi pata', 'pata nahi', 'नहीं पता', "
+        "'मालूम नहीं', 'not sure', 'don't know', 'skip', 'chhod do'), set unknown=true and value=null.",
+        "`confidence` is 'high' when the answer is clear, 'medium' when hedged ('shayad', 'lagta hai'), "
+        "'low' when you are guessing.",
+        _ONBOARDING_PROMPTS[field],
+    ]
+    if known:
+        prompt_parts.append("Already known: " + "; ".join(known) + ".")
+    if candidates:
+        prompt_parts.append("Candidate values: " + ", ".join(candidates) + ".")
+    if expected:
+        prompt_parts.append(f"Expected value being confirmed: {expected}.")
+    prompt_parts.append(f"Language hint: {language}.")
+    prompt_parts.append(f"Transcript: {transcript}")
+    prompt = "\n".join(prompt_parts)
 
     try:
         client = genai.Client(api_key=settings.GEMINI_API_KEY)
@@ -554,11 +624,15 @@ def extract_onboarding_field(transcript: str, field: str, language: str = "hi") 
             ),
         )
         parsed = json.loads(response.text or "{}")
+        confidence = parsed.get("confidence")
         result = {
-            "value": parsed.get("value") or None,
-            "value_hi": parsed.get("value_hi") or None,
+            "value": (parsed.get("value") or "").strip() or None,
+            "value_hi": (parsed.get("value_hi") or "").strip() or None,
             "farm_size_acres": parsed.get("farm_size_acres"),
             "crops": [str(item).strip() for item in parsed.get("crops") or [] if str(item).strip()],
+            "confirmed": parsed.get("confirmed") if isinstance(parsed.get("confirmed"), bool) else None,
+            "unknown": bool(parsed.get("unknown")),
+            "confidence": confidence if confidence in ("high", "medium", "low") else "medium",
             "ai_used": True,
             "warning": None,
         }

@@ -1,21 +1,22 @@
 import { CROP_CATALOGUE, cropByName, type CropOption } from '../data/crops'
+import { districtNamesOf, INDIA_STATE_NAMES, matchDistrict, matchState } from '../data/indiaLocations'
 import type { Language } from '../types'
 import { apiClient } from './apiClient'
 
 /**
  * Speech -> onboarding field.
  *
- * Every answer is parsed here first, deterministically, because the voice mode has to work
- * with no backend at all. Gemini (through `apiClient.parseOnboardingVoice`, the same service
- * the listing parser uses) is asked only where transcription is genuinely not enough:
+ * Every completed answer goes to Gemini (`apiClient.parseOnboardingVoice`, the same service
+ * the listing parser uses) with the field being asked, the language, the location already
+ * known and the canonical candidates, so the profile stores what the farmer meant
+ * ("Daulatabad") rather than what they said ("मेरा खेत पड़ता है जी दौलताबाद में"). What comes
+ * back is then pinned to the canonical lists on this side (`matchState`, `matchDistrict`,
+ * the crop catalogue), so a state or district only ever lands as a valid name, or as
+ * Gemini's cleaned text marked not-confident for the farmer to correct.
  *
- *   - a Devanagari name, so the profile gets "Ramesh Yadav" as well as "रमेश यादव"
- *   - a farm size the number-word table could not read
- *   - a crop list where nothing matched the catalogue
- *
- * and its answer is never trusted over a value the farmer can see: whatever comes back is
- * shown on screen and lands in an editable field. A failed or slow call keeps the
- * deterministic result.
+ * The deterministic parsers below are the fallback for when Gemini is unreachable; voice
+ * mode must still work with no backend. "I don't know" is recognised locally before any
+ * call, so a shrug is never stored as a value.
  */
 export type OnboardingField = 'name' | 'village' | 'locality' | 'district' | 'state' | 'farmSize' | 'crops'
 
@@ -48,7 +49,7 @@ export function farmSizeBucket(acres: number): FarmSizeId {
 export const farmSizeAcresFor = (id: FarmSizeId) => FARM_SIZE_OPTIONS.find((option) => option.id === id)?.acres ?? 0
 
 export interface ParsedAnswer {
-  field: OnboardingField
+  field: OnboardingField | 'confirm'
   /** True when something usable came out; false means "ask again or type it". */
   recognized: boolean
   /** Latin-script value for text fields. */
@@ -57,9 +58,19 @@ export interface ParsedAnswer {
   valueHi?: string
   farmSize?: FarmSizeId
   crops?: string[]
+  /** The farmer said they do not know or want to skip; nothing is stored. */
+  unknown?: boolean
+  /** Answer to a yes/no confirmation. Null when unclear. */
+  confirmed?: boolean | null
+  /** False when a state/district could not be pinned to the canonical list and the cleaned text was kept. */
+  confident?: boolean
   /** True when Gemini contributed to the value. */
   aiUsed: boolean
 }
+
+/** "I do not know", in the ways it is actually said. Checked before anything is stored or sent. */
+const UNKNOWN_PHRASES = /(नहीं पता|नही पता|पता नहीं|पता नही|नहीं मालूम|नही मालूम|मालूम नहीं|मालूम नही|याद नहीं|छोड़ दो|छोड़ो|रहने दो|nahi pata|nahin pata|nai pata|pata nahi|pata nahin|nahi malum|nahi maloom|malum nahi|maloom nahi|yaad nahi|chhod do|chod do|rehne do|not sure|don'?t know|dont know|do not know|no idea|skip|leave it)/i
+export const isUnknownAnswer = (text: string) => UNKNOWN_PHRASES.test(tidy(text))
 
 const DEVANAGARI = /[ऀ-ॿ]/
 const hasDevanagari = (text: string) => DEVANAGARI.test(text)
@@ -111,46 +122,6 @@ function cleanPlace(text: string): string {
     if (out === before) break
   }
   return titleCase(out)
-}
-
-/** Indian states in the scripts a farmer would say them in, mapped to the English name the profile stores. */
-const STATES: readonly [en: string, ...aliases: string[]][] = [
-  ['Haryana', 'हरियाणा', 'hariyana', 'hariyaana'],
-  ['Delhi', 'दिल्ली', 'new delhi', 'नई दिल्ली', 'dilli'],
-  ['Uttar Pradesh', 'उत्तर प्रदेश', 'up', 'यूपी', 'uttar pradesh'],
-  ['Punjab', 'पंजाब', 'panjab'],
-  ['Rajasthan', 'राजस्थान'],
-  ['Madhya Pradesh', 'मध्य प्रदेश', 'mp', 'एमपी'],
-  ['Bihar', 'बिहार'],
-  ['Uttarakhand', 'उत्तराखंड', 'उत्तराखण्ड'],
-  ['Himachal Pradesh', 'हिमाचल प्रदेश', 'himachal', 'हिमाचल'],
-  ['Gujarat', 'गुजरात'],
-  ['Maharashtra', 'महाराष्ट्र'],
-  ['Chhattisgarh', 'छत्तीसगढ़', 'chattisgarh'],
-  ['Jharkhand', 'झारखंड', 'झारखण्ड'],
-  ['West Bengal', 'पश्चिम बंगाल', 'bengal', 'बंगाल'],
-  ['Odisha', 'ओडिशा', 'orissa', 'उड़ीसा'],
-  ['Telangana', 'तेलंगाना'],
-  ['Andhra Pradesh', 'आंध्र प्रदेश', 'andhra'],
-  ['Karnataka', 'कर्नाटक'],
-  ['Tamil Nadu', 'तमिलनाडु', 'tamilnadu'],
-  ['Kerala', 'केरल'],
-  ['Assam', 'असम'],
-  ['Goa', 'गोवा'],
-  ['Jammu and Kashmir', 'जम्मू कश्मीर', 'jammu', 'kashmir', 'कश्मीर'],
-  ['Chandigarh', 'चंडीगढ़'],
-]
-
-function matchState(text: string): string | null {
-  const lower = tidy(text).toLowerCase()
-  for (const [en, ...aliases] of STATES) {
-    if (lower === en.toLowerCase() || aliases.some((alias) => lower === alias)) return en
-  }
-  const tokens = lower.split(' ')
-  for (const [en, ...aliases] of STATES) {
-    if (lower.includes(en.toLowerCase()) || aliases.some((alias) => (alias.length > 2 ? lower.includes(alias) : tokens.includes(alias)))) return en
-  }
-  return null
 }
 
 // --- Numbers ---------------------------------------------------------------
@@ -249,53 +220,109 @@ export function parseYesNo(text: string): boolean | null {
 }
 
 // --- Public entry point ------------------------------------------------------
-const gemini = async (transcript: string, field: 'name' | 'farm_size' | 'crops', language: Language) => {
+export interface ParseContext {
+  state?: string
+  district?: string
+  /** For `confirm`: the value the question asked about. */
+  expected?: string
+}
+
+type GeminiField = 'name' | 'state' | 'district' | 'village' | 'locality' | 'farm_size' | 'crops' | 'confirm'
+const GEMINI_FIELD: Record<OnboardingField | 'confirm', GeminiField> = {
+  name: 'name', state: 'state', district: 'district', village: 'village', locality: 'locality', farmSize: 'farm_size', crops: 'crops', confirm: 'confirm',
+}
+
+const candidatesFor = (field: OnboardingField | 'confirm', context: ParseContext): readonly string[] => {
+  if (field === 'state') return INDIA_STATE_NAMES
+  if (field === 'district') return context.state ? districtNamesOf(context.state) : []
+  if (field === 'crops') return CROP_CATALOGUE.map((crop) => crop.en)
+  return []
+}
+
+const gemini = async (field: OnboardingField | 'confirm', transcript: string, language: Language, context: ParseContext) => {
   try {
-    const result = await apiClient.parseOnboardingVoice(transcript, field, language)
+    const result = await apiClient.parseOnboardingVoice(transcript, GEMINI_FIELD[field], language, {
+      state: context.state || undefined,
+      district: context.district || undefined,
+      expected: context.expected || undefined,
+      candidates: candidatesFor(field, context),
+    })
     return result.ai_used ? result : null
   } catch {
     return null
   }
 }
 
-export async function parseOnboardingAnswer(field: OnboardingField, transcript: string, language: Language): Promise<ParsedAnswer> {
+const cleanedPlace = (text: string) => {
+  const cleaned = cleanPlace(text)
+  return cleaned && !hasDevanagari(cleaned) ? titleCase(cleaned) : cleaned
+}
+
+/** Pin a state to the canonical list; falls back to the cleaned text, marked not confident. */
+function resolveState(candidate: string, fallbackText: string): Pick<ParsedAnswer, 'value' | 'confident'> {
+  const hit = matchState(candidate) ?? matchState(fallbackText)
+  if (hit) return { value: hit.value, confident: hit.confident }
+  return { value: candidate || cleanedPlace(fallbackText), confident: false }
+}
+
+function resolveDistrict(state: string | undefined, candidate: string, fallbackText: string): Pick<ParsedAnswer, 'value' | 'confident'> {
+  const hit = state ? (matchDistrict(state, candidate) ?? matchDistrict(state, fallbackText)) : null
+  if (hit) return { value: hit.value, confident: hit.confident }
+  return { value: candidate || cleanedPlace(fallbackText), confident: false }
+}
+
+/** A yes/no confirmation. Gemini reads it; the keyword table is the fallback. */
+export async function parseConfirmation(transcript: string, language: Language, context: ParseContext): Promise<ParsedAnswer & { field: 'confirm' }> {
+  const text = tidy(transcript)
+  if (!text) return { field: 'confirm', recognized: false, confirmed: null, aiUsed: false }
+  if (isUnknownAnswer(text)) return { field: 'confirm', recognized: true, unknown: true, confirmed: null, aiUsed: false }
+  const ai = await gemini('confirm', text, language, context)
+  if (ai && typeof ai.confirmed === 'boolean') {
+    return { field: 'confirm', recognized: true, confirmed: ai.confirmed, value: ai.value ?? undefined, aiUsed: true }
+  }
+  const local = parseYesNo(text)
+  return { field: 'confirm', recognized: local !== null, confirmed: local, aiUsed: false }
+}
+
+export async function parseOnboardingAnswer(field: OnboardingField, transcript: string, language: Language, context: ParseContext = {}): Promise<ParsedAnswer> {
   const text = tidy(transcript)
   if (!text) return { field, recognized: false, aiUsed: false }
+  if (isUnknownAnswer(text)) return { field, recognized: true, unknown: true, aiUsed: false }
+
+  const ai = await gemini(field, text, language, context)
+  if (ai?.unknown) return { field, recognized: true, unknown: true, aiUsed: true }
 
   switch (field) {
     case 'name': {
-      const cleaned = titleCase(stripWrapper(text, NAME_LEADING, HI_TRAILING))
-      const local: ParsedAnswer = { field, recognized: Boolean(cleaned), value: cleaned, valueHi: hasDevanagari(cleaned) ? cleaned : undefined, aiUsed: false }
-      // A Devanagari name is kept as said, but the profile also wants it in Latin script.
-      if (!hasDevanagari(cleaned)) return local
-      const ai = await gemini(text, 'name', language)
-      if (!ai?.value) return local
-      return { field, recognized: true, value: titleCase(ai.value), valueHi: ai.value_hi ?? cleaned, aiUsed: true }
-    }
-    case 'village':
-    case 'locality':
-    case 'district': {
-      const cleaned = cleanPlace(text)
-      return { field, recognized: Boolean(cleaned), value: cleaned, valueHi: hasDevanagari(cleaned) ? cleaned : undefined, aiUsed: false }
+      const local = titleCase(stripWrapper(text, NAME_LEADING, HI_TRAILING))
+      if (ai?.value) return { field, recognized: true, value: titleCase(ai.value), valueHi: ai.value_hi ?? (hasDevanagari(local) ? local : undefined), aiUsed: true }
+      return { field, recognized: Boolean(local), value: local, valueHi: hasDevanagari(local) ? local : undefined, aiUsed: false }
     }
     case 'state': {
-      const known = matchState(text)
-      const cleaned = known ?? cleanPlace(text)
-      return { field, recognized: Boolean(cleaned), value: cleaned, valueHi: hasDevanagari(cleaned) ? cleaned : undefined, aiUsed: false }
+      const resolved = resolveState(ai?.value ?? '', text)
+      return { field, recognized: Boolean(resolved.value), ...resolved, valueHi: ai?.value_hi ?? undefined, aiUsed: Boolean(ai?.value) }
+    }
+    case 'district': {
+      const resolved = resolveDistrict(context.state, ai?.value ?? '', text)
+      return { field, recognized: Boolean(resolved.value), ...resolved, valueHi: ai?.value_hi ?? undefined, aiUsed: Boolean(ai?.value) }
+    }
+    case 'village':
+    case 'locality': {
+      if (ai?.value) return { field, recognized: true, value: titleCase(ai.value), valueHi: ai.value_hi ?? undefined, aiUsed: true }
+      const local = cleanedPlace(text)
+      return { field, recognized: Boolean(local), value: local, valueHi: hasDevanagari(local) ? local : undefined, aiUsed: false }
     }
     case 'farmSize': {
+      if (ai?.farm_size_acres && ai.farm_size_acres > 0) return { field, recognized: true, farmSize: farmSizeBucket(ai.farm_size_acres), aiUsed: true }
       const local = parseFarmSizeText(text)
       if (local) return { field, recognized: true, farmSize: local, aiUsed: false }
-      const ai = await gemini(text, 'farm_size', language)
-      if (ai?.farm_size_acres && ai.farm_size_acres > 0) return { field, recognized: true, farmSize: farmSizeBucket(ai.farm_size_acres), aiUsed: true }
       return { field, recognized: false, aiUsed: false }
     }
     case 'crops': {
-      const local = matchCrops(text).map((crop) => crop.en)
-      if (local.length) return { field, recognized: true, crops: local, aiUsed: false }
-      const ai = await gemini(text, 'crops', language)
       const named = (ai?.crops ?? []).map((name) => cropByName(name)?.en ?? titleCase(name)).filter(Boolean)
       if (named.length) return { field, recognized: true, crops: [...new Set(named)], aiUsed: true }
+      const local = matchCrops(text).map((crop) => crop.en)
+      if (local.length) return { field, recognized: true, crops: local, aiUsed: false }
       return { field, recognized: false, aiUsed: false }
     }
   }

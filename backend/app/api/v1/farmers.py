@@ -48,7 +48,8 @@ async def parse_onboarding_answer(payload: OnboardingParseRequest):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Empty or invalid speech transcript.",
         )
-    data = await run_in_threadpool(extract_onboarding_field, raw_text, payload.field, payload.language or "hi")
+    context = payload.context.model_dump(exclude_none=True) if payload.context else {}
+    data = await run_in_threadpool(extract_onboarding_field, raw_text, payload.field, payload.language or "hi", context)
     return OnboardingParseResponse(**data)
 
 

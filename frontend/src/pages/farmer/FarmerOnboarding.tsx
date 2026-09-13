@@ -37,7 +37,8 @@ const blankDraft = (): VoiceDraft => {
     name: '', village: '', locality: '',
     district: region?.district ?? '', state: region?.state ?? '',
     farmSize: '', crops: [],
-    regionDetected: Boolean(region?.district || region?.state),
+    stateDetected: Boolean(region?.state),
+    districtDetected: Boolean(region?.district),
   }
 }
 
@@ -59,21 +60,28 @@ export function FarmerOnboarding() {
   const update = <K extends keyof VoiceDraft>(key: K, value: VoiceDraft[K]) =>
     setDraft((current) => ({ ...current, [key]: value }))
 
+  // Typing over a detected value ends its "detected" status, so voice will not re-confirm it.
   const editRegion = (key: 'district' | 'state', value: string) =>
-    setDraft((current) => ({ ...current, [key]: value, regionDetected: false }))
+    setDraft((current) => ({ ...current, [key]: value, ...(key === 'state' ? { stateDetected: false } : { districtDetected: false }) }))
 
   const applyVoice = (fill: VoiceFill) => {
-    setDraft((current) => ({
-      ...current,
-      ...(fill.name !== undefined ? { name: fill.name } : {}),
-      ...(fill.village !== undefined ? { village: fill.village } : {}),
-      ...(fill.locality !== undefined ? { locality: fill.locality } : {}),
-      ...(fill.district !== undefined ? { district: fill.district, regionDetected: false } : {}),
-      ...(fill.state !== undefined ? { state: fill.state, regionDetected: false } : {}),
-      ...(fill.farmSize !== undefined ? { farmSize: fill.farmSize } : {}),
-      ...(fill.crops !== undefined ? { crops: fill.crops } : {}),
-      ...(fill.regionConfirmed ? { regionDetected: false } : {}),
-    }))
+    setDraft((current) => {
+      // A state that differs from the one the district was detected in invalidates that district.
+      const stateChanged = fill.state !== undefined && fill.state !== current.state
+      return {
+        ...current,
+        ...(fill.name !== undefined ? { name: fill.name } : {}),
+        ...(fill.state !== undefined ? { state: fill.state, stateDetected: false } : {}),
+        ...(stateChanged && current.districtDetected ? { district: '', districtDetected: false } : {}),
+        ...(fill.district !== undefined ? { district: fill.district, districtDetected: false } : {}),
+        ...(fill.village !== undefined ? { village: fill.village } : {}),
+        ...(fill.locality !== undefined ? { locality: fill.locality } : {}),
+        ...(fill.farmSize !== undefined ? { farmSize: fill.farmSize } : {}),
+        ...(fill.crops !== undefined ? { crops: fill.crops } : {}),
+        ...(fill.stateConfirmed ? { stateDetected: false } : {}),
+        ...(fill.districtConfirmed ? { districtDetected: false } : {}),
+      }
+    })
     if (fill.name !== undefined) setNameError(false)
   }
 
@@ -187,7 +195,7 @@ export function FarmerOnboarding() {
               <label className="f-field"><span>{f('district')}</span><input value={draft.district} onChange={(event) => editRegion('district', event.target.value)} /></label>
               <label className="f-field"><span>{f('state')}</span><input value={draft.state} onChange={(event) => editRegion('state', event.target.value)} /></label>
             </div>
-            {draft.regionDetected && <p className="f-note f-onboard-detected"><MapPin size={16} />{f('detectedFromLocation')}</p>}
+            {(draft.stateDetected || draft.districtDetected) && <p className="f-note f-onboard-detected"><MapPin size={16} />{f('detectedFromLocation')}</p>}
           </section>
         )}
 

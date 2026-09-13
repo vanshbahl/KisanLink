@@ -146,10 +146,19 @@ class LogisticsProfileOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class OnboardingParseContext(BaseModel):
+    """What the client already knows when it asks Gemini to read one answer."""
+    state: Optional[str] = None
+    district: Optional[str] = None
+    candidates: List[str] = Field(default_factory=list, max_length=400)
+    expected: Optional[str] = None
+
+
 class OnboardingParseRequest(BaseModel):
     transcript: str = Field(..., min_length=1)
-    field: Literal["name", "farm_size", "crops"]
+    field: Literal["name", "state", "district", "village", "locality", "farm_size", "crops", "confirm"]
     language: Optional[str] = "hi"
+    context: Optional[OnboardingParseContext] = None
 
 
 class OnboardingParseResponse(BaseModel):
@@ -157,5 +166,8 @@ class OnboardingParseResponse(BaseModel):
     value_hi: Optional[str] = None
     farm_size_acres: Optional[float] = None
     crops: List[str] = Field(default_factory=list)
+    confirmed: Optional[bool] = None
+    unknown: bool = False
+    confidence: Literal["high", "medium", "low"] = "low"
     ai_used: bool = False
     warning: Optional[str] = None

@@ -243,21 +243,25 @@ class ApiClient {
   // --- Farmer onboarding voice parser (same Gemini service, one field at a time) ---
   async parseOnboardingVoice(
     transcript: string,
-    field: 'name' | 'farm_size' | 'crops',
+    field: 'name' | 'state' | 'district' | 'village' | 'locality' | 'farm_size' | 'crops' | 'confirm',
     language: string = 'hi',
-    timeoutMs = 4500
+    context: { state?: string; district?: string; candidates?: readonly string[]; expected?: string } = {},
+    timeoutMs = 7000
   ): Promise<{
     value?: string | null
     value_hi?: string | null
     farm_size_acres?: number | null
     crops?: string[]
+    confirmed?: boolean | null
+    unknown?: boolean
+    confidence?: 'high' | 'medium' | 'low'
     ai_used?: boolean
     warning?: string | null
   }> {
     const response = await fetch(`${API_BASE}/farmers/parse-onboarding`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ transcript, field, language }),
+      body: JSON.stringify({ transcript, field, language, context }),
       signal: AbortSignal.timeout(timeoutMs),
     })
     if (!response.ok) throw new Error(`Onboarding voice parse failed: ${response.status}`)
