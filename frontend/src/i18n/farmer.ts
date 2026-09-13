@@ -213,10 +213,11 @@ const copy = {
     noCropMatch: 'No crop found. Add it below.',
     onboardDone: 'All set!', onboardDoneHint: 'Check once and go to your dashboard.', continueDashboard: 'Continue to dashboard',
     nameRequired: 'Please tell us your name', notFilled: 'Not filled', land: 'Land', crops: 'Crops', place: 'Place',
+    editField: 'Edit {field}', speakField: 'Say {field}', done: 'Done', editCancel: 'Cancel',
 
     // --- Voice onboarding ----------------------------------------------------
     voiceQName: 'What is your full name?',
-    voiceQVillage: 'Hello {name}, which village is your farm in?', voiceQVillageNoName: 'Which village is your farm in?',
+    voiceQVillage: 'Which village is your farm in?',
     voiceQLocality: 'Which area or locality is the farm in?',
     voiceQConfirmState: 'Is your state {state}?', voiceQConfirmDistrict: 'Is your district {district}?', voiceQConfirmHint: 'Say yes or no',
     voiceQDistrict: 'Which district?', voiceQState: 'Which state?',
@@ -422,10 +423,11 @@ const copy = {
     noCropMatch: 'यह फसल नहीं मिली। नीचे जोड़ें।',
     onboardDone: 'सब तैयार है!', onboardDoneHint: 'एक बार देख लें और अपने डैशबोर्ड पर चलें।', continueDashboard: 'डैशबोर्ड पर चलें',
     nameRequired: 'कृपया अपना नाम बताएं', notFilled: 'नहीं भरा', land: 'ज़मीन', crops: 'फसल', place: 'जगह',
+    editField: '{field} बदलें', speakField: '{field} बोलें', done: 'हो गया', editCancel: 'रद्द करें',
 
     // --- Voice onboarding ----------------------------------------------------
     voiceQName: 'आपका पूरा नाम क्या है?',
-    voiceQVillage: 'नमस्ते {name}, आपका खेत किस गाँव में है?', voiceQVillageNoName: 'आपका खेत किस गाँव में है?',
+    voiceQVillage: 'आपका गाँव कौन सा है?',
     voiceQLocality: 'खेत किस इलाके या मोहल्ले में है?',
     voiceQConfirmState: 'क्या आपका राज्य {state} है?', voiceQConfirmDistrict: 'क्या आपका ज़िला {district} है?', voiceQConfirmHint: 'हाँ या नहीं बोलें',
     voiceQDistrict: 'आपका ज़िला कौन सा है?', voiceQState: 'आपका राज्य कौन सा है?',

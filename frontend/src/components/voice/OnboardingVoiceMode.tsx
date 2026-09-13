@@ -57,6 +57,8 @@ interface OnboardingVoiceModeProps {
   draft: VoiceDraft
   /** Which form step the microphone was tapped on; questions before it are not asked. */
   startStep: 1 | 2 | 3
+  /** Re-ask exactly this one field (review-screen edit); no confirmations, no closing line. */
+  only?: OnboardingField
   onFill: (fill: VoiceFill) => void
   onClose: () => void
   /** Every question answered; the form shows its confirmation. */
@@ -100,9 +102,9 @@ function resolveQuestion(id: VoiceQuestionId, draft: VoiceDraft): VoiceQuestionI
   return id
 }
 
-export function OnboardingVoiceMode({ draft, startStep, onFill, onClose, onFinished }: OnboardingVoiceModeProps) {
+export function OnboardingVoiceMode({ draft, startStep, only, onFill, onClose, onFinished }: OnboardingVoiceModeProps) {
   const { f, language } = useFarmerText()
-  const [queue, setQueue] = useState<VoiceQuestionId[]>(() => buildQueue(draft, startStep))
+  const [queue, setQueue] = useState<VoiceQuestionId[]>(() => (only ? [only] : buildQueue(draft, startStep)))
   const [index, setIndex] = useState(0)
   const [phase, setPhase] = useState<Phase>('speaking')
   const [transcript, setTranscript] = useState('')
@@ -118,8 +120,6 @@ export function OnboardingVoiceMode({ draft, startStep, onFill, onClose, onFinis
   draftRef.current = draft
   const spokenAckRef = useRef('')
   const ackTurnRef = useRef(0)
-  /** First name in the script it was spoken in, so a Hindi greeting does not read "नमस्ते Ramesh". */
-  const greetNameRef = useRef('')
 
   // Resolved once per index, when the question is asked. Deriving it live from the draft
   // would flip "confirm district" into "district" the moment the confirmation is applied.
@@ -135,10 +135,7 @@ export function OnboardingVoiceMode({ draft, startStep, onFill, onClose, onFinis
       case 'state': return { text: f('voiceQState') }
       case 'confirmDistrict': return { text: f('voiceQConfirmDistrict', { district: placeLabel(language, live.district, live.state) }), hint: f('voiceQConfirmHint') }
       case 'district': return { text: f('voiceQDistrict') }
-      case 'village': {
-        const first = greetNameRef.current || live.name.split(' ')[0]
-        return { text: first ? f('voiceQVillage', { name: first }) : f('voiceQVillageNoName') }
-      }
+      case 'village': return { text: f('voiceQVillage') }
       case 'locality': return { text: f('voiceQLocality') }
       case 'farmSize': return { text: f('voiceQFarmSize'), hint: f('voiceQFarmSizeHint') }
       case 'crops': return { text: f('voiceQCrops'), hint: f('voiceQCropsHint') }
@@ -178,6 +175,8 @@ export function OnboardingVoiceMode({ draft, startStep, onFill, onClose, onFinis
   }, [stopRecognition])
 
   const finish = useCallback((run: number) => {
+    // A single-field edit returns to the review screen straight away.
+    if (only) { onFinished(); return }
     setPhase('done')
     setAck('')
     setTranscript('')
@@ -185,7 +184,7 @@ export function OnboardingVoiceMode({ draft, startStep, onFill, onClose, onFinis
       if (run !== runRef.current) return
       window.setTimeout(() => { if (run === runRef.current) onFinished() }, DONE_HOLD_MS)
     })
-  }, [f, language, onFinished])
+  }, [f, language, onFinished, only])
 
   const advance = useCallback((run: number, extra: VoiceQuestionId[] = []) => {
     if (run !== runRef.current) return
@@ -318,8 +317,8 @@ export function OnboardingVoiceMode({ draft, startStep, onFill, onClose, onFinis
     if (id === 'name' && result.value) {
       onFill({ name: result.value })
       label = language === 'hi' ? (result.valueHi ?? result.value) : result.value
-      greetNameRef.current = label.split(' ')[0]
-      ack = f('voiceAckHello', { name: greetNameRef.current })
+      // The one and only greeting: spoken once, shown once, before whatever question is next.
+      ack = f('voiceAckHello', { name: label.split(' ')[0] })
     } else if ((id === 'state' || id === 'district') && result.value) {
       onFill({ [id]: result.value })
       label = placeLabel(language, result.value, id === 'district' ? live.state : undefined)
@@ -349,8 +348,7 @@ export function OnboardingVoiceMode({ draft, startStep, onFill, onClose, onFinis
     runRef.current += 1
     const run = runRef.current
     const { text } = questionText(id)
-    // The village question already greets by name, so it carries no separate "hello".
-    const spokenAck = id === 'village' && spokenAckRef.current.startsWith(f('voiceAckHello', { name: '' }).trim()) ? '' : spokenAckRef.current
+    const spokenAck = spokenAckRef.current
     setAck(spokenAck)
     spokenAckRef.current = ''
     setTranscript('')
@@ -393,7 +391,7 @@ export function OnboardingVoiceMode({ draft, startStep, onFill, onClose, onFinis
   const status = phase === 'speaking' ? f('voiceSpeaking')
     : phase === 'listening' ? f('voiceListening')
     : phase === 'processing' ? f('voiceProcessing')
-    : phase === 'success' ? (spokenAckRef.current || f('voiceAckOk'))
+    : phase === 'success' ? f('voiceAckOk')
     : phase === 'done' ? f('voiceAllDone')
     : f('voiceTapToSpeak')
 

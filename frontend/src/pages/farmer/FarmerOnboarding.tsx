@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Check, MapPin, Mic, Plus, Search } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, MapPin, Mic, Pencil, Plus, Search, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LanguageSwitcher } from '../../components/LanguageSwitcher'
@@ -6,10 +6,11 @@ import { Logo } from '../../components/Logo'
 import { OnboardingVoiceMode, type VoiceDraft, type VoiceFill } from '../../components/voice/OnboardingVoiceMode'
 import { useAuth } from '../../contexts/AuthContext'
 import { CROP_CATALOGUE } from '../../data/crops'
+import { matchDistrict, matchState, placeLabel } from '../../data/indiaLocations'
 import { authService } from '../../services/authService'
 import { useFarmerText, type FarmerKey } from '../../i18n/farmer'
 import { getDetectedRegion } from '../../services/localeDiscovery'
-import { FARM_SIZE_OPTIONS, farmSizeAcresFor, type FarmSizeId } from '../../services/onboardingVoice'
+import { FARM_SIZE_OPTIONS, farmSizeAcresFor, type FarmSizeId, type OnboardingField } from '../../services/onboardingVoice'
 import { prototypeService } from '../../services/prototypeService'
 
 /**
@@ -54,6 +55,11 @@ export function FarmerOnboarding() {
   const [cropQuery, setCropQuery] = useState('')
   const [customCrop, setCustomCrop] = useState('')
   const [saving, setSaving] = useState(false)
+  // Review-screen editing: one field at a time, in place; crops reopen their own step.
+  const [editing, setEditing] = useState<Exclude<OnboardingField, 'crops'> | null>(null)
+  const [editValue, setEditValue] = useState('')
+  const [voiceOnly, setVoiceOnly] = useState<OnboardingField | null>(null)
+  const [returnToReview, setReturnToReview] = useState(false)
 
   useEffect(() => { window.scrollTo({ top: 0 }) }, [step, confirming])
 
@@ -110,12 +116,41 @@ export function FarmerOnboarding() {
     } else if (step === 2) {
       setStep(3)
     } else {
+      setReturnToReview(false)
       setConfirming(true)
     }
   }
 
+  /** Review row -> in-place editor. Crops reuse their own multi-select step instead. */
+  const startEdit = (field: OnboardingField) => {
+    if (field === 'crops') { setReturnToReview(true); setConfirming(false); setStep(3); return }
+    setEditing(field)
+    setEditValue(draft[field])
+  }
+
+  /** State and district are pinned to the canonical list when the typed text resolves to one (exact, alias or an unambiguous close spelling). */
+  const commitEdit = () => {
+    if (!editing) return
+    let value = editValue.trim()
+    if (editing === 'state') {
+      const hit = matchState(value)
+      if (hit) value = hit.value
+      setDraft((current) => ({ ...current, state: value, stateDetected: false, ...(value !== current.state && current.districtDetected ? { district: '', districtDetected: false } : {}) }))
+    } else if (editing === 'district') {
+      const hit = matchDistrict(draft.state, value)
+      setDraft((current) => ({ ...current, district: hit ? hit.value : value, districtDetected: false }))
+    } else if (editing === 'farmSize') {
+      setDraft((current) => ({ ...current, farmSize: (value || '') as FarmSizeId | '' }))
+    } else {
+      setDraft((current) => ({ ...current, [editing]: value }))
+    }
+    if (editing === 'name' && value) setNameError(false)
+    setEditing(null)
+  }
+
   const back = () => {
     if (confirming) setConfirming(false)
+    else if (returnToReview) { setReturnToReview(false); setConfirming(true) }
     else if (step > 1) setStep((step - 1) as Step)
   }
 
@@ -148,7 +183,15 @@ export function FarmerOnboarding() {
     const known = CROP_CATALOGUE.find((crop) => crop.en === name)
     return language === 'hi' ? (known?.hi ?? name) : name
   }
-  const placeSummary = [draft.village, draft.locality, draft.district, draft.state].map((item) => item.trim()).filter(Boolean).join(', ')
+  const reviewRows: { field: OnboardingField; label: string; value: string }[] = [
+    { field: 'name', label: f('fullName'), value: draft.name.trim() },
+    { field: 'state', label: f('state'), value: placeLabel(language, draft.state.trim()) },
+    { field: 'district', label: f('district'), value: placeLabel(language, draft.district.trim(), draft.state) },
+    { field: 'village', label: f('village'), value: draft.village.trim() },
+    { field: 'locality', label: f('locality'), value: draft.locality.trim() },
+    { field: 'farmSize', label: f('land'), value: draft.farmSize ? f(SIZE_KEY[draft.farmSize]) : '' },
+    { field: 'crops', label: f('crops'), value: draft.crops.map(cropLabel).join(', ') },
+  ]
   const stepLabels: FarmerKey[] = ['onboardStepYou', 'onboardStepLand', 'onboardStepCrops']
   const shownStep = confirming ? 4 : step
 
@@ -261,10 +304,38 @@ export function FarmerOnboarding() {
             <h1>{f('onboardDone')}</h1>
             <p className="f-note">{f('onboardDoneHint')}</p>
             <dl className="f-onboard-summary">
-              <div><dt>{f('fullName')}</dt><dd>{draft.name.trim()}</dd></div>
-              <div><dt>{f('place')}</dt><dd>{placeSummary || <em>{f('notFilled')}</em>}</dd></div>
-              <div><dt>{f('land')}</dt><dd>{draft.farmSize ? f(SIZE_KEY[draft.farmSize]) : <em>{f('notFilled')}</em>}</dd></div>
-              <div><dt>{f('crops')}</dt><dd>{draft.crops.length ? draft.crops.map(cropLabel).join(', ') : <em>{f('notFilled')}</em>}</dd></div>
+              {reviewRows.map((row) => {
+                const isEditing = editing === row.field
+                return (
+                  <div key={row.field} className={isEditing ? 'is-editing' : ''}>
+                    <dt>{row.label}</dt>
+                    <dd>
+                      {isEditing ? (
+                        row.field === 'farmSize' ? (
+                          <select autoFocus value={editValue} onChange={(event) => setEditValue(event.target.value)} onBlur={commitEdit} onKeyDown={(event) => { if (event.key === 'Enter') commitEdit(); if (event.key === 'Escape') setEditing(null) }} aria-label={row.label}>
+                            <option value="">{f('notFilled')}</option>
+                            {FARM_SIZE_OPTIONS.map((option) => <option key={option.id} value={option.id}>{f(SIZE_KEY[option.id])}</option>)}
+                          </select>
+                        ) : (
+                          <input autoFocus value={editValue} onChange={(event) => setEditValue(event.target.value)} onBlur={commitEdit} onKeyDown={(event) => { if (event.key === 'Enter') commitEdit(); if (event.key === 'Escape') setEditing(null) }} aria-label={row.label} />
+                        )
+                      ) : (
+                        <span className="f-review-value">{row.value || <em>{f('notFilled')}</em>}</span>
+                      )}
+                      <span className="f-review-actions">
+                        {isEditing ? (
+                          <button type="button" className="f-review-btn" aria-label={f('editCancel')} onMouseDown={(event) => event.preventDefault()} onClick={() => setEditing(null)}><X size={18} /></button>
+                        ) : (
+                          <>
+                            <button type="button" className="f-review-btn" aria-label={f('speakField', { field: row.label })} onClick={() => { setVoiceOnly(row.field); setVoiceOpen(true) }}><Mic size={18} /></button>
+                            <button type="button" className="f-review-btn" aria-label={f('editField', { field: row.label })} onClick={() => startEdit(row.field)}><Pencil size={18} /></button>
+                          </>
+                        )}
+                      </span>
+                    </dd>
+                  </div>
+                )
+              })}
             </dl>
           </section>
         )}
@@ -276,7 +347,9 @@ export function FarmerOnboarding() {
             {saving ? <><i className="spinner spinner-light" />{f('loading')}</> : <>{f('continueDashboard')}<ArrowRight size={19} /></>}
           </button>
         ) : (
-          <button type="button" className="btn btn-primary btn-large btn-full" onClick={next}>{f('next')}<ArrowRight size={19} /></button>
+          <button type="button" className="btn btn-primary btn-large btn-full" onClick={returnToReview && step === 3 ? () => { setReturnToReview(false); setConfirming(true) } : next}>
+            {returnToReview && step === 3 ? <><Check size={19} />{f('done')}</> : <>{f('next')}<ArrowRight size={19} /></>}
+          </button>
         )}
       </footer>
 
@@ -284,9 +357,10 @@ export function FarmerOnboarding() {
         <OnboardingVoiceMode
           draft={draft}
           startStep={step}
+          only={voiceOnly ?? undefined}
           onFill={applyVoice}
-          onClose={() => setVoiceOpen(false)}
-          onFinished={() => { setVoiceOpen(false); setStep(3); setConfirming(true) }}
+          onClose={() => { setVoiceOpen(false); setVoiceOnly(null) }}
+          onFinished={() => { setVoiceOpen(false); setVoiceOnly(null); setStep(3); setConfirming(true) }}
         />
       )}
     </main>

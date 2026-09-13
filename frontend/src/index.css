@@ -3260,8 +3260,15 @@ html[lang="hi"] .f-tabs button { font-size: 14px; }
 .f-onboard-summary > div { display: grid; gap: 4px; padding: 14px 18px; border-top: 1px solid var(--border); }
 .f-onboard-summary > div:first-child { border-top: 0; }
 .f-onboard-summary dt { font-size: 14px; font-weight: 700; color: var(--muted); }
-.f-onboard-summary dd { margin: 0; font-size: 18px; font-weight: 700; line-height: 1.35; }
+.f-onboard-summary dd { margin: 0; display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; line-height: 1.35; }
 .f-onboard-summary dd em { font-style: normal; color: var(--muted); font-weight: 600; }
+.f-review-value { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+/* Value, then a quiet mic and pencil on the right; large enough to tap, small enough to stay out of the way. */
+.f-review-actions { display: inline-flex; gap: 6px; flex: 0 0 auto; margin-left: auto; }
+.f-review-btn { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--green); display: grid; place-items: center; cursor: pointer; }
+.f-review-btn:hover { background: var(--green-soft); border-color: var(--green); }
+.f-onboard-summary dd input, .f-onboard-summary dd select { flex: 1 1 auto; min-width: 0; min-height: 44px; padding: 8px 12px; border: 1px solid var(--green); border-radius: 12px; background: var(--surface); color: var(--text); font-size: 17px; font-weight: 700; }
+.f-onboard-summary > div.is-editing { background: #fbfcfa; }
 
 /* --- Voice mode ---------------------------------------------------------- */
 .f-voice-screen { position: fixed; inset: 0; z-index: 200; display: grid; grid-template-rows: auto 1fr auto; background: var(--canvas); color: var(--text); padding: 12px 20px calc(20px + env(safe-area-inset-bottom)); animation: pageIn .2s ease both; overflow: hidden; }
