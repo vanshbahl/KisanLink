@@ -1,13 +1,17 @@
 import { useEffect, useState } from 'react'
 import { ArrowLeft, Check, Edit3, Eye, PackageCheck, Sprout } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { BetterDealCard } from '../../components/farmer/BetterDealCard'
 import { CropActions } from '../../components/farmer/CropActions'
+import { CropMarketMaker } from '../../components/farmer/CropMarketMaker'
+import { AiOverview } from '../../components/farmer/FarmerAi'
+import { FreshnessRing } from '../../components/farmer/FreshnessRing'
 import { LotQualityCard } from '../../components/inspection/LotQualityCard'
 import { ProductImage } from '../../components/ProductImage'
 import { DashboardSkeleton } from '../../components/LoadingSkeleton'
 import { useFarmerText, relativeDay } from '../../i18n/farmer'
-import { getFarmerDeal, type FarmerDeal } from '../../services/farmerDeal'
+import { getCropDeal, getFarmerDeal, type CropDeal, type FarmerDeal } from '../../services/farmerDeal'
+import { cropInsight } from '../../services/farmerInsight'
+import { isRescueActive } from '../../services/farmerRescue'
 import { inspectionService } from '../../services/inspectionService'
 import { prototypeService } from '../../services/prototypeService'
 import { daysUntil } from '../../utils/dates'
@@ -29,11 +33,15 @@ export function FarmerCropDetail() {
   const navigate = useNavigate()
   const [item, setItem] = useState<FarmerListing | null | undefined>(undefined)
   const [deal, setDeal] = useState<FarmerDeal | null>(null)
+  const [cropDeal, setCropDeal] = useState<CropDeal | null>(null)
   const [pickupStage, setPickupStage] = useState<CustodyStage | undefined>()
 
   const load = () => { if (id) void prototypeService.getListing(id).then(setItem) }
   useEffect(load, [id])
   useEffect(() => { void getFarmerDeal().then(setDeal) }, [])
+  // The crop's own Market Maker read feeds the one-line insight; the full result is behind
+  // the "सही दाम देखें" surface below so the page opens on the crop, not on an analysis.
+  useEffect(() => { if (item) void getCropDeal(item).then(setCropDeal) }, [item])
   useEffect(() => {
     if (!item?.lotCode) return
     void inspectionService.getLotTrail(item.lotCode)
@@ -52,9 +60,9 @@ export function FarmerCropDetail() {
   }
 
   const crop = pick(item.crop, item.cropHi)
-  const rescue = Boolean(item.isUrgentRescue || item.rescueStatus === 'RESCUE_ACTIVE')
+  const rescue = isRescueActive(item)
   const price = rescue ? (item.rescueDiscountPricePerKg ?? item.pricePerKg) : item.pricePerKg
-  const dealApplies = deal && deal.cropEn.toLowerCase() === item.crop.toLowerCase() && deal.gainPerKg > 0
+  const insight = item.status === 'sold' ? null : cropInsight(item, cropDeal, crop)
 
   return (
     <div className="page f-page f-crop-detail">
@@ -76,6 +84,12 @@ export function FarmerCropDetail() {
             <div><dt>{f('promised')}</dt><dd>{item.allocatedKg} {f('kg')}</dd></div>
             <div><dt>{f('mandiRate')}</dt><dd>₹{item.mandiPricePerKg}{f('perKg')}</dd></div>
           </dl>
+          {item.status !== 'sold' && (
+            <div className="f-crop-hero-fresh">
+              <FreshnessRing listing={item} size="hero" />
+              <small className="f-note">{f('freshHarvested', { when: relativeDay(language, item.harvestDate, daysUntil(item.harvestDate)) })}</small>
+            </div>
+          )}
         </div>
       </header>
 
@@ -85,7 +99,11 @@ export function FarmerCropDetail() {
           sheet are identical to the list, so there is still one behaviour to learn. */}
       {item.status !== 'sold' && <CropActions item={item} deal={deal} onChanged={load} />}
 
-      {dealApplies && deal && <BetterDealCard deal={deal} compact />}
+      {insight && <AiOverview text={f(insight.key, insight.values)} highlight={insight.values.crop} tone={insight.urgent ? 'urgent' : 'default'} />}
+
+      {/* Market Maker for this crop — the same lifted, staged reveal the rest of KisanLink
+          uses, answering only what this farmer asked: what it fetches, and whether to take it. */}
+      {item.status !== 'sold' && <CropMarketMaker listing={item} onChanged={load} />}
 
       {item.lotCode && (
         <LotQualityCard

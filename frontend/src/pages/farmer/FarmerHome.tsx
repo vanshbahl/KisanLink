@@ -1,36 +1,42 @@
 import { ChevronRight, PackageCheck, Phone, Sprout } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { BetterDealCard } from '../../components/farmer/BetterDealCard'
+import { HomeAiTrigger } from '../../components/farmer/FarmerAi'
+import { FreshnessRing } from '../../components/farmer/FreshnessRing'
 import { Money } from '../../components/farmer/Money'
 import { TaskRow } from '../../components/farmer/TaskRow'
 import { DashboardSkeleton } from '../../components/LoadingSkeleton'
+import { ProductImage } from '../../components/ProductImage'
 import { useAuth } from '../../contexts/AuthContext'
 import { useFarmerText } from '../../i18n/farmer'
 import { useAsyncData } from '../../hooks/useAsyncData'
-import { getFarmerDeal } from '../../services/farmerDeal'
+import { assessFreshness, FRESHNESS_URGENCY } from '../../services/cropFreshness'
+import { getCropDeals, getFarmerDeal } from '../../services/farmerDeal'
+import { isRescueActive } from '../../services/farmerRescue'
 import { buildFarmerTasks } from '../../services/farmerTasks'
 import { prototypeService } from '../../services/prototypeService'
 
 /**
  * Farmer home.
  *
- * The old dashboard opened with three KPI tiles, two AI cards, a four-tile action grid and a
- * price panel — seven blocks before the farmer could do anything. This screen answers the
- * four questions that actually bring a farmer into the app, in the order they matter:
+ * One column, one rhythm, read top to bottom the way a farmer opens the app:
  *
- *   1. What needs me today?     -> the task layer, derived from real records
- *   2. Can I sell?              -> one dominant action
- *   3. Is the price good?       -> one better-deal card
- *   4. When do I get paid?      -> one money line
+ *   1. What is happening?        -> one sentence from real data (or nothing)
+ *   2. What needs me today?      -> the task layer, at most three rows
+ *   3. How are my crops?         -> a strip of the live crops, each with its selling window
+ *   4. Can I sell?               -> the one dominant action
+ *   5. Money and orders          -> one row, two cells, both tappable
  *
- * At most three tasks are shown. A farmer with a quiet day gets told it is quiet, rather
- * than being handed manufactured suggestions to make the screen look busy.
+ * The previous version put a dark better-deal card between two white rows; the deal now
+ * lives where it belongs — as a task when it beats the mandi, in the AI line when it is the
+ * most useful thing to say, and on the crop it applies to. Nothing on this screen is a
+ * widget that could not be reached by tapping through it.
  */
 const MAX_TASKS = 3
+const MAX_CROPS = 4
 
 export function FarmerHome() {
   const { user } = useAuth()
-  const { f, language } = useFarmerText()
+  const { f, language, pick } = useFarmerText()
 
   const { data, loading, error, refresh } = useAsyncData(async () => {
     const [listings, orders, pickups, earnings] = await Promise.all([
@@ -42,9 +48,11 @@ export function FarmerHome() {
     // Only this farm's orders — getOrders() spans the shared prototype story.
     const mine = new Set(listings.map((item) => item.id))
     const myOrders = orders.filter((order) => mine.has(order.listingId))
-    const deal = await getFarmerDeal(listings)
+    const [deal, cropDeals] = await Promise.all([getFarmerDeal(listings), getCropDeals(listings)])
     return {
-      deal,
+      listings,
+      cropDeals,
+      running: myOrders.filter((order) => order.status !== 'delivered' && order.status !== 'cancelled').length,
       pending: earnings.filter((item) => item.status === 'pending').reduce((sum, item) => sum + item.net, 0),
       tasks: buildFarmerTasks({ listings, orders: myOrders, pickups, earnings, deal }, language),
     }
@@ -63,10 +71,17 @@ export function FarmerHome() {
   const tasks = data.tasks.slice(0, MAX_TASKS)
   const firstName = user?.name?.split(' ')[0] ?? ''
 
+  // Live crops, the one with the least selling time first, so the strip reads as a priority.
+  const crops = data.listings
+    .filter((item) => item.status === 'active')
+    .sort((a, b) => FRESHNESS_URGENCY[assessFreshness(b).stage] - FRESHNESS_URGENCY[assessFreshness(a).stage])
+    .slice(0, MAX_CROPS)
+
   return (
     <div className="page f-page f-home">
       <header className="f-greet">
         <h1>{f('greeting', { name: firstName })}</h1>
+        <HomeAiTrigger listings={data.listings} cropDeals={data.cropDeals} pick={pick} />
       </header>
 
       <section className="f-today" aria-labelledby="f-today-heading">
@@ -83,22 +98,55 @@ export function FarmerHome() {
         )}
       </section>
 
-      <nav className="f-primary-actions" aria-label={f('todayHeading')}>
-        <Link className="btn btn-primary f-big-action" to="/farmer/sell">
-          <Sprout size={22} />{f('sellCrop')}
-        </Link>
-        <Link className="btn btn-secondary f-big-action" to="/farmer/orders">
-          <PackageCheck size={22} />{f('myOrders')}
-        </Link>
-      </nav>
+      <section className="f-home-crops" aria-labelledby="f-crops-heading">
+        <div className="f-home-crops-head">
+          <h2 id="f-crops-heading" className="f-section-heading">{f('yourCrops')}</h2>
+          {crops.length > 0 && <Link to="/farmer/fasal">{f('seeAllCrops')}<ChevronRight size={17} /></Link>}
+        </div>
+        {crops.length ? (
+          <ul className="f-crop-strip">
+            {crops.map((item) => {
+              const rescue = isRescueActive(item)
+              const price = rescue ? (item.rescueDiscountPricePerKg ?? item.pricePerKg) : item.pricePerKg
+              return (
+                <li key={item.id}>
+                  <Link to={`/farmer/fasal/${item.id}`} className={`f-crop-tile${rescue ? ' is-fast' : ''}`}>
+                    <ProductImage imageSrc={item.imageSrc} visual={item.visual} alt="" size="mini" />
+                    <span className="f-crop-tile-copy">
+                      <strong>{pick(item.crop, item.cropHi)}</strong>
+                      <small>₹{price}{f('perKg')} · {item.remainingKg} {f('kg')}</small>
+                    </span>
+                    <FreshnessRing listing={item} size="card" className="f-crop-fresh" />
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+        ) : (
+          <p className="f-today-quiet">
+            <Sprout size={20} aria-hidden="true" />
+            <span><strong>{f('homeNoCrops')}</strong><small>{f('homeNoCropsHint')}</small></span>
+          </p>
+        )}
+      </section>
 
-      {data.deal && <BetterDealCard deal={data.deal} compact />}
-
-      <Link className="f-money-strip" to="/farmer/paisa">
-        <span>{f('waitingForYou')}</span>
-        <Money value={data.pending} size="lg" tone="good" />
-        <ChevronRight size={20} aria-hidden="true" />
+      <Link className="btn btn-primary btn-large btn-full f-big-action" to="/farmer/sell">
+        <Sprout size={22} />{crops.length ? f('sellCrop') : f('addFirstCrop')}
       </Link>
+
+      <div className="f-home-status">
+        <Link className="f-home-cell" to="/farmer/paisa">
+          <span>{f('waitingForYou')}</span>
+          <Money value={data.pending} size="lg" tone="good" />
+        </Link>
+        <Link className="f-home-cell" to="/farmer/orders">
+          <span>{f('myOrders')}</span>
+          <strong className="f-home-cell-line">
+            <PackageCheck size={18} aria-hidden="true" />
+            {data.running ? f('homeOrdersLine', { count: data.running }) : f('homeNoOrders')}
+          </strong>
+        </Link>
+      </div>
 
       <a className="f-help" href="tel:18001234567">
         <Phone size={19} />

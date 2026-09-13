@@ -4,7 +4,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Sheet, SheetAction } from './Sheet'
 import { useFarmerText } from '../../i18n/farmer'
 import { useToast } from '../../contexts/ToastContext'
-import { apiClient } from '../../services/apiClient'
+import { assessFreshness, isUrgentFreshness } from '../../services/cropFreshness'
+import { isRescueActive, rescuePriceFor, startRescueSale } from '../../services/farmerRescue'
 import { prototypeService } from '../../services/prototypeService'
 import type { FarmerDeal } from '../../services/farmerDeal'
 import type { FarmerListing } from '../../types'
@@ -31,7 +32,8 @@ export function CropActions({ item, deal, onChanged }: {
   const [busy, setBusy] = useState(false)
 
   const crop = pick(item.crop, item.cropHi)
-  const rescue = Boolean(item.isUrgentRescue || item.rescueStatus === 'RESCUE_ACTIVE')
+  const rescue = isRescueActive(item)
+  const urgentFresh = isUrgentFreshness(assessFreshness(item))
   const dealMatchesCrop = Boolean(deal && deal.cropEn.toLowerCase() === item.crop.toLowerCase() && deal.gainPerKg > 0)
 
   const run = async (action: () => Promise<unknown>, message: string) => {
@@ -51,25 +53,8 @@ export function CropActions({ item, deal, onChanged }: {
     return patch({ remainingKg: Math.round(value), quantityKg: Math.round(value) + item.allocatedKg })
   }
 
-  /**
-   * Urgent rescue. The backend applies its own discount when the listing is a real record;
-   * when it is not (created in this browser only) the same deterministic 25% cut is applied
-   * locally so the flow still completes — unchanged from the previous produce detail page.
-   */
-  const sellItFast = () => run(async () => {
-    let rescuePricePerKg: number
-    try {
-      const result = await apiClient.tagUrgentRescue(item.id)
-      rescuePricePerKg = result.rescue_price_per_kg
-    } catch {
-      rescuePricePerKg = Math.round(item.pricePerKg * 0.75)
-    }
-    await prototypeService.patchListing(item.id, {
-      isUrgentRescue: true,
-      rescueDiscountPricePerKg: rescuePricePerKg,
-      rescueStatus: 'RESCUE_ACTIVE',
-    })
-  }, f('fastSaleOn', { price: Math.round(item.pricePerKg * 0.75) }))
+  /** Urgent rescue — see `services/farmerRescue.ts`; the same call the Market Maker card makes. */
+  const sellItFast = () => run(() => startRescueSale(item), f('fastSaleOn', { price: rescuePriceFor(item) }))
 
   const remove = () => {
     if (!window.confirm(f('deleteConfirm'))) return
@@ -77,16 +62,23 @@ export function CropActions({ item, deal, onChanged }: {
   }
 
   // One visible verb, chosen by what this crop actually needs next. `active` with no better
-  // deal deliberately gets none: the crop is selling, and there is nothing to press.
+  // deal deliberately gets none: the crop is selling, and there is nothing to press. A crop at
+  // the end of its selling window outranks everything: it gets "जल्दी बेचें" here, in the open.
   const primary = item.status === 'draft' || item.status === 'paused' || item.status === 'unavailable'
     ? (
       <button type="button" className="btn btn-primary f-crop-cta" disabled={busy} onClick={() => patch({ status: 'active' }, f('onSaleNow'))}>
         {item.status === 'draft' ? f('publishNow') : f('resumeSelling')}
       </button>
     )
-    : item.status === 'active' && dealMatchesCrop
-      ? <Link className="btn btn-primary f-crop-cta" to="/farmer/deal">{f('sellAtThisPrice')}</Link>
-      : null
+    : item.status === 'active' && urgentFresh && !rescue
+      ? (
+        <button type="button" className="btn btn-primary f-crop-cta is-fast" disabled={busy} onClick={sellItFast}>
+          <Zap size={18} />{f('sellItFast')}
+        </button>
+      )
+      : item.status === 'active' && dealMatchesCrop
+        ? <Link className="btn btn-primary f-crop-cta" to="/farmer/deal">{f('sellAtThisPrice')}</Link>
+        : null
 
   return (
     <>
@@ -97,7 +89,7 @@ export function CropActions({ item, deal, onChanged }: {
         </button>
       </div>
 
-      <Sheet open={sheetOpen} onClose={() => { setSheetOpen(false); setEditing(null) }} title={`${crop} — ${f('cropOptions')}`}>
+      <Sheet open={sheetOpen} onClose={() => { setSheetOpen(false); setEditing(null) }} title={`${crop} · ${f('cropOptions')}`}>
         {editing ? (
           <div className="f-sheet-edit">
             <label className="f-field">

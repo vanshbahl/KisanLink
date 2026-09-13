@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { ArrowLeft, Check, ChevronDown, Mic, Minus, Phone, Plus, Sprout, Truck } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { EvidenceCapture, EvidenceCaptureError, type EvidencePreview } from '../../components/inspection/EvidenceCapture'
+import { CropMarketMaker } from '../../components/farmer/CropMarketMaker'
+import { FreshnessRing } from '../../components/farmer/FreshnessRing'
 import { VoiceInputModal } from '../../components/voice/VoiceInputModal'
 import { useToast } from '../../contexts/ToastContext'
 import { useFarmerText, money, relativeDay } from '../../i18n/farmer'
@@ -35,13 +37,18 @@ import type { FarmerListing, ListingStatus, PackagingType } from '../../types'
  *    number to call — is now on every step, and `?assisted=1` still tags the listing so the
  *    call-centre badge keeps appearing wherever it did before.
  */
+// `recommended` is deliberately the same number as `recommendedMin` on the matching row of
+// `CROP_INTEL` in `farmerAiService.ts` — the base, no-help ask a farmer would set on their
+// own. Market Maker (`farmerDeal.ts`) floors its own price at that same number, so this is
+// the one place the two tables must be kept in step; a Market Maker price is only ever at or
+// above what is offered here, never below it.
 const CROPS = [
-  { en: 'Fresh Tomatoes', hi: 'टमाटर', image: '/assets/produce/tomato.webp', visual: 'tomato' as const, category: 'Vegetables' as const, mandi: 24, recommended: 32, retail: 38 },
-  { en: 'New Potatoes', hi: 'आलू', image: '/assets/produce/potato.webp', visual: 'potato' as const, category: 'Staples' as const, mandi: 21, recommended: 25, retail: 32 },
-  { en: 'Red Onion', hi: 'प्याज़', image: '/assets/produce/onion.webp', visual: 'onion' as const, category: 'Vegetables' as const, mandi: 18, recommended: 24, retail: 30 },
-  { en: 'Baby Spinach', hi: 'पालक', image: '/assets/produce/spinach.webp', visual: 'leafy' as const, category: 'Vegetables' as const, mandi: 35, recommended: 42, retail: 52 },
-  { en: 'Sharbati Wheat', hi: 'गेहूं', image: '/assets/produce/wheat.webp', visual: 'grain' as const, category: 'Grains' as const, mandi: 31, recommended: 37, retail: 44 },
-  { en: 'Sweet Carrots', hi: 'गाजर', image: '/assets/produce/carrot.webp', visual: 'root' as const, category: 'Vegetables' as const, mandi: 29, recommended: 36, retail: 45 },
+  { en: 'Fresh Tomatoes', hi: 'टमाटर', image: '/assets/produce/tomato.webp', visual: 'tomato' as const, category: 'Vegetables' as const, mandi: 24, recommended: 31, retail: 38 },
+  { en: 'New Potatoes', hi: 'आलू', image: '/assets/produce/potato.webp', visual: 'potato' as const, category: 'Staples' as const, mandi: 21, recommended: 24, retail: 32 },
+  { en: 'Red Onion', hi: 'प्याज़', image: '/assets/produce/onion.webp', visual: 'onion' as const, category: 'Vegetables' as const, mandi: 18, recommended: 23, retail: 30 },
+  { en: 'Baby Spinach', hi: 'बेबी पालक', image: '/assets/produce/spinach.webp', visual: 'leafy' as const, category: 'Vegetables' as const, mandi: 35, recommended: 40, retail: 52 },
+  { en: 'Sharbati Wheat', hi: 'गेहूं', image: '/assets/produce/wheat.webp', visual: 'grain' as const, category: 'Grains' as const, mandi: 31, recommended: 36, retail: 44 },
+  { en: 'Sweet Carrots', hi: 'गाजर', image: '/assets/produce/carrot.webp', visual: 'root' as const, category: 'Vegetables' as const, mandi: 29, recommended: 35, retail: 45 },
 ]
 
 const QUANTITY_CHIPS = [50, 100, 250, 500, 1000]
@@ -123,6 +130,10 @@ export function FarmerSell() {
     // A spoken sentence already carries crop, quantity and price — go straight to review.
     setStep(3)
   }
+
+  // Each step starts at the top. Without this, step 3 inherits the scroll offset of the
+  // "आगे" button that opened it, and the auto-running price card lifts out of view.
+  useEffect(() => { window.scrollTo({ top: 0 }) }, [step])
 
   // Voice handed off from "मेरी फसल", or an existing crop being edited.
   useEffect(() => {
@@ -317,7 +328,7 @@ export function FarmerSell() {
               <label className="f-field">
                 <span>{f('grownHow')}</span>
                 <select value={form.farmingMethod} onChange={(event) => update('farmingMethod', event.target.value)}>
-                  <option value="">—</option>
+                  <option value="">-</option>
                   <option value="Conventional">{f('conventional')}</option>
                   <option value="Organic">{f('organic')}</option>
                   <option value="Natural farming">{f('natural')}</option>
@@ -399,6 +410,26 @@ export function FarmerSell() {
             <p>{cropLabel} · {form.quantityKg} {f('kg')} · <em>{money(total)}</em></p>
           </div>
 
+          {/* The selling window is set by the harvest date, so the date sits right beside the
+              ring: a farmer who cut the crop three days ago corrects it here and watches the
+              window shrink, instead of finding the field under "और जानकारी". */}
+          <div className="f-sell-fresh">
+            <FreshnessRing listing={form} size="card" />
+            <label className="f-field is-compact">
+              <span>{f('harvestDate')}</span>
+              <input type="date" max={localDay(0)} value={form.harvestDate} onChange={(event) => { update('harvestDate', event.target.value); update('availableFrom', event.target.value) }} />
+            </label>
+          </div>
+
+          {/* Market Maker runs on its own here — this is the moment the farmer is deciding a
+              price. "इस दाम पर बेचें" writes the price into the form; nothing is saved yet. */}
+          <CropMarketMaker
+            key={`${form.crop}-${form.harvestDate}`}
+            listing={form}
+            autoStart
+            onAdopt={(pricePerKg) => { update('pricePerKg', pricePerKg); showToast(f('marketApplied', { price: `₹${pricePerKg}` })) }}
+          />
+
           {priceLoading ? (
             <p className="f-price-loading" role="status"><span className="spinner" />{f('findingPrice')}</p>
           ) : priceOptions ? (
@@ -428,7 +459,7 @@ export function FarmerSell() {
 
           {intel && (
             <p className="f-note f-price-note">
-              {f('mandiTodayHint', { crop: cropLabel })} — ₹{intel.mandi}{f('perKg')}. {f('dealDisclaimer')}
+              {f('mandiTodayHint', { crop: cropLabel })}: ₹{intel.mandi}{f('perKg')}. {f('dealDisclaimer')}
             </p>
           )}
 

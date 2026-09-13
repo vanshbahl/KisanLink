@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AlertTriangle, ArrowLeft, Check, KeyRound, MapPin, PackageCheck, Phone, Star, Truck, UserRound } from 'lucide-react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { FreshnessRing } from '../../components/farmer/FreshnessRing'
 import { Money } from '../../components/farmer/Money'
 import { Sheet } from '../../components/farmer/Sheet'
 import { DashboardSkeleton } from '../../components/LoadingSkeleton'
@@ -10,7 +11,7 @@ import { apiClient } from '../../services/apiClient'
 import { prototypeService } from '../../services/prototypeService'
 import { daysUntil } from '../../utils/dates'
 import { nextAction, statusKey } from './orderState'
-import type { FarmerOrder, OrderStatus, Pickup } from '../../types'
+import type { FarmerListing, FarmerOrder, OrderStatus, Pickup } from '../../types'
 
 /**
  * One order, end to end.
@@ -34,6 +35,7 @@ export function FarmerOrderDetail() {
 
   const [order, setOrder] = useState<FarmerOrder | null | undefined>(undefined)
   const [pickup, setPickup] = useState<Pickup | null>(null)
+  const [listing, setListing] = useState<FarmerListing | null>(null)
   const [otpOpen, setOtpOpen] = useState(params.get('otp') === '1')
   const [problemOpen, setProblemOpen] = useState(false)
   const [rateOpen, setRateOpen] = useState(false)
@@ -43,7 +45,11 @@ export function FarmerOrderDetail() {
 
   const load = () => {
     if (!id) return
-    void prototypeService.getOrder(id).then(setOrder)
+    void prototypeService.getOrder(id).then((item) => {
+      setOrder(item)
+      // The crop behind the order carries the harvest date the freshness ring reads.
+      if (item) void prototypeService.getListing(item.listingId).then((found) => setListing(found ?? null))
+    })
     void prototypeService.getPickups().then((items) => setPickup(items.find((item) => item.orderId === id) ?? null))
   }
   useEffect(load, [id])
@@ -106,6 +112,9 @@ export function FarmerOrderDetail() {
         <span className={`f-order-status is-${order.status}`}>{f(statusKey[order.status])}</span>
         <h1>{crop}</h1>
         <p>{f('orderQty', { qty: order.quantityKg, price: `₹${order.ratePerKg}` })}</p>
+        {listing && order.status !== 'delivered' && order.status !== 'cancelled' && (
+          <FreshnessRing listing={listing} size="card" className="f-order-fresh" />
+        )}
         <div className="f-order-hero-money">
           <span>{f('youGet')}</span>
           <Money value={order.farmerPayout} size="hero" tone="good" />

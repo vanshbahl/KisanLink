@@ -2561,7 +2561,7 @@ body.mm-reveal-open { overflow: hidden; }
 .f-crop-list { display: grid; gap: 12px; }
 .f-crop { background: var(--surface); border: 1px solid var(--border); border-radius: var(--f-radius); overflow: hidden; }
 .f-crop.is-fast { border-color: rgba(217, 97, 60, .5); }
-.f-crop-main { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 14px; padding: 14px; color: var(--text); align-items: center; }
+.f-crop-main { display: grid; grid-template-columns: 92px minmax(0, 1fr) auto; gap: 14px; padding: 14px; color: var(--text); align-items: center; }
 .f-crop-main .produce-mini { width: 92px; min-width: 92px; }
 .f-crop-copy { display: grid; gap: 4px; min-width: 0; }
 .f-crop-copy h2 { margin: 0; font-size: 20px; }
@@ -2826,6 +2826,147 @@ body.mm-reveal-open { overflow: hidden; }
 .f-choice small { color: var(--muted); font-size: 13px; }
 .f-pickup-when { display: grid; gap: 14px; }
 
+/* --- Freshness: one ring, three sizes ----------------------------------- *
+ * Colour carries the stage, but so do the icon, the word and the number of days, so the
+ * meaning survives colour-blindness, greyscale printing and a Hindi screen reader alike. */
+.f-fresh { --fresh: var(--green); display: inline-flex; align-items: center; gap: 9px; color: var(--text); }
+.f-fresh.is-good { --fresh: #4f8a3a; }
+.f-fresh.is-sell_soon { --fresh: #c9861a; }
+.f-fresh.is-urgent { --fresh: var(--urgency); }
+.f-fresh.is-window_over { --fresh: #8a7460; }
+.f-fresh-ring { position: relative; display: grid; place-items: center; flex: 0 0 auto; }
+.f-fresh-ring svg { display: block; }
+.f-fresh-track { stroke: #e3e8e3; }
+.f-fresh-arc { stroke: var(--fresh); transition: stroke-dasharray .5s cubic-bezier(.22,.7,.28,1); }
+.f-fresh-days, .f-fresh-icon { position: absolute; inset: 0; margin: auto; color: var(--fresh); }
+.f-fresh-days { display: flex; align-items: center; justify-content: center; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.02em; line-height: 1; }
+.f-fresh-copy { display: grid; gap: 1px; min-width: 0; }
+.f-fresh-copy strong { display: inline-flex; align-items: center; gap: 5px; color: var(--fresh); font-weight: 800; line-height: 1.25; }
+.f-fresh-copy strong small { color: var(--muted); font-weight: 700; }
+.f-fresh-copy > small { color: var(--muted); line-height: 1.3; }
+.f-fresh-chip { gap: 6px; }
+.f-fresh-chip .f-fresh-copy strong { font-size: 13px; }
+.f-fresh-card .f-fresh-days { font-size: 15px; }
+.f-fresh-card .f-fresh-days.is-wide { font-size: 12px; letter-spacing: -.04em; }
+.f-fresh-card .f-fresh-copy strong { font-size: 14px; }
+.f-fresh-card .f-fresh-copy > small { font-size: 13px; }
+.f-fresh-hero { gap: 12px; }
+.f-fresh-hero .f-fresh-days { font-size: 21px; }
+.f-fresh-hero .f-fresh-days.is-wide { font-size: 17px; letter-spacing: -.04em; }
+.f-fresh-hero .f-fresh-copy strong { font-size: 17px; }
+.f-fresh-hero .f-fresh-copy > small { font-size: 15px; }
+
+/* Stacked meter on the right of a crop card: a fixed column so every card lines up, the ring
+   at the top-left of it and the stage word (icon first) left-aligned beneath. */
+.f-crop-fresh { align-self: center; flex-direction: column; align-items: flex-start; gap: 5px; width: 88px; flex: 0 0 88px; text-align: left; }
+.f-crop-fresh .f-fresh-copy { justify-items: start; width: 100%; }
+.f-crop-fresh .f-fresh-copy strong { display: flex; align-items: flex-start; font-size: 13px; line-height: 1.2; }
+.f-crop-fresh .f-fresh-copy strong svg { flex: 0 0 auto; margin-top: 1px; }
+.f-crop-fresh .f-fresh-copy > small { display: none; }
+.f-crop-hero-fresh { display: grid; gap: 4px; padding-top: 6px; }
+.f-crop-cta.is-fast { background: var(--urgency); border-color: var(--urgency); }
+.f-crop-cta.is-fast:hover { background: #c2532f; }
+.f-order-top h2 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.f-order-fresh { margin-top: 6px; }
+.f-sell-fresh { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 14px 16px; border-radius: var(--f-radius); background: var(--surface); border: 1px solid var(--border); }
+.f-field.is-compact { gap: 3px; }
+.f-field.is-compact > span { font-size: 13px; }
+.f-field.is-compact input { min-height: 44px; }
+
+/* --- Home ---------------------------------------------------------------- */
+.f-greet { display: grid; gap: 14px; }
+.f-home-crops { display: grid; gap: 10px; }
+.f-home-crops-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.f-home-crops-head a { display: inline-flex; align-items: center; gap: 2px; color: var(--green); font-weight: 800; font-size: 15px; min-height: 32px; }
+.f-crop-strip { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.f-crop-tile { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 72px; padding: 10px 14px 10px 10px; border-radius: var(--f-radius); background: var(--surface); border: 1px solid var(--border); color: var(--text); transition: border-color .16s ease, transform .16s ease; }
+.f-crop-tile:hover { border-color: #b9c8be; transform: translateY(-1px); }
+.f-crop-tile.is-fast { border-color: rgba(217, 97, 60, .5); }
+.f-crop-tile .produce-mini { width: 56px; min-width: 56px; height: 56px; border-radius: 14px; }
+.f-crop-tile-copy { display: grid; gap: 2px; min-width: 0; }
+.f-crop-tile-copy strong { font-size: 17px; line-height: 1.3; }
+.f-crop-tile-copy small { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+.f-home-status { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.f-home-cell { display: grid; gap: 6px; align-content: start; min-height: 84px; padding: 14px 16px; border-radius: var(--f-radius); background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+.f-home-cell > span { color: var(--muted); font-weight: 700; font-size: 14px; }
+.f-home-cell-line { display: inline-flex; align-items: center; gap: 7px; font-size: 16px; line-height: 1.3; color: var(--green-dark); }
+.f-home-cell-line svg { color: var(--green); flex: 0 0 auto; }
+
+/* --- AI overview: one line, never a card inside a card ------------------- */
+.f-ai-note { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; align-items: start; padding: 14px 16px; border-radius: var(--f-radius); background: linear-gradient(110deg, #eef5ee, #fbf7ec); border: 1px solid #d5e0d5; }
+.f-ai-note.is-urgent { background: linear-gradient(110deg, #fdf0e9, #fbf1d7); border-color: #efc7b4; }
+.f-ai-note-icon { width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; background: var(--green); color: #fff; }
+.f-ai-note.is-urgent .f-ai-note-icon { background: var(--urgency); }
+.f-ai-note-copy { display: grid; gap: 3px; min-width: 0; }
+.f-ai-note-copy small { color: var(--green); font-size: 11px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+.f-ai-note.is-urgent .f-ai-note-copy small { color: #a8421f; }
+.f-ai-note-copy p { margin: 0; font-size: 16px; line-height: 1.5; color: var(--text); }
+.f-ai-note-copy a { color: var(--green); font-weight: 800; font-size: 15px; }
+
+/* --- Market Maker per crop: farmer scale on the shared AI surface -------- */
+.f-page .ai-trigger { min-height: 74px; padding: 13px 16px; border-radius: var(--f-radius); }
+.f-page .ai-trigger-icon { width: 40px; height: 40px; min-width: 40px; }
+.f-page .ai-trigger-copy small { font-size: 11px; }
+.f-page .ai-trigger-copy strong { font-size: 16px; }
+.f-page .ai-trigger-action { font-size: 14px; }
+.f-page .ai-thinking { min-height: 140px; border-radius: var(--f-radius); padding: 18px; }
+.f-page .ai-thinking-head span { font-size: 11px; }
+.f-page .ai-thinking-head strong { font-size: 12px; }
+.f-page .ai-thinking-text { font-size: 15px; min-height: 22px; }
+.f-page .ai-result-card { border-radius: var(--f-radius); }
+.f-page .ai-result-head { font-size: 12px; }
+.f-page .ai-result-body { padding: 18px; gap: 14px; }
+.f-page .ai-disclaimer { font-size: 13px; }
+.f-page .ai-error-state strong { font-size: 16px; }
+.f-page .ai-error-state p { font-size: 14px; }
+.f-mm { display: grid; gap: 14px; }
+.f-mm-eyebrow { font-size: 13px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--green); }
+.f-mm-headline { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.f-mm-headline li { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 800; color: var(--green-dark); background: var(--green-soft); border: 1px solid #cfe0cd; padding: 6px 11px; border-radius: 999px; }
+.f-mm-headline li.is-gain { background: var(--harvest); color: #3d2a05; border-color: #e6cf8f; }
+.f-mm-headline li svg { flex: 0 0 auto; }
+.f-mm-message { margin: 0; font-size: 15px; line-height: 1.5; color: var(--text); }
+.f-mm-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.f-mm-compare > div { display: grid; gap: 3px; padding: 14px; border-radius: 16px; background: #fff; border: 1px solid #dbe4da; }
+.f-mm-compare > div > span { font-size: 14px; color: var(--muted); font-weight: 700; }
+.f-mm-compare > div > strong { font-size: 30px; letter-spacing: -.03em; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.f-mm-compare > div > strong small { font-size: 14px; color: var(--muted); font-weight: 700; margin-left: 2px; }
+.f-mm-compare .is-you { border-color: var(--green); background: var(--green-soft); }
+.f-mm-compare .is-you > strong { color: var(--green-dark); }
+.f-mm-gain { grid-column: 1 / -1; justify-self: start; background: var(--harvest); color: #3d2a05; font-size: 14px; font-weight: 800; padding: 6px 12px; border-radius: 999px; }
+.f-mm-gain.is-flat { background: #eceee9; color: var(--muted); }
+.f-mm-facts { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.f-mm-facts li { display: flex; align-items: center; gap: 9px; font-size: 15px; line-height: 1.4; color: var(--text); }
+.f-mm-facts li svg { flex: 0 0 auto; color: var(--green); }
+.f-mm-facts li.is-warn { color: #8a5c10; }
+.f-mm-facts li.is-warn svg { color: #c9861a; }
+.f-mm-fresh { padding: 12px 14px; border-radius: 16px; background: #fff; border: 1px solid #dbe4da; }
+.f-mm-why { margin: 0; font-size: 15px; line-height: 1.55; color: #3f5b4c; }
+.f-mm-why-toggle { display: inline-flex; align-items: center; gap: 3px; justify-self: start; min-height: 36px; padding: 0; background: none; border: none; color: var(--green); font-weight: 800; font-size: 14px; }
+.f-mm-why-toggle svg { transition: transform .15s ease; }
+.f-mm-why-toggle.is-open svg { transform: rotate(90deg); }
+.f-mm-why-detail { display: grid; gap: 8px; padding: 12px 14px; border-radius: 14px; background: #f4f7f3; }
+.f-mm-actions { display: grid; gap: 8px; }
+.f-mm-actions .btn { width: 100%; }
+.f-mm-link { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-height: 44px; color: var(--green); font-weight: 800; font-size: 15px; }
+.f-mm-empty { display: grid; justify-items: center; gap: 6px; text-align: center; padding: 10px 0 4px; color: var(--muted); }
+.f-mm-empty svg { color: var(--green); opacity: .6; }
+.f-mm-empty strong { color: var(--text); font-size: 16px; }
+.f-mm-empty small { font-size: 14px; }
+.f-home-ai-answer { display: grid; gap: 12px; }
+.f-home-ai-answer p { margin: 0; font-size: 16px; line-height: 1.5; color: var(--text); }
+.f-ai-crop { font-weight: 800; color: var(--green-dark); }
+.f-ai-note.is-urgent .f-ai-crop { color: #a8421f; }
+.f-home-ai-answer .btn { width: 100%; }
+
+@media (min-width: 700px) {
+  .f-crop-strip { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 420px) {
+  .f-home-status { grid-template-columns: 1fr; }
+  .f-mm-compare > div > strong { font-size: 26px; }
+}
+
 /* --- Profile ------------------------------------------------------------- */
 .f-profile form { display: grid; gap: 22px; }
 .f-profile-actions { display: grid; gap: 8px; }
@@ -2846,7 +2987,7 @@ body.mm-reveal-open { overflow: hidden; }
   .f-primary-actions { grid-template-columns: 1fr; }
   .f-form-grid { grid-template-columns: 1fr; }
   .f-crop-picker { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .f-crop-main { grid-template-columns: 76px minmax(0, 1fr); gap: 12px; }
+  .f-crop-main { grid-template-columns: 76px minmax(0, 1fr) auto; gap: 12px; }
   .f-crop-main .produce-mini { width: 76px; min-width: 76px; }
   .f-deal-compare { grid-template-columns: 1fr; }
   .f-deal-compare-gain { grid-column: 1; justify-self: start; }

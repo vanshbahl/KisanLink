@@ -1,3 +1,4 @@
+import { assessFreshness, type Freshness } from './cropFreshness'
 import { getCropIntel, listCropIntel, type CropIntel, type FarmerCrop } from './farmerAiService'
 import { marketMakerService, type MarketView } from './marketMakerService'
 import { prototypeService } from './prototypeService'
@@ -120,6 +121,21 @@ function factorsFor(view: MarketView, intel: CropIntel | null, cropLabelKey: { e
 }
 
 /**
+ * The floor every Market Maker price must clear.
+ *
+ * `intel.recommendedMin` is the same number the sell flow offers as its own default ask and
+ * the crop-card "suggested" badge reads — the safe price a farmer would set without KisanLink.
+ * A board or corridor's farm-gate rate is a real input from that market's own buyers, so it is
+ * never lowered here; it is only ever lifted to this floor, which stops a stale or
+ * under-priced board from ever reading as *worse* than the plain, no-help suggestion right
+ * next to it on screen. Without an intel row to anchor to, the mandi rate plus a fixed margin
+ * stands in, matching the same fallback the price advisor already uses.
+ */
+function priceFloorFor(mandiPerKg: number, intel: CropIntel | null): number {
+  return intel ? intel.recommendedMin : Math.round(mandiPerKg + 5)
+}
+
+/**
  * The best open deal for this farmer.
  *
  * Preference order: a board whose crop the farmer is actually growing (so the deal is
@@ -143,6 +159,7 @@ export async function getFarmerDeal(listings?: FarmerListing[]): Promise<FarmerD
   const own = math.allocations.find((entry) => entry.lot.own)
   const intel = intelFor(board.crop)
   const listing = myListings.find((item) => item.crop.toLowerCase() === board.crop.toLowerCase())
+  const pricePerKg = Math.max(math.farmerGatePerKg, priceFloorFor(board.mandiPricePerKg, intel))
 
   return {
     boardId: board.id,
@@ -150,9 +167,9 @@ export async function getFarmerDeal(listings?: FarmerListing[]): Promise<FarmerD
     cropHi: board.cropHi,
     imageSrc: board.imageSrc,
     visual: board.visual,
-    pricePerKg: math.farmerGatePerKg,
+    pricePerKg,
     mandiPerKg: board.mandiPricePerKg,
-    gainPerKg: Math.max(0, math.farmerGatePerKg - board.mandiPricePerKg),
+    gainPerKg: Math.max(0, pricePerKg - board.mandiPricePerKg),
     buyerCount: math.participants,
     hasVehicle: Boolean(math.vehicle),
     state: stateOf(view),
@@ -188,3 +205,181 @@ export function cropIntelFor(cropName: string): CropIntel | null {
 
 export { getCropIntel }
 export type { FarmerCrop }
+
+/* ---------------------------------------------------------------------------
+ * Per-crop Market Maker
+ * ---------------------------------------------------------------------------
+ * `getFarmerDeal` above picks the single best deal for the farm, which is what the home's
+ * task list and /farmer/deal need. Every crop card also needs its *own* answer, so this
+ * second read walks the same boards per listing:
+ *
+ *   1. a single-crop board for this crop (Sonipat tomatoes)          -> 'board'
+ *   2. a segment of a multi-crop regional corridor for this crop     -> 'board'
+ *   3. the deterministic crop-intelligence table                     -> 'intel'
+ *   4. nothing — the UI says so rather than inventing a number       -> null
+ *
+ * No value here is made up: prices, buyer counts and vehicles come from the engine's math,
+ * and the fallback table is the same one the price advisor and forecast already use.
+ */
+export type CropDealSource = 'board' | 'intel'
+export type PriceTrend = 'rising' | 'steady' | 'falling'
+
+export interface CropDeal {
+  listingId: string
+  cropEn: string
+  cropHi: string
+  pricePerKg: number
+  mandiPerKg: number
+  gainPerKg: number
+  buyerCount: number
+  hasVehicle: boolean
+  state: DealState
+  /** kg of this listing already matched into a corridor. */
+  matchedKg: number
+  source: CropDealSource
+  boardId?: string
+  ownLotId?: string
+  trend: PriceTrend | null
+  intel: CropIntel | null
+  freshness: Freshness
+}
+
+/**
+ * Canonical crop keys so "Fresh Tomatoes", "Tomatoes" and "टमाटर" all land on `tomato`.
+ * Generic pool segments ("Leafy Vegetables") deliberately do not absorb specific crops: a
+ * spinach listing gets spinach numbers from the intelligence table rather than a pooled
+ * greens floor that may sit below what the farmer is already asking.
+ */
+const CROP_KEYS: Array<{ key: string; match: string[] }> = [
+  { key: 'tomato', match: ['tomato', 'टमाटर'] },
+  { key: 'onion', match: ['onion', 'प्याज'] },
+  { key: 'potato', match: ['potato', 'आलू'] },
+  { key: 'spinach', match: ['spinach', 'palak', 'पालक'] },
+  { key: 'leafy', match: ['leafy', 'हरी सब्ज़ी'] },
+  { key: 'wheat', match: ['wheat', 'गेहू'] },
+  { key: 'carrot', match: ['carrot', 'गाजर'] },
+  { key: 'capsicum', match: ['capsicum', 'शिमला'] },
+  { key: 'cucumber', match: ['cucumber', 'खीरा'] },
+]
+
+export function cropKeys(name: string): string[] {
+  const lower = name.toLowerCase()
+  const keys = CROP_KEYS.filter((entry) => entry.match.some((keyword) => lower.includes(keyword))).map((entry) => entry.key)
+  return keys.length ? keys : [lower.trim()]
+}
+
+const sameCrop = (a: string, b: string) => {
+  const keysA = cropKeys(a)
+  return cropKeys(b).some((key) => keysA.includes(key))
+}
+
+function trendOf(intel: CropIntel | null): PriceTrend | null {
+  if (!intel) return null
+  const today = intel.historical[intel.historical.length - 1]
+  const ahead = intel.forecast[intel.forecast.length - 1]
+  return ahead > today ? 'rising' : ahead < today ? 'falling' : 'steady'
+}
+
+function dealFromBoard(listing: FarmerListing, view: MarketView, intel: CropIntel | null): CropDeal {
+  const { board, math } = view
+  const own = math.allocations.find((entry) => entry.lot.own && (entry.lot.listingId === listing.id || !entry.lot.listingId))
+  const pricePerKg = Math.max(math.farmerGatePerKg, priceFloorFor(board.mandiPricePerKg, intel))
+  return {
+    listingId: listing.id,
+    cropEn: listing.crop, cropHi: listing.cropHi,
+    pricePerKg,
+    mandiPerKg: board.mandiPricePerKg,
+    gainPerKg: Math.max(0, pricePerKg - board.mandiPricePerKg),
+    buyerCount: math.participants,
+    hasVehicle: Boolean(math.vehicle),
+    state: stateOf(view),
+    matchedKg: own?.allocatedKg ?? 0,
+    source: 'board',
+    boardId: board.id,
+    ownLotId: own?.lot.id,
+    trend: trendOf(intel),
+    intel,
+    freshness: assessFreshness(listing),
+  }
+}
+
+function dealFromSegment(listing: FarmerListing, view: MarketView, intel: CropIntel | null): CropDeal | null {
+  const segment = view.math.multiCropMath?.cropMaths.find((crop) => sameCrop(crop.segment.crop, listing.crop))
+  if (!segment) return null
+  const own = segment.allocations.find((entry) => entry.lot.own)
+  const blocked = view.math.blockers.some((blocker) => blocker.kind !== 'demand')
+  const pricePerKg = Math.max(segment.farmerFloorPerKg, priceFloorFor(segment.mandiPricePerKg, intel))
+  return {
+    listingId: listing.id,
+    cropEn: listing.crop, cropHi: listing.cropHi,
+    pricePerKg,
+    mandiPerKg: segment.mandiPricePerKg,
+    gainPerKg: Math.max(0, pricePerKg - segment.mandiPricePerKg),
+    buyerCount: segment.segment.commitments.length,
+    hasVehicle: Boolean(view.math.vehicle),
+    state: view.board.status === 'created' ? 'sold' : blocked ? 'noVehicle' : segment.viable ? 'ready' : 'forming',
+    matchedKg: own?.allocatedKg ?? 0,
+    source: 'board',
+    boardId: view.board.id,
+    ownLotId: own?.lot.id,
+    trend: trendOf(intel),
+    intel,
+    freshness: assessFreshness(listing),
+  }
+}
+
+/**
+ * No board covers this crop, so the deterministic intelligence table answers on its own.
+ * `recommendedMin` is the base/no-help price (see `priceFloorFor`); `recommendedMax` is the
+ * same table's own upper end for this crop, offered only when the two real signals a farmer
+ * would actually check — buyers already interested, a vehicle actually free tomorrow — both
+ * hold. Never a flat "+₹2/+₹3": the premium is whatever this crop's own row already says its
+ * ceiling is, and it collapses back to the base the moment either signal is missing.
+ */
+function dealFromIntel(listing: FarmerListing, intel: CropIntel): CropDeal {
+  const supported = intel.buyerCount > 0 && intel.pickupAvailableTomorrow
+  const pricePerKg = supported ? intel.recommendedMax : intel.recommendedMin
+  const mandiPerKg = listing.mandiPricePerKg || intel.mandi
+  return {
+    listingId: listing.id,
+    cropEn: listing.crop, cropHi: listing.cropHi,
+    pricePerKg,
+    mandiPerKg,
+    gainPerKg: Math.max(0, pricePerKg - mandiPerKg),
+    buyerCount: intel.buyerCount,
+    hasVehicle: intel.pickupAvailableTomorrow,
+    state: intel.pickupAvailableTomorrow ? 'ready' : 'forming',
+    matchedKg: 0,
+    source: 'intel',
+    trend: trendOf(intel),
+    intel,
+    freshness: assessFreshness(listing),
+  }
+}
+
+/** The Market Maker's answer for one crop, or `null` when nothing real applies. */
+export function cropDealFrom(listing: FarmerListing, views: MarketView[]): CropDeal | null {
+  const intel = intelFor(listing.crop)
+  const single = views.filter((view) => !view.board.isMultiCrop && sameCrop(view.board.crop, listing.crop))
+  const ownSingle = single.find((view) => view.math.allocations.some((entry) => entry.lot.own))
+  const board = ownSingle ?? single[0]
+  if (board) return dealFromBoard(listing, board, intel)
+
+  for (const view of views) {
+    if (!view.board.isMultiCrop) continue
+    const deal = dealFromSegment(listing, view, intel)
+    if (deal) return deal
+  }
+
+  return intel ? dealFromIntel(listing, intel) : null
+}
+
+export async function getCropDeal(listing: FarmerListing): Promise<CropDeal | null> {
+  return cropDealFrom(listing, await marketMakerService.boards())
+}
+
+/** One pass over the boards for a whole crop list; keyed by listing id. */
+export async function getCropDeals(listings: FarmerListing[]): Promise<Record<string, CropDeal | null>> {
+  const views = await marketMakerService.boards()
+  return Object.fromEntries(listings.map((listing) => [listing.id, cropDealFrom(listing, views)]))
+}

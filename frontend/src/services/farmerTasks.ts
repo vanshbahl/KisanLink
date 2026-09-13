@@ -1,5 +1,7 @@
 import type { EarningsTransaction, FarmerListing, FarmerOrder, Pickup } from '../types'
+import { cropName } from '../i18n/farmer'
 import { daysUntil } from '../utils/dates'
+import { assessFreshness } from './cropFreshness'
 import { rankOrders } from './farmerAiService'
 
 /**
@@ -12,7 +14,7 @@ import { rankOrders } from './farmerAiService'
  * Ordering is by real urgency, not by category: a driver already at the gate outranks an
  * unaccepted order, which outranks a pickup tomorrow, which outranks money that has arrived.
  */
-export type FarmerTaskKind = 'driver' | 'accept' | 'ready' | 'pickup' | 'paid' | 'deal'
+export type FarmerTaskKind = 'driver' | 'accept' | 'ready' | 'pickup' | 'paid' | 'deal' | 'fresh'
 
 export interface FarmerTask {
   id: string
@@ -42,9 +44,32 @@ export interface FarmerTaskInput {
 const DRIVER_ON_THE_WAY: Pickup['status'][] = ['driver_assigned', 'arriving']
 
 export function buildFarmerTasks(input: FarmerTaskInput, language: 'en' | 'hi'): FarmerTask[] {
-  const { orders, pickups, earnings, deal } = input
+  const { listings, orders, pickups, earnings, deal } = input
   const tasks: FarmerTask[] = []
-  const cropOf = (order: { crop: string; cropHi: string }) => (language === 'hi' ? order.cropHi : order.crop)
+  const cropOf = (order: { crop: string; cropHi: string }) => cropName(language, order.crop, order.cropHi)
+
+  // 0. A crop whose selling window ends today. Below a driver at the gate and an order waiting
+  //    on the farmer, above the rest: unsold produce past its window is money gone.
+  for (const listing of listings) {
+    if (listing.status !== 'active') continue
+    const fresh = assessFreshness(listing)
+    const rescue = Boolean(listing.isUrgentRescue || listing.rescueStatus === 'RESCUE_ACTIVE')
+    if ((fresh.stage === 'URGENT' || fresh.stage === 'WINDOW_OVER') && !rescue) {
+      tasks.push({
+        id: `fresh_${listing.id}`, kind: 'fresh',
+        titleKey: 'freshUrgentTask', values: { crop: cropOf(listing) },
+        hintKey: 'freshUrgentTaskHint', actionKey: 'freshUrgentTaskAction',
+        to: `/farmer/fasal/${listing.id}`, urgency: 85,
+      })
+    } else if (fresh.stage === 'SELL_SOON') {
+      tasks.push({
+        id: `fresh_${listing.id}`, kind: 'fresh',
+        titleKey: fresh.daysLeft === 1 ? 'freshSoonTaskOne' : 'freshSoonTask', values: { crop: cropOf(listing), count: fresh.daysLeft },
+        hintKey: 'freshSoonTaskHint',
+        to: `/farmer/fasal/${listing.id}`, urgency: 45,
+      })
+    }
+  }
 
   // 1. A driver is at, or almost at, the gate. Nothing outranks this.
   for (const pickup of pickups) {
@@ -118,7 +143,7 @@ export function buildFarmerTasks(input: FarmerTaskInput, language: 'en' | 'hi'):
       titleKey: 'taskPaid',
       values: { amount: `₹${Math.round(entry.net).toLocaleString('en-IN')}` },
       hintKey: 'taskPaidHint',
-      hintValues: { crop: language === 'hi' ? entry.cropHi : entry.crop },
+      hintValues: { crop: cropName(language, entry.crop, entry.cropHi) },
       to: '/farmer/paisa',
       urgency: 50,
     })
@@ -131,7 +156,7 @@ export function buildFarmerTasks(input: FarmerTaskInput, language: 'en' | 'hi'):
       kind: 'deal',
       titleKey: 'taskDeal',
       values: {
-        crop: language === 'hi' ? deal.cropHi : deal.cropEn,
+        crop: cropName(language, deal.cropEn, deal.cropHi),
         amount: `₹${Math.round(deal.pricePerKg)}`,
       },
       hintKey: 'taskDealHint',

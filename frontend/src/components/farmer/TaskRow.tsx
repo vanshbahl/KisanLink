@@ -1,4 +1,4 @@
-import { BadgeIndianRupee, ChevronRight, PackageCheck, Sprout, TrendingUp, Truck } from 'lucide-react'
+import { BadgeIndianRupee, ChevronRight, Clock, PackageCheck, Sprout, TrendingUp, Truck } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useFarmerText, type FarmerKey } from '../../i18n/farmer'
 import type { FarmerTask, FarmerTaskKind } from '../../services/farmerTasks'
@@ -17,12 +17,13 @@ const ICONS: Record<FarmerTaskKind, typeof Sprout> = {
   pickup: Truck,
   paid: BadgeIndianRupee,
   deal: TrendingUp,
+  fresh: Clock,
 }
 
 export function TaskRow({ task }: { task: FarmerTask }) {
   const { f } = useFarmerText()
   const Icon = ICONS[task.kind]
-  const urgent = task.kind === 'driver' || task.kind === 'accept'
+  const urgent = task.kind === 'driver' || task.kind === 'accept' || (task.kind === 'fresh' && task.urgency >= 80)
 
   return (
     <Link to={task.to} className={`f-task${urgent ? ' is-urgent' : ''}`}>

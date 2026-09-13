@@ -25,9 +25,15 @@ const clamp = (value: number, min: number, max: number) => Math.min(Math.max(val
  * The in-flow wrapper stays mounted as an invisible placeholder holding the floating card's
  * measured height, so returning to the normal page never reflows the surrounding layout.
  */
-export function MarketplaceAiTrigger<T>({ idleLabel, idleHint, stages, run, renderResult, className = '', variant = 'card', brandLabel = 'Kisan Intelligence', thinkingLabel = 'Combining signals', errorTitle = 'Analysis could not complete', backLabel = 'Go back', errorFallback = 'This prototype analysis could not complete.' }: {
+export function MarketplaceAiTrigger<T>({ idleLabel, idleHint, stages, run, renderResult, className = '', variant = 'card', brandLabel = 'Kisan Intelligence', thinkingLabel = 'Combining signals', errorTitle = 'Analysis could not complete', backLabel = 'Go back', errorFallback = 'This prototype analysis could not complete.', minRevealMs, idleIcon, autoStart = false }: {
   idleLabel: string; idleHint?: string; stages: string[]; run: () => T | Promise<T>; renderResult: (result: T, reset: () => void) => ReactNode
   className?: string; variant?: 'card' | 'inline'; brandLabel?: string; thinkingLabel?: string; errorTitle?: string; backLabel?: string; errorFallback?: string
+  /** Overrides the shared reveal floor (ms) for this surface. Reduced-motion users are unaffected. */
+  minRevealMs?: number
+  /** Replaces the sparkle in the idle trigger. */
+  idleIcon?: ReactNode
+  /** Runs the analysis on mount instead of waiting for a tap. */
+  autoStart?: boolean
 }) {
   const [state, setState] = useState<AiPanelState>('idle')
   const [result, setResult] = useState<T | null>(null)
@@ -37,6 +43,7 @@ export function MarketplaceAiTrigger<T>({ idleLabel, idleHint, stages, run, rend
   const [reserved, setReserved] = useState<number | null>(null)
 
   const reduced = usePrefersReducedMotion()
+  const floorMs = reduced || minRevealMs === undefined ? revealMs(reduced) : minRevealMs
   const revealTimer = useRef<number | null>(null)
   const settleTimer = useRef<number | null>(null)
   const releaseTimer = useRef<number | null>(null)
@@ -106,6 +113,15 @@ export function MarketplaceAiTrigger<T>({ idleLabel, idleHint, stages, run, rend
     return () => window.removeEventListener('keydown', onKey)
   }, [state, reset])
 
+  // Auto-run once on mount when asked (the sell flow's price step), otherwise wait for a tap.
+  const autoRan = useRef(false)
+  useEffect(() => {
+    if (!autoStart || autoRan.current) return
+    autoRan.current = true
+    void start()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart])
+
   const start = async () => {
     if (busyRef.current) return
     busyRef.current = true
@@ -118,7 +134,7 @@ export function MarketplaceAiTrigger<T>({ idleLabel, idleHint, stages, run, rend
     const started = performance.now()
     // Settle back onto the page shortly after the result lands, so the reveal reads as one motion.
     const land = (apply: () => void) => {
-      const remaining = Math.max(0, revealMs(reduced) - (performance.now() - started))
+      const remaining = Math.max(0, floorMs - (performance.now() - started))
       revealTimer.current = window.setTimeout(() => {
         apply()
         settleTimer.current = window.setTimeout(() => setFocused(false), settleMs(reduced))
@@ -131,8 +147,8 @@ export function MarketplaceAiTrigger<T>({ idleLabel, idleHint, stages, run, rend
 
   const surfaceClassName = `ai-surface ai-surface-${state} ai-surface-${variant}${focused ? ' ai-surface-focused' : ''} ${className}`.trim()
   const content = <>
-    {state === 'idle' && <button type="button" className="ai-trigger" onClick={start}><span className="ai-trigger-icon"><Sparkles size={17} /></span><span className="ai-trigger-copy"><small>{brandLabel}</small><strong>{idleHint ?? idleLabel}</strong></span><span className="ai-trigger-action">{idleLabel}<ArrowRight size={15} /></span></button>}
-    {state === 'thinking' && <AiThinkingState stages={stages} brandLabel={brandLabel} thinkingLabel={thinkingLabel} durationMs={revealMs(reduced)} />}
+    {state === 'idle' && <button type="button" className="ai-trigger" onClick={start}><span className="ai-trigger-icon">{idleIcon ?? <Sparkles size={17} />}</span><span className="ai-trigger-copy"><small>{brandLabel}</small><strong>{idleHint ?? idleLabel}</strong></span><span className="ai-trigger-action">{idleLabel}<ArrowRight size={15} /></span></button>}
+    {state === 'thinking' && <AiThinkingState stages={stages} brandLabel={brandLabel} thinkingLabel={thinkingLabel} durationMs={floorMs} />}
     {state === 'result' && result !== null && renderResult(result, reset)}
     {state === 'error' && <div className="ai-error-state" role="alert"><AlertCircle size={20} /><div><strong>{errorTitle}</strong><p>{error}</p></div><button type="button" className="btn btn-secondary" onClick={reset}>{backLabel}</button></div>}
   </>

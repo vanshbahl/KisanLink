@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Check, ChevronRight, KeyRound, PackageCheck, Truck } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
+import { FreshnessRing } from '../../components/farmer/FreshnessRing'
 import { Money } from '../../components/farmer/Money'
 import { DashboardSkeleton } from '../../components/LoadingSkeleton'
 import { useToast } from '../../contexts/ToastContext'
@@ -38,13 +39,14 @@ export function FarmerOrders() {
     ])
     const mine = new Set(listings.map((item) => item.id))
     const myOrders = orders.filter((order) => mine.has(order.listingId))
-    return { orders: myOrders, pickups }
+    return { orders: myOrders, pickups, listings }
   }, [], { live: true })
 
   if (loading && !data) return <DashboardSkeleton />
 
   const orders = data?.orders ?? []
   const pickups = data?.pickups ?? []
+  const listings = data?.listings ?? []
 
   const running = orders.filter((order) => order.status !== 'delivered' && order.status !== 'cancelled')
   const buckets: Record<Tab, typeof orders> = {
@@ -91,13 +93,15 @@ export function FarmerOrders() {
             const entry: OrderWithPickup = { order, pickup }
             const action = nextAction(entry)
             const pickupDays = pickup ? daysUntil(pickup.date) : null
+            const listing = listings.find((item) => item.id === order.listingId)
+            const live = order.status !== 'delivered' && order.status !== 'cancelled'
 
             return (
               <article className={`f-order is-${order.status}`} key={order.id}>
                 <Link className="f-order-main" to={`/farmer/orders/${order.id}`}>
                   <div className="f-order-top">
                     <span className={`f-order-status is-${order.status}`}>{f(statusKey[order.status])}</span>
-                    <h2>{pick(order.crop, order.cropHi)}</h2>
+                    <h2>{pick(order.crop, order.cropHi)}{listing && live && <FreshnessRing listing={listing} size="chip" />}</h2>
                     <p>{f('orderQty', { qty: order.quantityKg, price: `₹${order.ratePerKg}` })} · {order.buyerName}</p>
                   </div>
                   <div className="f-order-money">

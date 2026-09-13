@@ -75,7 +75,7 @@ const copy = {
     whatSelling: 'What are you selling?', speakIt: 'Say it out loud',
     speakItHint: 'Say "I have 250 kg tomatoes"', otherCrop: 'Another crop',
     otherCropName: 'Name of the crop', searchCrop: 'Find a crop',
-    howMuch: 'How much do you have?', moreDetails: 'More details', moreDetailsHint: 'Not needed — only if you want to add them',
+    howMuch: 'How much do you have?', moreDetails: 'More details', moreDetailsHint: 'Not needed. Only if you want to add them',
     quality: 'Quality', harvestDate: 'Cut on', packing: 'Packing', howManyBoxes: 'How many boxes/sacks',
     weightEach: 'Weight of each (kg)', cropPhotos: 'Photos of the crop', photoNote: 'Photos are your record. The crop is checked again at pickup.',
     grownHow: 'How it was grown', anyNote: 'Anything to add',
@@ -95,10 +95,10 @@ const copy = {
     betterDeal: 'Better deal', betterDealFor: 'Better deal for {crop}',
     buyersWantIt: '{count} buyers want to buy right now', pickupReady: 'Pickup is available',
     yourKgInDeal: '{qty} kg of yours is in this deal',
-    pickupNotReady: 'No vehicle yet — we will tell you', howPriceDecided: 'How was this price decided?',
+    pickupNotReady: 'No vehicle yet. We will tell you', howPriceDecided: 'How was this price decided?',
     dealSold: 'Sold. The vehicle is on its way.', dealReady: 'Ready. Your crop can go.',
     dealForming: 'Almost ready.', dealBlocked: 'Wait. No vehicle yet.',
-    dealMatched: '{qty} kg of yours is matched. Nothing to do — wait for pickup.',
+    dealMatched: '{qty} kg of yours is matched. Nothing to do, just wait for pickup.',
     dealSoldBody: '{qty} kg of yours is sold. Keep it ready for pickup.',
     dealFormingBody: 'More buyers are joining. We will tell you when it is ready.',
     dealBlockedBody: 'Buyers are ready. A vehicle is needed. We will tell you.',
@@ -112,6 +112,54 @@ const copy = {
     seeMyCrops: 'See my crops', seeMyOrder: 'See my order', giveMoreCrop: 'Give {qty} kg more',
     heldForDeal: '{qty} kg of your crop is held for this deal.', noDeal: 'No better deal is open right now.',
     noDealHint: 'We will tell you as soon as one opens for your crop.',
+
+    // --- Freshness (recommended selling window, not a safety claim) ----------
+    freshFresh: 'Fresh', freshGood: 'Good', freshSellSoon: 'Sell soon', freshUrgent: 'Sell today', freshOver: 'Window over',
+    freshDaysLeft: '{count} days left', freshOneDayLeft: '1 day left', freshSellToday: 'Best sold today',
+    freshSellBy: 'Best sold by {date}', freshOverHint: 'Past the best selling window', freshApprox: 'approx.',
+    freshHarvested: 'Cut {when}', freshWindowLabel: 'Selling window',
+    freshRingLabel: '{crop}: {stage}, {left}',
+    freshUrgentTask: 'Sell {crop} today', freshUrgentTaskHint: 'Its selling window ends today', freshUrgentTaskAction: 'Sell it fast',
+    freshSoonTask: '{crop} · {count} days left to sell', freshSoonTaskOne: '{crop} · 1 day left to sell', freshSoonTaskHint: 'Check the better price before it gets late',
+
+    // --- Home ---------------------------------------------------------------
+    yourCrops: 'Your crops', seeAllCrops: 'See all', homeNoCrops: 'No crop on sale yet',
+    homeNoCropsHint: 'Add one and buyers nearby can see it', addFirstCrop: 'Sell your first crop',
+    homePickupLine: 'Pickup {when} · {qty} kg {crop}', homeOrdersLine: '{count} orders running',
+    homeNoOrders: 'No orders running', seeOrders: 'See orders',
+
+    // --- Market Maker (per crop) --------------------------------------------
+    marketPrice: 'Best price', checkMarketPrice: 'Check the best price', checkMarketPriceHint: 'Buyers, mandi and pickup, in one look',
+    marketFinding: 'Finding the right price for your crop…',
+    marketStageBuyers: 'Checking buyers nearby…', marketStageMandi: 'Comparing the mandi rate…',
+    marketStageFresh: 'Looking at how fresh it is…', marketStagePickup: 'Checking for a vehicle…',
+    marketYouGet: 'You get', marketMandi: 'Mandi', marketBuyers: '{count} buyers ready',
+    marketBuyersNone: 'Buyers are still joining', marketPickup: 'Vehicle available', marketPickupNone: 'No vehicle yet',
+    marketExtraTotal: '{amount} more on your {qty} kg', marketSameAsMandi: 'Same as the mandi today',
+    marketNoData: 'No better price is open for this crop yet.', marketNoDataHint: 'We will tell you as soon as one opens.',
+    marketApplied: 'Price set to {price}/kg.', marketWhy: 'Why this price?',
+    marketDisclaimer: 'An estimate from nearby demand and mandi rates, not a promise.',
+    marketHeadlineGain: '{amount}/kg more, right now', marketHeadlineTruck: 'Our truck is ready',
+    marketCoreMessage: 'You get {amount} more because buyers are already lined up and the truck is ready.',
+
+    // --- AI overview (short, data-driven) -----------------------------------
+    aiEyebrow: 'Kisan Intelligence',
+    aiHomeQuestion: 'Which crop should I sell first today?', aiHomeAsk: 'Get the answer',
+    aiHomeFresh: '{crop} is fresh and can fetch {price}/kg, {gain} above the mandi. {buyers} buyers are ready.',
+    aiHomeSoon: '{crop} has {days} days of selling window left. {price}/kg is open now, {gain} above the mandi.',
+    aiHomeSoonOne: '{crop} has one day of selling window left. {price}/kg is open now, {gain} above the mandi.',
+    aiHomeUrgent: '{crop} should go today. Turn on fast selling so it moves before the window closes.',
+    aiHomeQuiet: 'Prices are steady. Your crops are listed and buyers can see them.',
+    aiCropFreshRising: '{crop} is fresh and the price is rising. Selling in the next {days} days should fetch the better rate.',
+    aiCropFreshSteady: '{crop} is fresh. {buyers} buyers nearby want it and the price is steady, so this is a good time to sell.',
+    aiCropSoon: '{crop} has {days} days left. Sell now at {price}/kg rather than waiting for the mandi to move.',
+    aiCropSoonOne: '{crop} has one day left. Sell now at {price}/kg rather than waiting for the mandi to move.',
+    aiCropUrgent: '{crop} is at the end of its window. Fast selling at a lower price beats not selling.',
+    aiCropFalling: 'The {crop} price is easing. Selling now, while it is still fresh, is better than waiting.',
+    aiDealWhy: '{count} buyers nearby have already committed, and a vehicle {vehicle}. {fresh}',
+    aiDealWhyIntel: '{count} buyers nearby are looking for it, and a vehicle {vehicle}. {fresh}',
+    aiDealVehicleYes: 'is ready for your farm', aiDealVehicleNo: 'is still being arranged',
+    aiDealFreshOk: 'Your crop has {days} days of window, so the pickup fits.', aiDealFreshTight: 'Your crop should move within a day, so this deal fits well.',
 
     // --- Orders ------------------------------------------------------------
     ordersTitle: 'My orders', tabRunning: 'Running', tabDone: 'Done', tabCancelled: 'Cancelled',
@@ -127,7 +175,7 @@ const copy = {
     driver: 'Driver', vehicle: 'Vehicle', pickupAddress: 'Pickup from', pickupWhen: 'When',
     orderProgress: 'Where it has reached', moneyBreakdown: 'Money details',
     totalPrice: 'Total price', transportCost: 'Transport cost', kisanlinkCost: 'KisanLink cost',
-    mmPayoutNote: 'This is a better-deal order — the transport and KisanLink cost are paid by the buyers, so your price reaches you in full.',
+    mmPayoutNote: 'This is a better-deal order. The transport and KisanLink cost are paid by the buyers, so your price reaches you in full.',
     reportProblem: 'Report a problem', reportProblemHint: 'Tell us what went wrong and we will call you.',
     problemPlaceholder: 'For example: less quantity was taken, or the vehicle did not come',
     sendProblem: 'Send', problemSent: 'We have your complaint. Someone will call you.',
@@ -206,9 +254,9 @@ const copy = {
     // --- Sell flow ---------------------------------------------------------
     sellTitle: 'फसल बेचें', stepCrop: 'फसल', stepQuantity: 'कितना माल', stepPrice: 'दाम',
     whatSelling: 'क्या बेचना है?', speakIt: 'बोलकर बताएं',
-    speakItHint: 'बोलें — "मेरे पास 250 किलो टमाटर है"', otherCrop: 'और फसल',
+    speakItHint: 'बोलें: "मेरे पास 250 किलो टमाटर है"', otherCrop: 'और फसल',
     otherCropName: 'फसल का नाम', searchCrop: 'फसल ढूंढें',
-    howMuch: 'कितना माल है?', moreDetails: 'और जानकारी', moreDetailsHint: 'ज़रूरी नहीं — मन हो तो भरें',
+    howMuch: 'कितना माल है?', moreDetails: 'और जानकारी', moreDetailsHint: 'ज़रूरी नहीं, मन हो तो भरें',
     quality: 'माल कैसा है', harvestDate: 'कब काटी', packing: 'पैकिंग', howManyBoxes: 'कितने क्रेट/बोरी',
     weightEach: 'एक का वज़न (किलो)', cropPhotos: 'फसल की फ़ोटो', photoNote: 'ये फ़ोटो आपका रिकॉर्ड हैं। पिकअप पर माल दोबारा देखा जाएगा।',
     grownHow: 'खेती कैसे की', anyNote: 'कुछ और बताना है',
@@ -228,11 +276,11 @@ const copy = {
     betterDeal: 'बेहतर सौदा', betterDealFor: '{crop} का बेहतर सौदा',
     buyersWantIt: '{count} खरीदार अभी खरीदना चाहते हैं', pickupReady: 'Pickup उपलब्ध है',
     yourKgInDeal: 'आपकी {qty} किलो इसमें शामिल है',
-    pickupNotReady: 'अभी गाड़ी नहीं है — हम आपको बताएंगे',
+    pickupNotReady: 'अभी गाड़ी नहीं है, हम आपको बताएंगे',
     howPriceDecided: 'यह दाम कैसे तय हुआ?',
     dealSold: 'बिक गया। गाड़ी आ रही है।', dealReady: 'तैयार है। फसल जा सकती है।',
     dealForming: 'लगभग तैयार है।', dealBlocked: 'रुकें। अभी गाड़ी नहीं है।',
-    dealMatched: 'आपकी {qty} किलो का सौदा हो गया। कुछ नहीं करना — पिकअप का इंतज़ार करें।',
+    dealMatched: 'आपकी {qty} किलो का सौदा हो गया। कुछ नहीं करना, बस पिकअप का इंतज़ार करें।',
     dealSoldBody: 'आपकी {qty} किलो बिक गई। पिकअप के लिए तैयार रखें।',
     dealFormingBody: 'और खरीदार जुड़ रहे हैं। तैयार होते ही हम बताएंगे।',
     dealBlockedBody: 'खरीदार तैयार हैं। गाड़ी चाहिए। हम आपको बताएंगे।',
@@ -246,6 +294,54 @@ const copy = {
     seeMyCrops: 'मेरी फसल देखें', seeMyOrder: 'मेरा ऑर्डर देखें', giveMoreCrop: '{qty} किलो और दें',
     heldForDeal: 'आपकी {qty} किलो फसल इस सौदे के लिए रखी है।', noDeal: 'अभी कोई बेहतर सौदा खुला नहीं है।',
     noDealHint: 'आपकी फसल के लिए सौदा खुलते ही हम बता देंगे।',
+
+    // --- Freshness ----------------------------------------------------------
+    freshFresh: 'ताज़ा', freshGood: 'ठीक है', freshSellSoon: 'जल्दी बेचें', freshUrgent: 'आज बेचें', freshOver: 'समय निकल गया',
+    freshDaysLeft: '{count} दिन बाकी', freshOneDayLeft: '1 दिन बाकी', freshSellToday: 'आज बेचना बेहतर है',
+    freshSellBy: '{date} तक बेचना बेहतर है', freshOverHint: 'बेचने का सही समय निकल गया', freshApprox: 'लगभग',
+    freshHarvested: '{when} काटी', freshWindowLabel: 'बेचने का समय',
+    freshRingLabel: '{crop}: {stage}, {left}',
+    freshUrgentTask: '{crop} आज बेच दें', freshUrgentTaskHint: 'बेचने का समय आज खत्म हो रहा है', freshUrgentTaskAction: 'जल्दी बेचें',
+    freshSoonTask: '{crop} · बेचने के {count} दिन बाकी', freshSoonTaskOne: '{crop} · बेचने का 1 दिन बाकी', freshSoonTaskHint: 'देर होने से पहले बेहतर दाम देख लें',
+
+    // --- Home ---------------------------------------------------------------
+    yourCrops: 'आपकी फसल', seeAllCrops: 'सब देखें', homeNoCrops: 'अभी कोई फसल बिक्री पर नहीं',
+    homeNoCropsHint: 'फसल डालें, पास के खरीदार देख पाएंगे', addFirstCrop: 'पहली फसल बेचें',
+    homePickupLine: 'पिकअप {when} · {qty} किलो {crop}', homeOrdersLine: '{count} ऑर्डर चल रहे हैं',
+    homeNoOrders: 'कोई ऑर्डर चालू नहीं', seeOrders: 'ऑर्डर देखें',
+
+    // --- Market Maker (per crop) --------------------------------------------
+    marketPrice: 'सही दाम', checkMarketPrice: 'सही दाम देखें', checkMarketPriceHint: 'खरीदार, मंडी और गाड़ी, एक नज़र में',
+    marketFinding: 'आपकी फसल के लिए सही दाम ढूंढ रहे हैं…',
+    marketStageBuyers: 'पास के खरीदार देख रहे हैं…', marketStageMandi: 'मंडी भाव से मिला रहे हैं…',
+    marketStageFresh: 'फसल कितनी ताज़ा है, देख रहे हैं…', marketStagePickup: 'गाड़ी है या नहीं, देख रहे हैं…',
+    marketYouGet: 'आपको मिलेगा', marketMandi: 'मंडी', marketBuyers: '{count} खरीदार तैयार',
+    marketBuyersNone: 'खरीदार अभी जुड़ रहे हैं', marketPickup: 'गाड़ी उपलब्ध', marketPickupNone: 'अभी गाड़ी नहीं',
+    marketExtraTotal: 'आपके {qty} किलो पर {amount} ज़्यादा', marketSameAsMandi: 'आज मंडी जितना ही',
+    marketNoData: 'इस फसल के लिए अभी कोई बेहतर दाम खुला नहीं है।', marketNoDataHint: 'खुलते ही हम बता देंगे।',
+    marketApplied: 'दाम {price}/किलो कर दिया।', marketWhy: 'यह दाम क्यों?',
+    marketDisclaimer: 'पास की मांग और मंडी भाव से लगाया अनुमान, पक्का वादा नहीं।',
+    marketHeadlineGain: 'अभी {amount}/किलो ज़्यादा', marketHeadlineTruck: 'हमारा ट्रक तैयार है',
+    marketCoreMessage: 'आपको {amount} ज़्यादा मिल रहा है क्योंकि खरीदार पहले से तैयार हैं और ट्रक भी तैयार है।',
+
+    // --- AI overview --------------------------------------------------------
+    aiEyebrow: 'किसान इंटेलिजेंस',
+    aiHomeQuestion: 'आज मुझे कौन-सी फसल पहले बेचनी चाहिए?', aiHomeAsk: 'जवाब पाएं',
+    aiHomeFresh: '{crop} अभी ताज़ा है और {price}/किलो मिल सकता है, मंडी से {gain} ज़्यादा। {buyers} खरीदार तैयार हैं।',
+    aiHomeSoon: '{crop} बेचने के {days} दिन बाकी हैं। अभी {price}/किलो खुला है, मंडी से {gain} ज़्यादा।',
+    aiHomeSoonOne: '{crop} बेचने का बस 1 दिन बाकी है। अभी {price}/किलो खुला है, मंडी से {gain} ज़्यादा।',
+    aiHomeUrgent: '{crop} आज ही बेच दें। जल्दी बिक्री चालू करें ताकि समय निकलने से पहले बिक जाए।',
+    aiHomeQuiet: 'भाव टिका हुआ है। आपकी फसल बिक्री पर है और खरीदार देख रहे हैं।',
+    aiCropFreshRising: '{crop} अभी ताज़ा है और भाव चढ़ रहा है। अगले {days} दिनों में बेचने पर बेहतर दाम मिलने की संभावना है।',
+    aiCropFreshSteady: '{crop} अभी ताज़ा है। पास के {buyers} खरीदार चाहते हैं और भाव टिका है, बेचने का अच्छा समय है।',
+    aiCropSoon: '{crop} के {days} दिन बाकी हैं। मंडी के चढ़ने का इंतज़ार करने से बेहतर है अभी {price}/किलो पर बेच दें।',
+    aiCropSoonOne: '{crop} का बस 1 दिन बाकी है। मंडी के चढ़ने का इंतज़ार करने से बेहतर है अभी {price}/किलो पर बेच दें।',
+    aiCropUrgent: '{crop} का समय खत्म होने को है। थोड़े कम दाम पर जल्दी बेचना, न बिकने से बेहतर है।',
+    aiCropFalling: '{crop} का भाव नरम हो रहा है। ताज़ा रहते अभी बेचना, इंतज़ार से बेहतर है।',
+    aiDealWhy: 'पास के {count} खरीदार पहले ही हामी भर चुके हैं, और गाड़ी {vehicle}। {fresh}',
+    aiDealWhyIntel: 'पास के {count} खरीदार इसे ढूंढ रहे हैं, और गाड़ी {vehicle}। {fresh}',
+    aiDealVehicleYes: 'आपके खेत के लिए तैयार है', aiDealVehicleNo: 'अभी लगाई जा रही है',
+    aiDealFreshOk: 'आपकी फसल के {days} दिन बाकी हैं, तो पिकअप ठीक बैठता है।', aiDealFreshTight: 'आपकी फसल एक दिन में निकलनी चाहिए, तो यह सौदा सही बैठता है।',
 
     // --- Orders ------------------------------------------------------------
     ordersTitle: 'मेरे ऑर्डर', tabRunning: 'चालू', tabDone: 'पूरे हुए', tabCancelled: 'रद्द',
@@ -261,7 +357,7 @@ const copy = {
     driver: 'ड्राइवर', vehicle: 'गाड़ी', pickupAddress: 'कहां से', pickupWhen: 'कब',
     orderProgress: 'कहां तक पहुंचा', moneyBreakdown: 'पैसे का हिसाब',
     totalPrice: 'कुल दाम', transportCost: 'गाड़ी का खर्च', kisanlinkCost: 'KisanLink का खर्च',
-    mmPayoutNote: 'यह बेहतर सौदे का ऑर्डर है — गाड़ी और KisanLink का खर्च खरीदार देते हैं, इसलिए आपका पूरा दाम आपको मिलता है।',
+    mmPayoutNote: 'यह बेहतर सौदे का ऑर्डर है। गाड़ी और KisanLink का खर्च खरीदार देते हैं, इसलिए आपका पूरा दाम आपको मिलता है।',
     reportProblem: 'समस्या बताएं', reportProblemHint: 'क्या गड़बड़ हुई बताएं, हम आपको कॉल करेंगे।',
     problemPlaceholder: 'जैसे: माल कम तौला गया, या गाड़ी नहीं आई',
     sendProblem: 'भेजें', problemSent: 'आपकी बात दर्ज हो गई। कोई आपको कॉल करेगा।',
@@ -297,12 +393,50 @@ export function farmerText(language: Language, key: FarmerKey, values: Record<st
   return Object.entries(values).reduce((out, [name, value]) => out.replaceAll(`{${name}}`, String(value)), text)
 }
 
+/**
+ * Crop names the prototype knows in both scripts. Records normally carry both sides, but a
+ * listing that round-tripped through the backend, a voice draft or an older snapshot can end
+ * up with the same script on both sides ("बेबी पालक" as `crop`), which then leaks Hindi into
+ * an English screen. This table lets `cropName` recover the right script for those.
+ */
+const CROP_NAMES: [en: string, hi: string][] = [
+  ['Baby Spinach', 'बेबी पालक'], ['Spinach', 'पालक'],
+  ['Fresh Tomatoes', 'ताज़े टमाटर'], ['Tomatoes', 'टमाटर'], ['Tomato', 'टमाटर'],
+  ['New Potatoes', 'नए आलू'], ['Potatoes', 'आलू'], ['Potato', 'आलू'],
+  ['Red Onion', 'लाल प्याज़'], ['Red Onions', 'लाल प्याज़'], ['Onion', 'प्याज़'],
+  ['Sharbati Wheat', 'शरबती गेहूं'], ['Wheat', 'गेहूं'],
+  ['Sweet Carrots', 'मीठी गाजर'], ['Carrots', 'गाजर'], ['Carrot', 'गाजर'],
+  ['Green Capsicum', 'हरी शिमला मिर्च'], ['Capsicum', 'शिमला मिर्च'],
+  ['Crisp Cucumbers', 'कुरकुरे खीरे'], ['Cucumbers', 'खीरा'], ['Cucumber', 'खीरा'],
+  ['Snow Cauliflower', 'सफेद फूलगोभी'], ['Cauliflower', 'फूलगोभी'],
+  ['Basmati Rice', 'बासमती चावल'], ['Rice', 'चावल'],
+  ['Himachali Apples', 'हिमाचली सेब'], ['Apples', 'सेब'], ['Apple', 'सेब'],
+  ['Yellow Mustard', 'पीली सरसों'], ['Mustard', 'सरसों'],
+]
+const DEVANAGARI = /[\u0900-\u097F]/
+const inScript = (language: Language, value: string) => (language === 'hi' ? DEVANAGARI.test(value) : !DEVANAGARI.test(value))
+
+/**
+ * A crop name in the selected language, never a mix. Prefers the matching side of the record,
+ * falls back to the other side when that one is in the right script, then to the table above.
+ */
+export function cropName(language: Language, en: string, hi?: string): string {
+  const preferred = language === 'hi' ? (hi || en) : en
+  const other = language === 'hi' ? en : hi
+  if (!preferred) return other ?? ''
+  if (inScript(language, preferred)) return preferred
+  if (other && inScript(language, other)) return other
+  const needle = preferred.trim().toLowerCase()
+  const row = CROP_NAMES.find(([e, h]) => (language === 'hi' ? e.toLowerCase() === needle : h === preferred.trim()))
+  return row ? (language === 'hi' ? row[1] : row[0]) : preferred
+}
+
 /** The single accessor every farmer screen uses. `f` is the curated dictionary above. */
 export function useFarmerText() {
   const { language, setLanguage } = useLanguage()
   const f = (key: FarmerKey, values?: Record<string, string | number>) => farmerText(language, key, values)
   /** Picks the right side of an already-bilingual data field (crop names, farm names). */
-  const pick = (en: string, hi?: string) => (language === 'hi' && hi ? hi : en)
+  const pick = (en: string, hi?: string) => cropName(language, en, hi)
   return { language, setLanguage, f, pick }
 }
 

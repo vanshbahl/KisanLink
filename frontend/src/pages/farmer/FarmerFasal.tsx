@@ -6,7 +6,8 @@ import { DashboardSkeleton } from '../../components/LoadingSkeleton'
 import { VoiceInputModal } from '../../components/voice/VoiceInputModal'
 import { useFarmerText } from '../../i18n/farmer'
 import { useAsyncData } from '../../hooks/useAsyncData'
-import { getFarmerDeal } from '../../services/farmerDeal'
+import { assessFreshness, FRESHNESS_URGENCY } from '../../services/cropFreshness'
+import { getCropDeals, getFarmerDeal } from '../../services/farmerDeal'
 import { prototypeService } from '../../services/prototypeService'
 import { stashVoiceDraft } from './voiceDraft'
 
@@ -31,15 +32,18 @@ export function FarmerFasal() {
 
   const { data, loading, refresh } = useAsyncData(async () => {
     const listings = await prototypeService.getMyListings()
-    return { listings, deal: await getFarmerDeal(listings) }
+    const [deal, cropDeals] = await Promise.all([getFarmerDeal(listings), getCropDeals(listings)])
+    return { listings, deal, cropDeals }
   }, [], { live: true })
 
   if (loading && !data) return <DashboardSkeleton />
 
   const all = data?.listings ?? []
+  // Status first, then the crop with the least selling time left — the one to act on.
   const live = all
     .filter((item) => item.status !== 'sold')
-    .sort((a, b) => LIVE_ORDER[a.status] - LIVE_ORDER[b.status])
+    .sort((a, b) => (LIVE_ORDER[a.status] - LIVE_ORDER[b.status])
+      || (FRESHNESS_URGENCY[assessFreshness(b).stage] - FRESHNESS_URGENCY[assessFreshness(a).stage]))
   const sold = all.filter((item) => item.status === 'sold')
 
   return (
@@ -59,7 +63,7 @@ export function FarmerFasal() {
       {live.length ? (
         <div className="f-crop-list">
           {live.map((item) => (
-            <CropCard key={item.id} item={item} deal={data?.deal ?? null} onChanged={refresh} />
+            <CropCard key={item.id} item={item} deal={data?.deal ?? null} cropDeal={data?.cropDeals[item.id] ?? null} onChanged={refresh} />
           ))}
         </div>
       ) : (

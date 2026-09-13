@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom'
 import { ProductImage } from '../ProductImage'
 import { CropActions } from './CropActions'
+import { FreshnessRing } from './FreshnessRing'
 import { useFarmerText, money } from '../../i18n/farmer'
-import { suggestedPriceFor, type FarmerDeal } from '../../services/farmerDeal'
+import { suggestedPriceFor, type CropDeal, type FarmerDeal } from '../../services/farmerDeal'
+import { isRescueActive } from '../../services/farmerRescue'
 import type { FarmerListing, ListingStatus } from '../../types'
 
 /**
@@ -13,16 +15,22 @@ import type { FarmerListing, ListingStatus } from '../../types'
  * action row underneath comes from `CropActions`, which the crop page reuses — one verb, one
  * `⋯` sheet, one behaviour to learn.
  */
-export function CropCard({ item, deal, onChanged }: {
+export function CropCard({ item, deal, cropDeal = null, onChanged }: {
   item: FarmerListing
   deal: FarmerDeal | null
+  /** This crop's own Market Maker read, when the list has already fetched it. */
+  cropDeal?: CropDeal | null
   onChanged: () => void
 }) {
   const { f, pick } = useFarmerText()
   const crop = pick(item.crop, item.cropHi)
-  const rescue = Boolean(item.isUrgentRescue || item.rescueStatus === 'RESCUE_ACTIVE')
+  const rescue = isRescueActive(item)
   const rescuePrice = item.rescueDiscountPricePerKg ?? item.pricePerKg
-  const suggestion = rescue ? null : suggestedPriceFor(item, deal)
+  // The crop's own deal wins over the farm-wide one; either way only a price that actually
+  // beats today's ask is shown — a "suggestion" at or below it is noise on a list.
+  const suggestion = rescue ? null
+    : cropDeal && cropDeal.pricePerKg > item.pricePerKg ? cropDeal.pricePerKg
+      : suggestedPriceFor(item, deal)
 
   const statusLabel: Record<ListingStatus, string> = {
     active: rescue ? f('sellItFastOn') : f('statusOnSale'),
@@ -48,6 +56,8 @@ export function CropCard({ item, deal, onChanged }: {
             {suggestion && <em>{f('suggested', { price: `₹${Math.round(suggestion)}` })}</em>}
           </div>
         </div>
+        {/* A sold crop's window no longer matters; every live crop says how long it has. */}
+        {item.status !== 'sold' && <FreshnessRing listing={item} size="card" className="f-crop-fresh" />}
       </Link>
 
       {/* A sold crop is a record, not a task: nothing to act on. */}
