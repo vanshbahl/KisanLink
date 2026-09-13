@@ -3,9 +3,7 @@ import { Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 import { AppShell } from './layouts/AppShell'
 import { AuthPage } from './pages/AuthPage'
-import { BulkDashboard } from './pages/BulkDashboard'
-import { BulkSupplyPage } from './pages/BulkSupplyPage'
-import { BulkOrderDetailPage, BulkOrdersPage, BulkProfilePage, BulkRequestDetailPage, BulkRequestsPage, BulkSupplyDetailPage } from './pages/BulkPhase2'
+import { BulkHome, BulkMarketPage, BulkOrderDetailPage, BulkOrdersPage, BulkProcurePage, BulkProfilePage, BulkRequirementDetailPage, BulkSupplyDetailPage, BulkSupplyPage } from './pages/bulk'
 import { ConsumerExplorePage } from './pages/ConsumerExplorePage'
 import { ConsumerHome } from './pages/ConsumerHome'
 import { ConsumerCartPage, ConsumerCheckoutPage, ConsumerHowItWorksPage, ConsumerOrderDetailPage, ConsumerOrdersPage, ConsumerProfilePage, ConsumerSavedPage } from './pages/ConsumerPhase2'
@@ -46,6 +44,12 @@ function RoleGuard({ role, children }: { role: Role; children: React.ReactNode }
 function LegacyProduceRedirect() {
   const { id } = useParams()
   return <Navigate to={id ? `/farmer/fasal/${id}` : '/farmer/fasal'} replace />
+}
+
+/** /bulk/requests/:id -> /bulk/procure/:id, preserving the requirement that was linked to. */
+function LegacyRequestRedirect() {
+  const { id } = useParams()
+  return <Navigate to={id ? `/bulk/procure/${id}` : '/bulk/procure'} replace />
 }
 
 export default function App() {
@@ -97,15 +101,22 @@ export default function App() {
         </Route>
 
         <Route path="bulk">
-          <Route index element={<RoleGuard role="bulk"><BulkDashboard /></RoleGuard>} />
+          <Route index element={<RoleGuard role="bulk"><BulkHome /></RoleGuard>} />
           <Route path="supply" element={<RoleGuard role="bulk"><BulkSupplyPage /></RoleGuard>} />
           <Route path="supply/:id" element={<RoleGuard role="bulk"><BulkSupplyDetailPage /></RoleGuard>} />
-          <Route path="requests" element={<RoleGuard role="bulk"><BulkRequestsPage /></RoleGuard>} />
-          <Route path="requests/:id" element={<RoleGuard role="bulk"><BulkRequestDetailPage /></RoleGuard>} />
+          <Route path="procure" element={<RoleGuard role="bulk"><BulkProcurePage /></RoleGuard>} />
+          <Route path="procure/:id" element={<RoleGuard role="bulk"><BulkRequirementDetailPage /></RoleGuard>} />
           <Route path="orders" element={<RoleGuard role="bulk"><BulkOrdersPage /></RoleGuard>} />
           <Route path="orders/:id" element={<RoleGuard role="bulk"><BulkOrderDetailPage /></RoleGuard>} />
-          <Route path="market" element={<RoleGuard role="bulk"><MarketMakerPage /></RoleGuard>} />
+          <Route path="market" element={<RoleGuard role="bulk"><BulkMarketPage /></RoleGuard>} />
           <Route path="profile" element={<RoleGuard role="bulk"><BulkProfilePage /></RoleGuard>} />
+
+          {/*
+            "Requests" became "Procure". Notifications and Market Maker links written into
+            shared prototype state still point at /bulk/requests, so those redirect.
+          */}
+          <Route path="requests" element={<Navigate to="/bulk/procure" replace />} />
+          <Route path="requests/:id" element={<LegacyRequestRedirect />} />
         </Route>
 
         <Route path="logistics">

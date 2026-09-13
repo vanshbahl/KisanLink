@@ -1,6 +1,6 @@
 import {
-  BarChart3, Boxes, ClipboardList, Heart, HelpCircle, Home,
-  LayoutDashboard, ListChecks, MapPinned, PackageCheck, Radar, ShoppingBag, Sprout, Truck, UserRound, WalletCards,
+  BarChart3, Boxes, Heart, HelpCircle, Home,
+  LayoutDashboard, MapPinned, PackageCheck, Plus, Radar, ShoppingBag, Sprout, Truck, UserRound, WalletCards,
 } from 'lucide-react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { LanguageSwitcher } from '../components/LanguageSwitcher'
@@ -80,17 +80,17 @@ const navByRole: Record<Role, RoleNav> = {
   },
   bulk: {
     mobile: [
-      { labelKey: 'overview', to: '/bulk', icon: LayoutDashboard, end: true },
+      { labelKey: 'home', to: '/bulk', icon: Home, end: true },
       { labelKey: 'supply', to: '/bulk/supply', icon: Boxes },
-      { labelKey: 'requests', to: '/bulk/requests', icon: ClipboardList, primary: true },
-      { labelKey: 'orders', to: '/bulk/orders', icon: ListChecks },
+      { labelKey: 'procure', to: '/bulk/procure', icon: Plus, primary: true },
+      { labelKey: 'orders', to: '/bulk/orders', icon: PackageCheck },
       { labelKey: 'marketMakerNav', to: '/bulk/market', icon: Radar },
     ],
     desktop: [
-      { labelKey: 'overview', to: '/bulk', icon: LayoutDashboard, end: true },
+      { labelKey: 'home', to: '/bulk', icon: Home, end: true },
       { labelKey: 'supply', to: '/bulk/supply', icon: Boxes },
-      { labelKey: 'requests', to: '/bulk/requests', icon: ClipboardList, primary: true },
-      { labelKey: 'orders', to: '/bulk/orders', icon: ListChecks },
+      { labelKey: 'procure', to: '/bulk/procure', icon: Plus, primary: true },
+      { labelKey: 'orders', to: '/bulk/orders', icon: PackageCheck },
       { labelKey: 'marketMakerNav', to: '/bulk/market', icon: Radar },
       { labelKey: 'profile', to: '/bulk/profile', icon: UserRound },
     ],

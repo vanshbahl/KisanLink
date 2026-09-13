@@ -15,6 +15,7 @@ import { LanguageProvider } from './contexts/LanguageContext'
 import { ToastProvider } from './contexts/ToastContext'
 import './index.css'
 import './pages/logistics/logistics.css'
+import './pages/bulk/bulk.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

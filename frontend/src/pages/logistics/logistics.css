@@ -249,7 +249,19 @@
 .ki-body {
   min-width: 0;
   display: grid;
-  gap: 3px;
+  gap: 4px;
+}
+/* Inside a panel the callout needs its own breathing room; the page-level `> * + *` rule
+   already spaces it when it sits directly on the page. */
+.dispatch-panel .ki-callout,
+.dispatch-map-panel .ki-callout {
+  margin: 12px 0;
+}
+.dispatch-section-head + .ki-callout {
+  margin-top: 0;
+}
+.ki-callout + .dispatch-commit {
+  padding-top: 4px;
 }
 .ki-badge {
   display: inline-flex;
@@ -295,7 +307,9 @@
   font-size: 11px;
   font-weight: 700;
   line-height: 1.4;
-  vertical-align: 2px;
+  vertical-align: middle;
+  position: relative;
+  top: -1px;
 }
 .ki-reason {
   font-size: 12px;
@@ -324,7 +338,8 @@
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
-  padding: 6px 2px;
+  padding: 6px 0 6px 4px;
+  min-height: 36px;
 }
 .ki-why svg {
   transition: transform 0.15s ease;
@@ -336,7 +351,7 @@
   grid-column: 1 / -1;
   border-top: 1px solid #d6e4d9;
   padding-top: 10px;
-  margin-top: 2px;
+  margin-top: 4px;
 }
 .ki-detail dl {
   display: grid;
@@ -789,6 +804,9 @@ button.dispatch-fleet-row.selected {
   .ki-detail dl {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .dispatch-actions .btn {
+    flex: 1 1 100%;
+  }
   .dispatch-tabs button {
     padding: 10px 8px;
     font-size: 12px;
@@ -871,6 +889,18 @@ button.dispatch-fleet-row.selected {
 .dispatch-page .corridor-meta small {
   text-transform: none;
   letter-spacing: 0;
+}
+/* Five meta cells: never let a lone cell wrap onto its own row beside an empty gutter. */
+.dispatch-page .corridor-meta {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+@media (max-width: 760px) {
+  .dispatch-page .corridor-meta {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .dispatch-page .corridor-meta span:last-child {
+    grid-column: span 2;
+  }
 }
 .dispatch-page .corridor-head {
   background: #f0f4ee;

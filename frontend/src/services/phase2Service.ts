@@ -230,7 +230,9 @@ export const phase2Service = {
     // reference a judge reads out loud depend on a service being reachable, and would not
     // match the KL-B ids the rest of the prototype uses.
     const orderId = id('KL-B')
-    const contributions = stops.map((stop) => ({ farmer: stop.farmer, farm: stop.farm, listingId: stop.listingId, quantityKg: stop.quantityKg, ratePerKg: stop.ratePerKg }))
+    // Each contribution carries its listing's lot code, so receipt QA at the buyer's dock can
+    // find the same custody trail the farm declared and logistics sampled.
+    const contributions = stops.map((stop) => ({ farmer: stop.farmer, farm: stop.farm, listingId: stop.listingId, quantityKg: stop.quantityKg, ratePerKg: stop.ratePerKg, lotCode: listings.find((item) => item.id === stop.listingId)?.lotCode }))
     const order: BulkOrder = {
       id: orderId, rfqId, crop: rfq.crop, grade: rfq.grade,
       orderedQuantityKg: rfq.requiredQuantityKg, suppliedQuantityKg: plan.matchedKg, contributions,
