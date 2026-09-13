@@ -1,3 +1,4 @@
+import { LogisticsMarketPage } from './pages/logistics/Market'
 import { Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 import { AppShell } from './layouts/AppShell'
@@ -19,7 +20,7 @@ import { FarmerProfile } from './pages/farmer/FarmerProfile'
 import { FarmerSell } from './pages/farmer/FarmerSell'
 import { ListingDetailPage } from './pages/ListingDetailPage'
 import { MarketMakerPage } from './pages/MarketMakerPage'
-import { LogisticsDashboard, LogisticsDeliveriesPage, LogisticsDeliveryDetailPage, LogisticsPickupsPage, LogisticsPickupDetailPage, LogisticsProfilePage, LogisticsRoutesPage, LogisticsVehiclesPage } from './pages/LogisticsExperience'
+import { LogisticsDashboard, LogisticsDeliveryDetailPage, LogisticsJobsPage, LogisticsPickupDetailPage, LogisticsProfilePage, LogisticsRoutesPage, LogisticsVehiclesPage } from './pages/LogisticsExperience'
 import { OtpPage } from './pages/OtpPage'
 import { WelcomePage } from './pages/WelcomePage'
 import type { Role } from './types'
@@ -109,13 +110,15 @@ export default function App() {
 
         <Route path="logistics">
           <Route index element={<RoleGuard role="logistics"><LogisticsDashboard /></RoleGuard>} />
-          <Route path="pickups" element={<RoleGuard role="logistics"><LogisticsPickupsPage /></RoleGuard>} />
+          <Route path="jobs" element={<RoleGuard role="logistics"><LogisticsJobsPage /></RoleGuard>} />
+          <Route path="fleet" element={<RoleGuard role="logistics"><LogisticsVehiclesPage /></RoleGuard>} />
+          <Route path="pickups" element={<RoleGuard role="logistics"><Navigate to="/logistics/jobs?tab=pickups" replace /></RoleGuard>} />
           <Route path="pickups/:id" element={<RoleGuard role="logistics"><LogisticsPickupDetailPage /></RoleGuard>} />
-          <Route path="deliveries" element={<RoleGuard role="logistics"><LogisticsDeliveriesPage /></RoleGuard>} />
+          <Route path="deliveries" element={<RoleGuard role="logistics"><Navigate to="/logistics/jobs?tab=deliveries" replace /></RoleGuard>} />
           <Route path="deliveries/:id" element={<RoleGuard role="logistics"><LogisticsDeliveryDetailPage /></RoleGuard>} />
           <Route path="routes" element={<RoleGuard role="logistics"><LogisticsRoutesPage /></RoleGuard>} />
-          <Route path="vehicles" element={<RoleGuard role="logistics"><LogisticsVehiclesPage /></RoleGuard>} />
-          <Route path="market" element={<RoleGuard role="logistics"><MarketMakerPage /></RoleGuard>} />
+          <Route path="vehicles" element={<RoleGuard role="logistics"><Navigate to="/logistics/fleet" replace /></RoleGuard>} />
+          <Route path="market" element={<RoleGuard role="logistics"><LogisticsMarketPage /></RoleGuard>} />
           <Route path="profile" element={<RoleGuard role="logistics"><LogisticsProfilePage /></RoleGuard>} />
         </Route>
       </Route>

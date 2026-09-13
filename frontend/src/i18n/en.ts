@@ -1,4 +1,5 @@
 export const en = {
+  jobs: 'Jobs', fleet: 'Fleet',
   marketMakerNav: 'Market', home: 'Home', produce: 'Produce', sell: 'Sell', orders: 'Orders', profile: 'Profile', explore: 'Explore', cart: 'Cart', saved: 'Saved', overview: 'Overview', supply: 'Supply', requests: 'Requests', pickups: 'Pickups', deliveries: 'Deliveries', routes: 'Routes', vehicles: 'Vehicles',
   // Farmer navigation. Deliberately the farmer's own words, not the system's:
   // "My crops" rather than "Produce", "My money" rather than "Earnings".

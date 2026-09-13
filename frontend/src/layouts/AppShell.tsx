@@ -2,7 +2,7 @@ import {
   BarChart3, Boxes, ClipboardList, Heart, HelpCircle, Home,
   LayoutDashboard, ListChecks, MapPinned, PackageCheck, Radar, ShoppingBag, Sprout, Truck, UserRound, WalletCards,
 } from 'lucide-react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { LanguageSwitcher } from '../components/LanguageSwitcher'
 import { Logo } from '../components/Logo'
 import { NotificationCenter } from '../components/NotificationCenter'
@@ -99,19 +99,17 @@ const navByRole: Record<Role, RoleNav> = {
   logistics: {
     mobile: [
       { labelKey: 'overview', to: '/logistics', icon: LayoutDashboard, end: true },
-      { labelKey: 'pickups', to: '/logistics/pickups', icon: Boxes },
-      { labelKey: 'routes', to: '/logistics/routes', icon: MapPinned, primary: true },
-      { labelKey: 'deliveries', to: '/logistics/deliveries', icon: PackageCheck },
+      { labelKey: 'jobs', to: '/logistics/jobs', icon: Boxes },
+      { labelKey: 'routes', to: '/logistics/routes', icon: MapPinned },
+      { labelKey: 'fleet', to: '/logistics/fleet', icon: Truck },
       { labelKey: 'marketMakerNav', to: '/logistics/market', icon: Radar },
     ],
     desktop: [
       { labelKey: 'overview', to: '/logistics', icon: LayoutDashboard, end: true },
-      { labelKey: 'pickups', to: '/logistics/pickups', icon: Boxes },
-      { labelKey: 'routes', to: '/logistics/routes', icon: MapPinned, primary: true },
-      { labelKey: 'deliveries', to: '/logistics/deliveries', icon: PackageCheck },
+      { labelKey: 'jobs', to: '/logistics/jobs', icon: Boxes },
+      { labelKey: 'routes', to: '/logistics/routes', icon: MapPinned },
+      { labelKey: 'fleet', to: '/logistics/fleet', icon: Truck },
       { labelKey: 'marketMakerNav', to: '/logistics/market', icon: Radar },
-      { labelKey: 'vehicles', to: '/logistics/vehicles', icon: Truck },
-      { labelKey: 'profile', to: '/logistics/profile', icon: UserRound },
     ],
     headerProfile: true,
   },
@@ -152,7 +150,7 @@ export function AppShell() {
           </div>
         </header>
         <header className="desktop-topbar">
-          <div><span>{t('deliveringTo')}</span><strong>{session.role === 'farmer' ? t('location') : user.location}</strong></div>
+          <div><span>{session.role === 'logistics' ? t('logisticsOperator') : t('deliveringTo')}</span><strong>{session.role === 'farmer' ? t('location') : user.location}</strong></div>
           <div>{session.role === 'farmer' && <LanguageSwitcher />}{session.role === 'consumer' && <NavLink to="/consumer/saved" className="topbar-saved"><Heart size={17} />Saved</NavLink>}{session.role !== 'consumer' && <GlobalModeIndicator />}<NotificationCenter /><NavLink to={`/${session.role}/profile`} className="topbar-profile"><span>{user.avatarInitials}</span><div><strong>{user.name}</strong><small>{t(roleKey[session.role])}</small></div></NavLink></div>
         </header>
         <main className="app-main"><Outlet /></main>
@@ -168,9 +166,11 @@ export function AppShell() {
 function NavItem({ item, mobile = false }: { item: NavItemConfig; mobile?: boolean }) {
   const { t } = useLanguage()
   const Icon = item.icon
+  const { pathname } = useLocation()
+  const jobDetail = item.to === '/logistics/jobs' && /^\/logistics\/(pickups|deliveries)\//.test(pathname)
   const elevated = mobile && item.primary
   return (
-    <NavLink to={item.to} end={item.end} className={({ isActive }) => `${isActive ? 'active' : ''} ${item.primary ? 'nav-primary' : ''}`}>
+    <NavLink to={item.to} end={item.end} aria-current={jobDetail ? 'page' : undefined} className={({ isActive }) => `${isActive || jobDetail ? 'active' : ''} ${item.primary ? 'nav-primary' : ''}`}>
       {/* Every slot gets the same fixed icon box; the elevated action nests a larger bubble
           inside it so its layout footprint — and therefore the label baseline — is identical. */}
       <span className="nav-icon">

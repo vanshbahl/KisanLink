@@ -14,6 +14,7 @@ import { AuthProvider } from './contexts/AuthContext'
 import { LanguageProvider } from './contexts/LanguageContext'
 import { ToastProvider } from './contexts/ToastContext'
 import './index.css'
+import './pages/logistics/logistics.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

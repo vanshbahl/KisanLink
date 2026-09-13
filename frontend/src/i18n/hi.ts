@@ -1,6 +1,7 @@
 import type { en } from './en'
 
 export const hi: Record<keyof typeof en, string> = {
+  jobs: 'कार्य', fleet: 'बेड़ा',
   marketMakerNav: 'बाज़ार', home: 'मुख्य', produce: 'फसल', sell: 'बेचें', orders: 'ऑर्डर', profile: 'प्रोफ़ाइल', explore: 'खोजें', cart: 'कार्ट', saved: 'सहेजे गए', overview: 'जानकारी', supply: 'उपलब्ध फसल', requests: 'ज़रूरतें', pickups: 'पिकअप', deliveries: 'डिलीवरी', routes: 'रूट', vehicles: 'वाहन',
   fasal: 'मेरी फसल', paisa: 'मेरा पैसा',
   farmer: 'किसान', consumer: 'ग्राहक', bulkBuyer: 'थोक खरीदार', logisticsOperator: 'लॉजिस्टिक्स ऑपरेटर', verifiedRole: 'सत्यापित {role}', current: 'अभी चुना है',

@@ -3,6 +3,15 @@ import type { PrototypeState } from './prototypeService'
 import { prototypeService } from './prototypeService'
 import { apiClient } from './apiClient'
 
+export interface LogisticsOptimizationResult {
+  source: 'backend' | 'demo'
+  total_distance_km: number
+  estimated_duration_minutes: number
+  utilization_pct: number
+  trips_reduced: number
+  waypoints?: Array<{ id: string; sequence_index: number; stop_name: string; payload_weight_kg: number }>
+}
+
 const now = () => new Date().toISOString()
 const note = (state: PrototypeState, role: 'farmer' | 'consumer' | 'bulk' | 'logistics', title: string, titleHi: string, body: string, bodyHi: string, href: string) => state.notifications.unshift({ id: `note-${Date.now()}-${state.notifications.length}`, role, title, titleHi, body, bodyHi, timestamp: now(), read: false, href })
 const pickupLabels: Record<LogisticsPickupStatus, [string, string]> = {
@@ -122,16 +131,17 @@ export const logisticsService = {
     return { success: true, message: 'Delivery OTP verified! Order delivered & escrow settled.' }
   },
 
-  async optimizeLiveRoute(vehicleCapacityKg: number = 1500) {
+  async optimizeLiveRoute(vehicleCapacityKg: number = 1500): Promise<LogisticsOptimizationResult> {
     try {
       const res = await apiClient.optimizeRoute(undefined, vehicleCapacityKg)
       if (res && res.waypoints) {
-        return res
+        return { ...res, source: 'backend' as const }
       }
     } catch {
       // Fallback below
     }
     return {
+      source: 'demo' as const,
       total_distance_km: 64,
       estimated_duration_minutes: 110,
       utilization_pct: 90,

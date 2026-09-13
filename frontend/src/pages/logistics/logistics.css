@@ -1,0 +1,959 @@
+/* Logistics only: the corridor is the visual anchor; all other surfaces serve dispatch. */
+.shell-logistics {
+  --dispatch-slate: #526171;
+}
+.shell-logistics .bottom-nav {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.shell-logistics .bottom-nav .nav-icon {
+  transform: none;
+}
+.shell-logistics .desktop-topbar {
+  min-height: 68px;
+}
+.shell-logistics .dispatch-page {
+  max-width: 1440px;
+  padding-top: 22px;
+}
+.shell-logistics .logistics-page {
+  --shadow: none;
+}
+.dispatch-page .page-title-row {
+  margin-bottom: 18px;
+  gap: 16px;
+  align-items: center;
+}
+.dispatch-page h1 {
+  font-size: clamp(24px, 2.4vw, 32px);
+  letter-spacing: -0.035em;
+  line-height: 1.2;
+}
+.dispatch-page h2 {
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+.dispatch-page h3 {
+  font-size: 15px;
+}
+.dispatch-page p {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--dispatch-slate);
+  max-width: 78ch;
+}
+.dispatch-page small {
+  font-size: 11px;
+  color: var(--dispatch-slate);
+}
+.dispatch-page .eyebrow {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
+}
+.dispatch-page .btn {
+  min-height: 40px;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 12px;
+  box-shadow: none;
+}
+.dispatch-page .btn:hover {
+  transform: none;
+}
+.dispatch-page input,
+.dispatch-page select,
+.dispatch-page textarea {
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: white;
+  min-height: 42px;
+  font: inherit;
+  font-size: 13px;
+}
+.dispatch-page :is(input, select, textarea, summary, button, a):focus-visible {
+  outline: 3px solid var(--green);
+  outline-offset: 3px;
+}
+.dispatch-page > * + * {
+  margin-top: 16px;
+}
+.dispatch-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  margin: 0;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.dispatch-metrics > div {
+  padding: 13px 16px;
+  border-right: 1px solid var(--border);
+}
+.dispatch-metrics > div:last-child {
+  border-right: 0;
+}
+.dispatch-metrics dt {
+  color: var(--dispatch-slate);
+  font-size: 11px;
+  font-weight: 600;
+}
+.dispatch-metrics dd {
+  margin: 3px 0 0;
+  font-size: 22px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.dispatch-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #edf0f2;
+  color: #46515c;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: capitalize;
+  line-height: 1.4;
+}
+.dispatch-status:is(
+  .status-assigned,
+  .status-en_route,
+  .status-in_transit,
+  .status-active,
+  .status-out_for_delivery
+) {
+  background: #e7edf3;
+  color: #365572;
+}
+.dispatch-status:is(.status-arrived, .status-at_hub, .status-viable) {
+  background: #fbf1d7;
+  color: #76500a;
+}
+.dispatch-status:is(
+  .status-loaded,
+  .status-delivered,
+  .status-completed,
+  .status-available,
+  .status-created
+) {
+  background: #e6efe8;
+  color: #174b34;
+}
+.dispatch-status:is(.status-issue, .status-maintenance) {
+  background: #f9e7e0;
+  color: #963a21;
+}
+.dispatch-shift {
+  color: var(--green-dark);
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--green-soft);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+.dispatch-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 0;
+}
+.dispatch-section-head a {
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 700;
+}
+.dispatch-map-panel,
+.dispatch-panel {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0 16px 16px;
+  min-width: 0;
+}
+.dispatch-map-panel .corridor-map {
+  border-radius: 10px;
+  box-shadow: none;
+}
+.dispatch-map-panel .corridor-canvas {
+  max-height: 420px;
+}
+.dispatch-map-panel .corridor-head {
+  padding: 12px;
+}
+.dispatch-page progress {
+  accent-color: var(--green);
+  width: 100%;
+  height: 8px;
+  margin: 12px 0;
+}
+.route-progress {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  padding: 12px 2px 0;
+}
+.route-progress-track {
+  display: flex;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.route-progress-track li {
+  flex: 1;
+  height: 5px;
+  border-radius: 3px;
+  background: #e3e8e4;
+}
+.route-progress-track li.done {
+  background: var(--green);
+}
+.route-progress-track li.current {
+  background: linear-gradient(90deg, var(--green) 0 50%, #cfdcd2 50% 100%);
+}
+.route-progress p {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 12px;
+  max-width: none;
+}
+.route-progress p strong {
+  color: var(--text);
+  font-weight: 700;
+}
+.route-progress p span {
+  color: #b9c2bb;
+}
+/* Kisan Intelligence: one compact callout language across Logistics. */
+.ki-callout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 20px;
+  padding: 12px 14px;
+  background: linear-gradient(180deg, #eef5ef, #e9f1ea);
+  border: 1px solid #d6e4d9;
+  border-left: 3px solid var(--green);
+  border-radius: 10px;
+}
+.ki-body {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+.ki-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  color: var(--green-dark);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.ki-badge svg {
+  color: var(--green);
+}
+.ki-badge em {
+  font-style: normal;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--dispatch-slate);
+}
+.ki-badge em::before {
+  content: '·';
+  margin-right: 5px;
+  color: #a9b6ac;
+}
+.ki-recommendation {
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  max-width: none;
+}
+.ki-verdict {
+  display: inline-block;
+  margin-right: 8px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--green-dark);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+  vertical-align: 2px;
+}
+.ki-reason {
+  font-size: 12px;
+  color: var(--dispatch-slate);
+  line-height: 1.45;
+}
+.ki-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.ki-actions .btn {
+  min-height: 36px;
+  padding: 6px 14px;
+  white-space: nowrap;
+}
+.ki-why {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 0;
+  background: transparent;
+  color: var(--green-dark);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 6px 2px;
+}
+.ki-why svg {
+  transition: transform 0.15s ease;
+}
+.ki-callout.is-open .ki-why svg {
+  transform: rotate(180deg);
+}
+.ki-detail {
+  grid-column: 1 / -1;
+  border-top: 1px solid #d6e4d9;
+  padding-top: 10px;
+  margin-top: 2px;
+}
+.ki-detail dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px 16px;
+  margin: 0 0 8px;
+}
+.ki-detail dt {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--dispatch-slate);
+}
+.ki-detail dd {
+  margin: 1px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+.ki-detail small {
+  display: block;
+  line-height: 1.45;
+}
+/* Legacy optimizer result panel on Routes. */
+.dispatch-insight {
+  border-left: 3px solid var(--green);
+  padding: 12px 14px;
+  background: #edf3ed;
+  border-radius: 0 10px 10px 0;
+}
+.dispatch-insight strong {
+  font-size: 12px;
+  color: var(--green-dark);
+}
+.dispatch-insight p {
+  margin: 4px 0;
+}
+.dispatch-insight details {
+  font-size: 12px;
+  margin-top: 10px;
+}
+.dispatch-insight .dispatch-metrics {
+  margin-top: 12px;
+  background: transparent;
+}
+.dispatch-table {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.dispatch-job-grid {
+  display: grid;
+  grid-template-columns: 0.85fr 0.8fr 1.3fr 0.65fr 1.15fr 0.75fr 0.8fr;
+  gap: 12px;
+  align-items: center;
+  padding: 13px 14px;
+}
+.dispatch-table-head {
+  background: #f0f2ee;
+  color: var(--dispatch-slate);
+  font-size: 11px;
+  font-weight: 700;
+}
+.dispatch-job {
+  font-size: 12px;
+  border-top: 1px solid var(--border);
+  min-height: 68px;
+}
+.dispatch-job:hover,
+.dispatch-fleet-row:hover {
+  background: #f6f8f4;
+}
+.dispatch-job > *,
+.dispatch-fleet-row > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.dispatch-job small,
+.dispatch-fleet-row small,
+.dispatch-supply-row small {
+  display: block;
+  margin-top: 3px;
+}
+.dispatch-toolbar {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.dispatch-toolbar > input {
+  flex: 1;
+  min-width: 180px;
+}
+.dispatch-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.dispatch-tabs button {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 12px 16px;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  display: flex;
+  gap: 8px;
+}
+.dispatch-tabs button.active {
+  color: var(--green);
+  border-color: var(--green);
+}
+.dispatch-tabs button span {
+  font-size: 11px;
+  background: #e6ebe5;
+  padding: 2px 5px;
+  border-radius: 5px;
+}
+.dispatch-inline-note {
+  padding: 12px 0;
+  font-size: 12px;
+  color: var(--dispatch-slate);
+}
+.dispatch-empty {
+  padding: 24px 16px;
+}
+.dispatch-route-layout {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.dispatch-route-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dispatch-route-list button {
+  text-align: left;
+  font: inherit;
+  font-size: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: white;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  cursor: pointer;
+}
+.dispatch-route-list button.active {
+  border-color: var(--green);
+  box-shadow: inset 3px 0 var(--green);
+}
+.dispatch-route-list button > span:not(.dispatch-status),
+.dispatch-route-list button small {
+  width: 100%;
+}
+.dispatch-stops {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+.dispatch-stops li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  border-top: 1px solid var(--border);
+  padding: 12px 0;
+}
+.dispatch-stops li > div {
+  flex: 1;
+}
+.dispatch-stops small {
+  display: block;
+  margin-top: 3px;
+}
+.dispatch-stop-index {
+  background: var(--green-soft);
+  color: var(--green-dark);
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dispatch-fleet-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 16px;
+  align-items: start;
+}
+.dispatch-fleet-row {
+  display: grid;
+  grid-template-columns: 0.9fr 1fr 0.8fr 0.85fr 0.8fr;
+  gap: 10px;
+  padding: 14px;
+  align-items: center;
+}
+button.dispatch-fleet-row {
+  width: 100%;
+  border: 0;
+  border-top: 1px solid var(--border);
+  text-align: left;
+  background: white;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+button.dispatch-fleet-row.selected {
+  background: #edf3ed;
+  box-shadow: inset 3px 0 var(--green);
+}
+.dispatch-detail-layout,
+.dispatch-page .logistics-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 16px;
+  align-items: start;
+}
+.dispatch-page .feature-card,
+.dispatch-page .summary-card {
+  border-radius: 12px;
+  box-shadow: none;
+  padding: 16px;
+  min-width: 0;
+}
+.dispatch-page .sticky {
+  position: static;
+}
+.dispatch-disclosure {
+  border-bottom: 1px solid var(--border);
+  padding: 14px 0;
+  scroll-margin-top: 85px;
+}
+.dispatch-disclosure summary {
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 0;
+}
+.dispatch-disclosure[open] > summary {
+  margin-bottom: 14px;
+}
+.dispatch-disclosure .field {
+  margin-top: 14px;
+}
+.dispatch-page .logistics-info-grid {
+  gap: 14px;
+  padding: 12px 0;
+  grid-template-columns: 1fr;
+}
+.dispatch-page .logistics-info-grid strong {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.dispatch-page .logi-next {
+  background: var(--green-soft);
+  border: 1px solid #cbdccf;
+  color: var(--text);
+  border-radius: 12px;
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+.dispatch-page .logi-next h2 {
+  font-size: 18px;
+}
+.dispatch-page .logi-next .eyebrow {
+  display: none;
+}
+.dispatch-page .logi-next p {
+  color: var(--dispatch-slate);
+}
+.dispatch-steps {
+  display: flex;
+  padding: 14px 0;
+  list-style: none;
+  margin: 0;
+}
+.dispatch-steps li {
+  flex: 1;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 11px;
+  color: var(--dispatch-slate);
+  position: relative;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 12px;
+}
+.dispatch-steps li span {
+  display: grid;
+  place-items: center;
+  width: 23px;
+  height: 23px;
+  border-radius: 50%;
+  background: #e9ece7;
+  flex-shrink: 0;
+}
+.dispatch-steps li.current {
+  color: var(--green-dark);
+  border-color: var(--harvest);
+  font-weight: 800;
+}
+.dispatch-steps li.current span {
+  background: var(--harvest);
+}
+.dispatch-steps li.done {
+  border-color: var(--green);
+}
+.dispatch-steps li.done span {
+  background: var(--green);
+  color: white;
+}
+.dispatch-flow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 0;
+  font-size: 13px;
+  border-block: 1px solid var(--border);
+  margin-bottom: 18px;
+}
+.dispatch-supply-row {
+  display: grid;
+  grid-template-columns: 1fr 0.7fr 0.7fr 1fr;
+  gap: 12px;
+  padding: 12px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.dispatch-commit {
+  padding: 16px 0 0;
+}
+.dispatch-commit p {
+  margin: 8px 0;
+}
+.dispatch-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+@media (max-width: 1150px) {
+  .dispatch-fleet-layout {
+    grid-template-columns: 1fr;
+  }
+  .dispatch-route-layout {
+    grid-template-columns: 190px minmax(0, 1fr);
+  }
+  .dispatch-detail-layout,
+  .dispatch-page .logistics-detail-grid {
+    grid-template-columns: minmax(0, 1fr) 280px;
+  }
+}
+@media (max-width: 760px) {
+  .shell-logistics .dispatch-page {
+    padding: 16px 14px var(--bottom-nav-clearance);
+  }
+  .dispatch-page .page-title-row {
+    align-items: flex-start;
+  }
+  .dispatch-shift {
+    max-width: 130px;
+    padding: 7px;
+  }
+  .dispatch-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .dispatch-metrics > div {
+    padding: 10px;
+  }
+  .dispatch-metrics dd {
+    font-size: 19px;
+  }
+  .dispatch-metrics dt {
+    font-size: 10px;
+  }
+  .dispatch-route-layout,
+  .dispatch-detail-layout,
+  .dispatch-page .logistics-detail-grid {
+    grid-template-columns: 1fr;
+  }
+  .dispatch-route-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .dispatch-map-panel,
+  .dispatch-panel {
+    padding: 0 12px 12px;
+  }
+  .dispatch-table-head {
+    display: none;
+  }
+  .dispatch-job-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    gap: 6px 10px;
+    padding: 12px;
+  }
+  .dispatch-job .job-id {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .dispatch-job .job-produce {
+    grid-column: 2;
+    grid-row: 1;
+    font-weight: 700;
+  }
+  .dispatch-job .dispatch-status {
+    grid-column: 3;
+    grid-row: 1;
+    font-size: 10px;
+  }
+  .dispatch-job .job-place {
+    grid-column: 1 / 3;
+    grid-row: 2;
+  }
+  .dispatch-job .job-qty {
+    grid-column: 3;
+    grid-row: 2;
+  }
+  .dispatch-job .job-window {
+    grid-column: 1 / 3;
+    grid-row: 3;
+    color: var(--dispatch-slate);
+  }
+  .dispatch-job .job-vehicle {
+    grid-column: 3;
+    grid-row: 3;
+    font-size: 10px;
+  }
+  .ki-callout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    padding: 12px;
+  }
+  .ki-actions {
+    justify-content: space-between;
+  }
+  .ki-actions .btn {
+    flex: 1;
+  }
+  .ki-detail dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .dispatch-tabs button {
+    padding: 10px 8px;
+    font-size: 12px;
+    flex: 1;
+    justify-content: center;
+  }
+  .dispatch-toolbar {
+    gap: 8px;
+  }
+  .dispatch-toolbar > input {
+    width: 100%;
+  }
+  .dispatch-fleet-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .dispatch-fleet-row .dispatch-status {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
+  .dispatch-page .logi-next {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .dispatch-page .logi-next-actions {
+    flex-wrap: wrap;
+  }
+  .dispatch-steps li {
+    flex-direction: column;
+    gap: 6px;
+    font-size: 10px;
+    text-align: center;
+  }
+  .dispatch-stops li {
+    flex-wrap: wrap;
+  }
+  .dispatch-supply-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .dispatch-flow {
+    font-size: 11px;
+    gap: 6px;
+  }
+  .dispatch-page .otp-field-row {
+    flex-wrap: wrap;
+  }
+  .dispatch-page .otp-field-row input {
+    width: 100%;
+    min-width: 0;
+  }
+  .dispatch-page .otp-field-row .btn {
+    width: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shell-logistics *,
+  .shell-logistics *::before,
+  .shell-logistics *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+/* Suppress the shared page fade and fit the entire offline schematic without cropping. */
+.shell-logistics .page {
+  animation: none;
+}
+.dispatch-page .corridor-card {
+  border-radius: 10px;
+  box-shadow: none;
+}
+.dispatch-map-panel .corridor-canvas {
+  max-height: none;
+}
+.dispatch-map-panel .corridor-canvas svg {
+  width: 100%;
+  height: clamp(260px, 38vh, 410px);
+}
+.dispatch-page .corridor-meta small {
+  text-transform: none;
+  letter-spacing: 0;
+}
+.dispatch-page .corridor-head {
+  background: #f0f4ee;
+}
+@media (max-width: 760px) {
+  .dispatch-map-panel .corridor-canvas svg {
+    height: auto;
+  }
+}
+.dispatch-page .logi-next .btn-secondary {
+  background: white;
+  color: var(--green-dark);
+  border: 1px solid var(--border);
+}
+.dispatch-page .logi-next .btn-primary {
+  background: var(--green);
+  color: white;
+}
+.dispatch-evidence {
+  width: 100%;
+  max-height: 180px;
+  object-fit: contain;
+  border-radius: 10px;
+}
+#fleet-detail {
+  scroll-margin-top: 85px;
+}
+.dispatch-steps li.current:last-child {
+  border-color: var(--green);
+}
+.dispatch-steps li.current:last-child span {
+  background: var(--green);
+  color: white;
+}
+/* Compact reference rows replace the legacy stacked reference cards. */
+.dispatch-page .logistics-info-grid {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+}
+.dispatch-page .logistics-info-grid > div {
+  display: grid;
+  grid-template-columns: minmax(80px, 0.8fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  padding: 12px 0;
+  background: transparent;
+  border-bottom: 1px solid var(--border);
+}
+.dispatch-page .logistics-info-grid > div strong {
+  margin: 0;
+  font-size: 12px;
+}
+.dispatch-page .checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.dispatch-page .checklist > label,
+.dispatch-page .checklist-quality-row {
+  border-radius: 0;
+  background: transparent;
+  margin: 0;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.dispatch-page .checklist-quality-row > label {
+  background: transparent;
+  padding: 0;
+}
+.dispatch-page .checklist label {
+  font-size: 12px;
+}
+.dispatch-page .dropoff-condition-card {
+  border: 0;
+  border-radius: 0;
+  padding: 12px 0;
+}
+.dispatch-page .field input,
+.dispatch-page .field select,
+.dispatch-page .field textarea {
+  font-size: 13px;
+}
