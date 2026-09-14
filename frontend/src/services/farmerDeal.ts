@@ -2,6 +2,7 @@ import { assessFreshness, type Freshness } from './cropFreshness'
 import { getCropIntel, listCropIntel, type CropIntel, type FarmerCrop } from './farmerAiService'
 import { marketMakerService, type MarketView } from './marketMakerService'
 import { prototypeService } from './prototypeService'
+import { derivePriceLadder, type PriceSourceMeta } from './pricingEngine'
 import type { FarmerListing } from '../types'
 
 /**
@@ -48,8 +49,10 @@ export interface FarmerDeal {
   visual: FarmerListing['visual']
   /** What this farmer is paid per kg if they sell into the deal. */
   pricePerKg: number
-  /** What the mandi pays for the same crop today. */
+  /** What the mandi pays for the same crop today (live AGMARKNET benchmark). */
   mandiPerKg: number
+  /** Provenance of `mandiPerKg`: source, market, date, stale. */
+  mandiSource?: PriceSourceMeta
   /** pricePerKg − mandiPerKg, floored at 0. */
   gainPerKg: number
   /** Number of buyers who have already committed. */
@@ -128,11 +131,11 @@ function factorsFor(view: MarketView, intel: CropIntel | null, cropLabelKey: { e
  * A board or corridor's farm-gate rate is a real input from that market's own buyers, so it is
  * never lowered here; it is only ever lifted to this floor, which stops a stale or
  * under-priced board from ever reading as *worse* than the plain, no-help suggestion right
- * next to it on screen. Without an intel row to anchor to, the mandi rate plus a fixed margin
- * stands in, matching the same fallback the price advisor already uses.
+ * next to it on screen. Without an intel row to anchor to, the centralized pricing engine's
+ * normal price for that mandi benchmark stands in — the same rule every other surface uses.
  */
 function priceFloorFor(mandiPerKg: number, intel: CropIntel | null): number {
-  return intel ? intel.recommendedMin : Math.round(mandiPerKg + 5)
+  return intel ? intel.recommendedMin : derivePriceLadder(Math.max(1, mandiPerKg)).kisanlinkNormalPerKg
 }
 
 /**
@@ -169,6 +172,7 @@ export async function getFarmerDeal(listings?: FarmerListing[]): Promise<FarmerD
     visual: board.visual,
     pricePerKg,
     mandiPerKg: board.mandiPricePerKg,
+    mandiSource: board.mandiSource ?? intel?.benchmark,
     gainPerKg: Math.max(0, pricePerKg - board.mandiPricePerKg),
     buyerCount: math.participants,
     hasVehicle: Boolean(math.vehicle),
@@ -230,6 +234,7 @@ export interface CropDeal {
   cropHi: string
   pricePerKg: number
   mandiPerKg: number
+  mandiSource?: PriceSourceMeta
   gainPerKg: number
   buyerCount: number
   hasVehicle: boolean
@@ -289,6 +294,7 @@ function dealFromBoard(listing: FarmerListing, view: MarketView, intel: CropInte
     cropEn: listing.crop, cropHi: listing.cropHi,
     pricePerKg,
     mandiPerKg: board.mandiPricePerKg,
+    mandiSource: board.mandiSource ?? listing.mandiSource ?? intel?.benchmark,
     gainPerKg: Math.max(0, pricePerKg - board.mandiPricePerKg),
     buyerCount: math.participants,
     hasVehicle: Boolean(math.vehicle),
@@ -314,6 +320,7 @@ function dealFromSegment(listing: FarmerListing, view: MarketView, intel: CropIn
     cropEn: listing.crop, cropHi: listing.cropHi,
     pricePerKg,
     mandiPerKg: segment.mandiPricePerKg,
+    mandiSource: segment.segment.mandiSource ?? listing.mandiSource ?? intel?.benchmark,
     gainPerKg: Math.max(0, pricePerKg - segment.mandiPricePerKg),
     buyerCount: segment.segment.commitments.length,
     hasVehicle: Boolean(view.math.vehicle),
@@ -345,6 +352,7 @@ function dealFromIntel(listing: FarmerListing, intel: CropIntel): CropDeal {
     cropEn: listing.crop, cropHi: listing.cropHi,
     pricePerKg,
     mandiPerKg,
+    mandiSource: listing.mandiSource ?? intel.benchmark,
     gainPerKg: Math.max(0, pricePerKg - mandiPerKg),
     buyerCount: intel.buyerCount,
     hasVehicle: intel.pickupAvailableTomorrow,

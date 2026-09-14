@@ -13,7 +13,7 @@ import { phase2Service } from '../../services/phase2Service'
 import { prototypeService } from '../../services/prototypeService'
 import { dispatchAdvice } from './attention'
 import { MarketOpportunityCard } from './Home'
-import { Badge, ErrorState, FillBar, PageHead, kg, money, perKg } from './shared'
+import { Badge, ErrorState, FillBar, PageHead, kg, money, perKg, buyerCurrentPerKg } from './shared'
 
 /**
  * Market opportunities for the buyer: every corridor the Market Maker is forming, what it
@@ -123,7 +123,7 @@ function OpportunityRow({ view, selected, onSelect }: { view: MarketView; select
   const structural = math.blockers.find((item) => item.kind !== 'demand')
   const threshold = Number.isFinite(math.thresholdKg) ? math.thresholdKg : math.committedKg
   const landed = math.viable || created ? math.deliveredPerKg : math.deliveredAtThresholdPerKg
-  const savingPerKg = Math.max(0, board.buyerCurrentPerKg - landed)
+  const savingPerKg = Math.max(0, buyerCurrentPerKg(view) - landed)
   const title = board.isMultiCrop ? `${board.crops?.map((crop) => crop.crop).join(', ') ?? board.crop}` : board.crop
   return (
     <li>

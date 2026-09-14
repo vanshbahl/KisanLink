@@ -4,6 +4,7 @@ import { buildProcurementPlan, type ProcurementRequest } from './procurementEngi
 import { localDay } from '../utils/dates'
 import { prototypeService } from './prototypeService'
 import { apiClient } from './apiClient'
+import { mandiBenchmarkService } from './mandiBenchmarkService'
 
 const CART_KEY = 'kisanlink_consumer_cart_v1'
 const now = () => new Date().toISOString()
@@ -270,7 +271,7 @@ export const phase2Service = {
       const payout = gross - platform
       const farmerOrderId = `${orderId}-${index + 1}`
       state.orders.unshift({ id: farmerOrderId, buyerName: state.bulkProfile.businessName, buyerType: 'Bulk Buyer', crop: rfq.crop, cropHi: listing?.cropHi ?? rfq.crop, listingId: stop.listingId, quantityKg: stop.quantityKg, ratePerKg: stop.ratePerKg, total: gross, farmerPayout: payout, platformFee: platform, logisticsFee: Math.round(plan.logisticsCost * (stop.quantityKg / Math.max(1, plan.matchedKg))), orderedAt: now().slice(0, 10), status: 'pickup_scheduled', paymentStatus: 'processing', pickupId })
-      state.earnings.unshift({ id: `TX-${orderId.replace(/\D/g, '').slice(-4)}-${index + 1}`, orderId: farmerOrderId, crop: rfq.crop, cropHi: listing?.cropHi ?? rfq.crop, gross, deductions: platform, net: payout, mandiEquivalent: Math.round(stop.quantityKg * (listing?.mandiPricePerKg ?? stop.ratePerKg * 0.78)), date: now().slice(0, 10), status: 'pending' })
+      state.earnings.unshift({ id: `TX-${orderId.replace(/\D/g, '').slice(-4)}-${index + 1}`, orderId: farmerOrderId, crop: rfq.crop, cropHi: listing?.cropHi ?? rfq.crop, gross, deductions: platform, net: payout, mandiEquivalent: Math.round(stop.quantityKg * (listing?.mandiPricePerKg ?? mandiBenchmarkService.pricingFor(rfq.crop)?.ladder.mandiPerKg ?? stop.ratePerKg)), date: now().slice(0, 10), status: 'pending' })
 
       // The farm pickup the logistics operator will actually work.
       state.logisticsPickups.push({

@@ -1,12 +1,13 @@
 import type { CartItem, FarmerListing } from '../types'
 import { orderCosts } from './phase2Service'
+import { localReferenceFromNormal } from './pricingEngine'
 
 const daysSince = (value: string) => Math.max(0, Math.floor((Date.now() - new Date(`${value}T00:00:00`).getTime()) / 86400000))
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 export type ConsumerFactor = { label: string; value: string }
 /** `retail` is the local shop price — the only benchmark shown to a shopper. */
 export type ConsumerInsight = { title: string; recommendation: string; confidence: number; factors: ConsumerFactor[]; price?: number; retail?: number; listingId?: string; ctaLabel?: string; note?: string }
-const retailOf = (item: FarmerListing) => item.retailPricePerKg > 0 ? item.retailPricePerKg : Math.round(item.pricePerKg * 1.2)
+const retailOf = (item: FarmerListing) => item.retailPricePerKg > 0 ? item.retailPricePerKg : localReferenceFromNormal(item.pricePerKg)
 
 /** Deterministic, listing-state-only recommendations: no distance, shelf-life, or model claims. */
 export function freshPick(listings: FarmerListing[]): ConsumerInsight {

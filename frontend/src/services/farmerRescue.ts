@@ -1,6 +1,7 @@
 import { apiClient } from './apiClient'
 import { prototypeService } from './prototypeService'
 import type { FarmerListing } from '../types'
+import { RESCUE_DISCOUNT, rescuePrice } from './pricingEngine'
 
 /**
  * "जल्दी बेचें" — the urgent rescue sale, as one function.
@@ -10,9 +11,9 @@ import type { FarmerListing } from '../types'
  * flow still completes. Shared by the crop sheet, the Market Maker card and the home task so
  * every entry point does exactly the same thing.
  */
-export const RESCUE_DISCOUNT = 0.75
+export { RESCUE_DISCOUNT }
 
-export const rescuePriceFor = (listing: Pick<FarmerListing, 'pricePerKg'>) => Math.round(listing.pricePerKg * RESCUE_DISCOUNT)
+export const rescuePriceFor = (listing: Pick<FarmerListing, 'pricePerKg'>) => rescuePrice(listing.pricePerKg)
 
 export const isRescueActive = (listing: Pick<FarmerListing, 'isUrgentRescue' | 'rescueStatus'>) =>
   Boolean(listing.isUrgentRescue || listing.rescueStatus === 'RESCUE_ACTIVE')

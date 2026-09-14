@@ -30,6 +30,7 @@ from app.schemas.user import (
     OnboardingParseResponse,
 )
 from app.services.gemini_listing import extract_onboarding_field
+from app.services.agmarknet_service import agmarknet
 from fastapi.concurrency import run_in_threadpool
 
 router = APIRouter(prefix="/farmers", tags=["Farmers"])
@@ -262,7 +263,8 @@ async def get_farmer_earnings(
         rate = float(alloc.listing.expected_price_per_kg) if alloc.listing else 30.0
         gross = round(float(alloc.allocated_kg) * rate, 2)
         deductions = round(gross - payout, 2)
-        mandi_eq = round(gross * 0.8, 2)
+        benchmark = await agmarknet.benchmark_for(crop_en) if crop_en != "Produce" else None
+        mandi_eq = round(float(alloc.allocated_kg) * benchmark.modal_per_kg, 2) if benchmark else round(gross * 0.8, 2)
         order_code = alloc.order.order_code if alloc.order else str(alloc.order_id)
         dt_str = alloc.order.created_at.strftime("%Y-%m-%d") if alloc.order and alloc.order.created_at else str(date.today())
 

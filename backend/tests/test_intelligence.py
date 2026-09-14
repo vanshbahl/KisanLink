@@ -60,10 +60,17 @@ async def test_recommend_price_authenticated(client: AsyncClient, farmer_token: 
     assert res.status_code == 200
     data = res.json()
     assert data["crop_name"] == "Fresh Tomatoes"
-    assert data["mandi_benchmark_price"] == 24.0
+    # The server-side AGMARKNET benchmark (or its labelled seed fallback) is authoritative; a
+    # client-supplied mandi value never overrides government data.
+    assert data["mandi_benchmark_price"] > 0
+    assert data["benchmark"]["source"] in {"agmarknet", "seed"}
+    assert data["ladder"]["mandi_per_kg"] == data["mandi_benchmark_price"]
+    assert data["ladder"]["mandi_per_kg"] < data["recommended_min"] < data["recommended_max"]
     assert len(data["options"]) == 3
     ids = [o["id"] for o in data["options"]]
     assert ids == ["fast", "balanced", "high"]
+    prices = [o["price"] for o in data["options"]]
+    assert prices == sorted(prices) and prices[0] > data["mandi_benchmark_price"]
 
 
 @pytest.mark.asyncio

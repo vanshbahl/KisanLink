@@ -3318,3 +3318,11 @@ html[lang="hi"] .f-voice-question { letter-spacing: 0; line-height: 1.3; }
 @media (prefers-reduced-motion: reduce) {
   .f-voice-mic, .f-voice-question, .f-voice-ack, .f-voice-value { animation: none !important; }
 }
+
+/* Provenance line under any mandi figure (see components/MandiSourceNote.tsx). */
+.mandi-source { display: block; margin-top: 4px; font-size: 11px; line-height: 1.4; font-weight: 600; color: var(--muted); letter-spacing: .01em; }
+.mandi-source.is-live::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #1d6b45; margin-right: 6px; vertical-align: 1px; }
+.mandi-source.is-seed { font-style: italic; }
+.consumer-mm-price .consumer-mm-regular { flex-basis: 100%; font-size: 11px; font-weight: 600; color: #c8d9ce; }
+.consumer-mm-why .mandi-source { color: #7f9a8a; }
+.f-trend-note { margin-top: 8px; font-size: 12px; }

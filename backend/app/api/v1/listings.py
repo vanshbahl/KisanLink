@@ -20,9 +20,18 @@ from app.schemas.crop import (
 )
 import logging
 from app.services.gemini_listing import extract_listing, _basic_extract
+from app.services.agmarknet_service import agmarknet
 from fastapi.concurrency import run_in_threadpool
 
 logger = logging.getLogger("VoiceParse")
+
+async def mandi_for(crop_name: Optional[str]) -> Optional[float]:
+    """Live AGMARKNET benchmark (₹/kg) for a crop; None when the commodity is unknown."""
+    if not crop_name:
+        return None
+    benchmark = await agmarknet.benchmark_for(crop_name)
+    return benchmark.modal_per_kg if benchmark else None
+
 
 router = APIRouter(prefix="/listings", tags=["Listings"])
 
@@ -142,7 +151,7 @@ async def create_listing(
         quantity_kg=float(listing.quantity_kg),
         available_quantity_kg=float(listing.available_quantity_kg),
         expected_price_per_kg=float(listing.expected_price_per_kg),
-        mandi_price_per_kg=round(float(listing.expected_price_per_kg) * 0.8, 2),
+        mandi_price_per_kg=await mandi_for(crop_type.name_en),
         quality_grade=listing.quality_grade,
         is_pre_harvest=listing.is_pre_harvest,
         harvest_date=listing.harvest_date,
@@ -243,7 +252,7 @@ async def list_listings(
                 quantity_kg=float(listing.quantity_kg),
                 available_quantity_kg=float(listing.available_quantity_kg),
                 expected_price_per_kg=float(listing.expected_price_per_kg),
-                mandi_price_per_kg=round(float(listing.expected_price_per_kg) * 0.8, 2),
+                mandi_price_per_kg=await mandi_for(crop_name),
                 quality_grade=listing.quality_grade,
                 is_pre_harvest=listing.is_pre_harvest,
                 harvest_date=listing.harvest_date,
@@ -305,7 +314,7 @@ async def get_listing(id: UUID, db: AsyncSession = Depends(get_db)):
         quantity_kg=float(listing.quantity_kg),
         available_quantity_kg=float(listing.available_quantity_kg),
         expected_price_per_kg=float(listing.expected_price_per_kg),
-        mandi_price_per_kg=round(float(listing.expected_price_per_kg) * 0.8, 2),
+        mandi_price_per_kg=await mandi_for(crop_name),
         quality_grade=listing.quality_grade,
         is_pre_harvest=listing.is_pre_harvest,
         harvest_date=listing.harvest_date,

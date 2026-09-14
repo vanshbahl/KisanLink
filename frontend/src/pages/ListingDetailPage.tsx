@@ -16,6 +16,8 @@ import { smartBuy } from '../services/consumerIntelligenceService'
 import { inspectionService } from '../services/inspectionService'
 import { phase2Service } from '../services/phase2Service'
 import type { LotTrail } from '../types'
+import { rescuePriceFor } from '../services/farmerRescue'
+import { regularPriceSplit } from '../services/pricingEngine'
 
 export function ListingDetailPage() {
   const { id = '' } = useParams()
@@ -36,7 +38,7 @@ export function ListingDetailPage() {
   const low = data.remainingKg > 0 && data.remainingKg <= 20
   const title = language === 'hi' ? data.cropHi : data.crop
   const rescue = Boolean(data.isUrgentRescue || data.rescueStatus === 'RESCUE_ACTIVE')
-  const rescuePrice = data.rescueDiscountPricePerKg ?? Math.round(data.pricePerKg * 0.8)
+  const rescuePrice = data.rescueDiscountPricePerKg ?? rescuePriceFor(data)
   const price = consumerPrice({ pricePerKg: data.pricePerKg, retailPricePerKg: data.retailPricePerKg, rescuePricePerKg: rescue ? rescuePrice : undefined })
   const origin = farmOrigin(data.farm)
   const activePrice = price.price
@@ -89,7 +91,7 @@ export function ListingDetailPage() {
       <div className="consumer-detail-secondary">
         {trail && trail.stages.length > 0 && <details><summary><PackageSearch size={18} /><span><strong>Quality trail</strong><small>Inspection and custody checkpoints</small></span><ChevronDown size={17} /></summary><div className="consumer-detail-disclosure"><CustodyTimeline trail={trail} /></div></details>}
         <details><summary><Sprout size={18} /><span><strong>Farm story</strong><small>{data.farm}</small></span><ChevronDown size={17} /></summary><div className="consumer-detail-disclosure"><p>{data.notes || 'A verified nearby farmer supplying carefully sorted seasonal produce.'}</p><div className="consumer-detail-tags"><span>{data.farmingMethod}</span><span>Identity verified</span><span>Ready {prettyWhen(data.availableFrom)}</span></div></div></details>
-        <details><summary><ShieldCheck size={18} /><span><strong>Where your money goes</strong><small>Transparent price split</small></span><ChevronDown size={17} /></summary><div className="consumer-detail-disclosure"><div className="price-rows"><span>Farmer share <b>₹{Math.round(activePrice * .9)}</b></span><span>Platform amount <b>₹{Math.round(activePrice * .03)}</b></span><span>Indicative logistics <b>₹{Math.round(activePrice * .07)}</b></span></div><p>Final logistics are calculated across your basket.</p></div></details>
+        <details><summary><ShieldCheck size={18} /><span><strong>Where your money goes</strong><small>Transparent price split</small></span><ChevronDown size={17} /></summary><div className="consumer-detail-disclosure"><div className="price-rows"><span>Farmer share <b>₹{regularPriceSplit(activePrice).farmer}</b></span><span>Platform amount <b>₹{regularPriceSplit(activePrice).platform}</b></span><span>Indicative logistics <b>₹{regularPriceSplit(activePrice).logistics}</b></span></div><p>Final logistics are calculated across your basket.</p></div></details>
       </div>
     </div>
   )

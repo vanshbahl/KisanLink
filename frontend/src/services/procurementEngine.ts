@@ -2,6 +2,7 @@ import { farmers } from '../data/farmers'
 import { distanceKm, placeById, resolvePlace } from '../data/geo'
 import { daysUntil, localDay } from '../utils/dates'
 import type { FarmerListing, ProcurementPlan, ProcurementStop, RfqPackaging, Vehicle } from '../types'
+import { localReferenceFromNormal } from './pricingEngine'
 
 /**
  * KisanLink Market Maker — procurement side.
@@ -41,12 +42,13 @@ const MIN_DISPATCH = 2500
 const HANDLING_PER_KG = 0.35
 const PLATFORM_PCT = 0.02
 /**
- * What the same produce costs the buyer today, as a multiple of the mandi rate: the
- * commission agent, the wholesaler's margin and the buyer's own lift from the mandi to their
- * dock. Applied to the mandi price the farmers themselves quote, so the comparison is against
- * numbers already visible elsewhere in the prototype.
+ * What the same produce costs the buyer today through the mandi -> wholesaler -> retail chain.
+ * Each listing already carries that figure (`retailPricePerKg`, the pricing engine's
+ * local-market reference over the live mandi benchmark), so the bulk comparison uses the
+ * very number the consumer card and the Market Maker board show — never a second multiplier.
  */
-const TRADITIONAL_CHAIN_MULTIPLE = 1.55
+const localReferenceFor = (listing: FarmerListing) =>
+  listing.retailPricePerKg > 0 ? listing.retailPricePerKg : localReferenceFromNormal(listing.pricePerKg)
 
 const round2 = (value: number) => Math.round(value * 100) / 100
 const iso = localDay
@@ -178,12 +180,14 @@ export function buildProcurementPlan(
   const landedTotal = produceValue + logisticsCost + platformFee
   const landedPerKg = matchedKg ? round2(landedTotal / matchedKg) : 0
 
-  // What the buyer pays today: the mandi rate plus the wholesaler and transport margin that
-  // sits between the mandi and their dock. Read from the listings, not invented.
+  // What the buyer pays today through the traditional chain, and what the mandi pays the
+  // farmer — both read from the listings' engine-derived fields, not invented here.
   const avgMandi = matchedKg
     ? chosen.reduce((sum, entry) => sum + entry.quantityKg * entry.listing.mandiPricePerKg, 0) / matchedKg
     : 0
-  const benchmarkPerKg = round2(avgMandi * TRADITIONAL_CHAIN_MULTIPLE)
+  const benchmarkPerKg = matchedKg
+    ? round2(chosen.reduce((sum, entry) => sum + entry.quantityKg * localReferenceFor(entry.listing), 0) / matchedKg)
+    : 0
   const benchmarkTotal = Math.round(benchmarkPerKg * matchedKg)
   const savingTotal = benchmarkTotal - landedTotal
   const savingPct = benchmarkTotal ? round2((savingTotal / benchmarkTotal) * 100) : 0

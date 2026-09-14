@@ -1,7 +1,6 @@
 import type { BulkRfq, FarmerListing, SupplyContribution } from '../types'
-import { getCropIntel, type FarmerCrop } from './farmerAiService'
+import { mandiBenchmarkService } from './mandiBenchmarkService'
 
-const cropFor = (crop: string): FarmerCrop | null => (['Tomatoes', 'Potatoes', 'Onion', 'Spinach', 'Wheat', 'Carrots'] as FarmerCrop[]).find((item) => crop.toLowerCase().includes(item.slice(0, -1).toLowerCase())) ?? null
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n))
 export type BulkFactor = { label: string; value: string }
 export type BulkInsight = { title: string; recommendation: string; confidence: number; factors: BulkFactor[]; ctaLabel?: string; href?: string; note?: string }
@@ -10,8 +9,18 @@ export type SupplyPoolLike = { id: string; product: string; grade: string; corri
 
 /** Price-option likelihoods are transparent deterministic prototype scores, not model predictions. */
 export function targetPriceOptions(crop: string, quantity: number, fallback: number) {
-  const intel = cropFor(crop) ? getCropIntel(cropFor(crop)!) : null; const base = intel ? Math.round((intel.recommendedMin + intel.recommendedMax) / 2) : fallback
-  return [{ id: 'fast', label: 'Fast fulfilment', price: Math.max(1, base - 2), likelihood: clamp(86 - Math.round(quantity / 2500), 60, 90) }, { id: 'recommended', label: 'Recommended', price: base, likelihood: clamp(74 - Math.round(quantity / 3500), 52, 82) }, { id: 'aggressive', label: 'Aggressive saving', price: Math.max(1, base - 4), likelihood: clamp(58 - Math.round(quantity / 5000), 28, 62) }]
+  // Farm-gate targets from the one price ladder: paying the Market Maker farmer price fills
+  // fastest, the normal listing price is the recommended ask, and an aggressive target sits
+  // just above the live mandi anchor — never at or below what the mandi already pays.
+  const ladder = mandiBenchmarkService.pricingFor(crop)?.ladder
+  const recommended = ladder ? ladder.kisanlinkNormalPerKg : fallback
+  const fast = ladder ? ladder.marketMakerFarmerPerKg : fallback + 2
+  const aggressive = ladder ? Math.max(Math.ceil(ladder.mandiPerKg) + 1, Math.round(ladder.kisanlinkNormalPerKg * 0.96)) : Math.max(1, fallback - 2)
+  return [
+    { id: 'fast', label: 'Fast fulfilment', price: fast, likelihood: clamp(86 - Math.round(quantity / 2500), 60, 90) },
+    { id: 'recommended', label: 'Recommended', price: recommended, likelihood: clamp(74 - Math.round(quantity / 3500), 52, 82) },
+    { id: 'aggressive', label: 'Aggressive saving', price: Math.min(aggressive, recommended), likelihood: clamp(58 - Math.round(quantity / 5000), 28, 62) },
+  ]
 }
 
 export function procurementPulse(rfqs: BulkRfq[], listings: FarmerListing[]): BulkInsight {

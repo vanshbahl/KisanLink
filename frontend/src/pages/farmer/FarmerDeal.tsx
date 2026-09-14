@@ -6,6 +6,8 @@ import { useFarmerText, type FarmerKey } from '../../i18n/farmer'
 import { useAsyncData } from '../../hooks/useAsyncData'
 import { getFarmerDeal, type DealFactor, type FarmerDeal as Deal } from '../../services/farmerDeal'
 import { marketMakerService } from '../../services/marketMakerService'
+import { MandiSourceNote } from '../../components/MandiSourceNote'
+import { perKgText } from '../../services/pricingEngine'
 
 /**
  * "बेहतर सौदा" — what used to be the farmer's Market Maker page.
@@ -91,14 +93,15 @@ export function FarmerDeal() {
       <section className="f-deal-compare">
         <div>
           <span>{f('mandiToday')}</span>
-          <strong>₹{Math.round(deal.mandiPerKg)}<small>{f('perKg')}</small></strong>
+          <strong>₹{perKgText(deal.mandiPerKg)}<small>{f('perKg')}</small></strong>
+          <MandiSourceNote source={deal.mandiSource} compact />
         </div>
         <div className="is-better">
           <span>{f('betterDeal')}</span>
           <strong>₹{Math.round(deal.pricePerKg)}<small>{f('perKg')}</small></strong>
         </div>
         {deal.gainPerKg > 0 && (
-          <b className="f-deal-compare-gain">+₹{Math.round(deal.gainPerKg)}{f('perKg')}</b>
+          <b className="f-deal-compare-gain">+₹{perKgText(deal.gainPerKg)}{f('perKg')}</b>
         )}
       </section>
 
@@ -184,6 +187,8 @@ function PriceTrend({ intel }: { intel: NonNullable<Deal['intel']> }) {
         <b>{f(directionKey)}</b>
         <span>{f('priceNextDays')} · ₹{ahead}</span>
       </div>
+      <p className="f-note f-trend-note">{f('trendIndicative')}</p>
+      <MandiSourceNote source={intel.benchmark} pricePerKg={intel.mandi} />
     </section>
   )
 }

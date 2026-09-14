@@ -2,6 +2,8 @@ import type { BulkOrder, BulkProfileData, BulkRfq, ConsumerOrder, ConsumerProfil
 import { apiClient } from './apiClient'
 import { localDay } from '../utils/dates'
 import { createRegionalMarketMakerBoards } from '../data/regionalMarketMaker'
+import { boardPricesFrom, listingPricesFrom, seedBoardPrices, seedListingPrices, seedMandiPerKg, sourceMeta } from './pricingEngine'
+import { mandiBenchmarkService } from './mandiBenchmarkService'
 
 export interface PrototypeState {
   /** Written by the seed; see SEED_VERSION. Absent or stale payloads are discarded. */
@@ -61,19 +63,19 @@ const seedState: PrototypeState = {
   seedVersion: SEED_VERSION,
   listings: [
     // --- Green Field Farm · Ramesh Kumar · the demo farmer's own produce ---
-    { id: 'listing_001', crop: 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', category: 'Vegetables', imageSrc: '/assets/produce/tomato.webp', visual: 'tomato', quantityKg: 900, remainingKg: 600, allocatedKg: 300, unit: 'kg', grade: 'Grade A+', harvestDate: iso(-1), availableFrom: iso(0), farmingMethod: 'Natural farming', notes: 'Firm, hand-sorted tomatoes.', pricePerKg: 31, mandiPricePerKg: 24, retailPricePerKg: 38, farmerId: 'farmer_001', farm: 'Green Field Farm', pickupDate: iso(1), pickupWindow: 'Morning · 7–10 AM', fulfillment: 'pickup', status: 'active', assisted: false, views: 126, inquiries: 9, createdAt: iso(-5), lotCode: 'KL-TOM-1048', packagingType: 'CRATE', unitWeightKg: 25, overviewPhotos: ['/assets/produce/tomato.webp'] },
-    { id: 'listing_011', crop: 'Baby Spinach', cropHi: 'बेबी पालक', category: 'Vegetables', imageSrc: '/assets/produce/spinach.webp', visual: 'leafy', quantityKg: 140, remainingKg: 126, allocatedKg: 14, unit: 'kg', grade: 'Grade A+', harvestDate: iso(0), availableFrom: iso(0), farmingMethod: 'Organic', notes: 'Washed and bundled.', pricePerKg: 42, mandiPricePerKg: 35, retailPricePerKg: 52, farmerId: 'farmer_001', farm: 'Green Field Farm', pickupDate: iso(2), pickupWindow: 'Morning · 7–10 AM', fulfillment: 'pickup', status: 'active', assisted: true, views: 83, inquiries: 5, createdAt: iso(-2) },
-    { id: 'listing_draft_1', crop: 'Sharbati Wheat', cropHi: 'शरबती गेहूं', category: 'Grains', imageSrc: '/assets/produce/wheat.webp', visual: 'grain', quantityKg: 900, remainingKg: 900, allocatedKg: 0, unit: 'kg', grade: 'Grade A', harvestDate: iso(-8), availableFrom: iso(3), farmingMethod: 'Conventional', notes: '', pricePerKg: 36, mandiPricePerKg: 31, retailPricePerKg: 44, farmerId: 'farmer_001', farm: 'Green Field Farm', pickupDate: iso(4), pickupWindow: 'Afternoon · 1–4 PM', fulfillment: 'pickup', status: 'draft', assisted: false, views: 0, inquiries: 0, createdAt: iso(-1) },
-    { id: 'listing_sold_1', crop: 'New Potatoes', cropHi: 'नए आलू', category: 'Staples', imageSrc: '/assets/produce/potato.webp', visual: 'potato', quantityKg: 500, remainingKg: 0, allocatedKg: 500, unit: 'kg', grade: 'Grade A', harvestDate: iso(-18), availableFrom: iso(-17), farmingMethod: 'Conventional', notes: '', pricePerKg: 25, mandiPricePerKg: 21, retailPricePerKg: 32, farmerId: 'farmer_001', farm: 'Green Field Farm', pickupDate: iso(-12), pickupWindow: 'Morning · 7–10 AM', fulfillment: 'pickup', status: 'sold', assisted: false, views: 210, inquiries: 18, createdAt: iso(-20) },
+    { id: 'listing_001', crop: 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', category: 'Vegetables', imageSrc: '/assets/produce/tomato.webp', visual: 'tomato', quantityKg: 900, remainingKg: 600, allocatedKg: 300, unit: 'kg', grade: 'Grade A+', harvestDate: iso(-1), availableFrom: iso(0), farmingMethod: 'Natural farming', notes: 'Firm, hand-sorted tomatoes.', ...seedListingPrices('Fresh Tomatoes'), farmerId: 'farmer_001', farm: 'Green Field Farm', pickupDate: iso(1), pickupWindow: 'Morning · 7–10 AM', fulfillment: 'pickup', status: 'active', assisted: false, views: 126, inquiries: 9, createdAt: iso(-5), lotCode: 'KL-TOM-1048', packagingType: 'CRATE', unitWeightKg: 25, overviewPhotos: ['/assets/produce/tomato.webp'] },
+    { id: 'listing_011', crop: 'Baby Spinach', cropHi: 'बेबी पालक', category: 'Vegetables', imageSrc: '/assets/produce/spinach.webp', visual: 'leafy', quantityKg: 140, remainingKg: 126, allocatedKg: 14, unit: 'kg', grade: 'Grade A+', harvestDate: iso(0), availableFrom: iso(0), farmingMethod: 'Organic', notes: 'Washed and bundled.', ...seedListingPrices('Baby Spinach'), farmerId: 'farmer_001', farm: 'Green Field Farm', pickupDate: iso(2), pickupWindow: 'Morning · 7–10 AM', fulfillment: 'pickup', status: 'active', assisted: true, views: 83, inquiries: 5, createdAt: iso(-2) },
+    { id: 'listing_draft_1', crop: 'Sharbati Wheat', cropHi: 'शरबती गेहूं', category: 'Grains', imageSrc: '/assets/produce/wheat.webp', visual: 'grain', quantityKg: 900, remainingKg: 900, allocatedKg: 0, unit: 'kg', grade: 'Grade A', harvestDate: iso(-8), availableFrom: iso(3), farmingMethod: 'Conventional', notes: '', ...seedListingPrices('Sharbati Wheat'), farmerId: 'farmer_001', farm: 'Green Field Farm', pickupDate: iso(4), pickupWindow: 'Afternoon · 1–4 PM', fulfillment: 'pickup', status: 'draft', assisted: false, views: 0, inquiries: 0, createdAt: iso(-1) },
+    { id: 'listing_sold_1', crop: 'New Potatoes', cropHi: 'नए आलू', category: 'Staples', imageSrc: '/assets/produce/potato.webp', visual: 'potato', quantityKg: 500, remainingKg: 0, allocatedKg: 500, unit: 'kg', grade: 'Grade A', harvestDate: iso(-18), availableFrom: iso(-17), farmingMethod: 'Conventional', notes: '', ...seedListingPrices('New Potatoes'), farmerId: 'farmer_001', farm: 'Green Field Farm', pickupDate: iso(-12), pickupWindow: 'Morning · 7–10 AM', fulfillment: 'pickup', status: 'sold', assisted: false, views: 210, inquiries: 18, createdAt: iso(-20) },
 
     // --- Network farms. Same corridor, other growers: this is the supply the Market Maker
     //     assembles from, and the reason the consumer marketplace is not a one-farm shop. ---
-    { id: 'listing_101', crop: 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', category: 'Vegetables', imageSrc: '/assets/produce/tomato.webp', visual: 'tomato', quantityKg: 1000, remainingKg: 500, allocatedKg: 500, unit: 'kg', grade: 'Grade A+', harvestDate: iso(-1), availableFrom: iso(0), farmingMethod: 'Natural farming', notes: 'Machine-graded, retail sorted.', pricePerKg: 29, mandiPricePerKg: 24, retailPricePerKg: 36, farmerId: 'farmer_002', farm: 'Sunehri Khet', pickupDate: iso(1), pickupWindow: 'Afternoon · 4–5 PM', fulfillment: 'pickup', status: 'active', assisted: false, views: 94, inquiries: 7, createdAt: iso(-4), lotCode: 'KL-TOM-7731', packagingType: 'CRATE', unitWeightKg: 25 },
-    { id: 'listing_102', crop: 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', category: 'Vegetables', imageSrc: '/assets/produce/tomato.webp', visual: 'tomato', quantityKg: 1300, remainingKg: 500, allocatedKg: 800, unit: 'kg', grade: 'Grade A+', harvestDate: iso(0), availableFrom: iso(0), farmingMethod: 'Conventional', notes: 'Large-lot supplier, crate packed.', pricePerKg: 30, mandiPricePerKg: 24, retailPricePerKg: 37, farmerId: 'farmer_003', farm: 'Yadav Fresh Fields', pickupDate: iso(1), pickupWindow: 'Evening · 5–6 PM', fulfillment: 'pickup', status: 'active', assisted: false, views: 141, inquiries: 12, createdAt: iso(-3), lotCode: 'KL-TOM-5820', packagingType: 'CRATE', unitWeightKg: 25 },
-    { id: 'listing_103', crop: 'Red Onions', cropHi: 'लाल प्याज़', category: 'Staples', imageSrc: '/assets/produce/onion.webp', visual: 'onion', quantityKg: 540, remainingKg: 540, allocatedKg: 0, unit: 'kg', grade: 'Grade A', harvestDate: iso(-2), availableFrom: iso(0), farmingMethod: 'Conventional', notes: 'Cured and bagged.', pricePerKg: 29, mandiPricePerKg: 23, retailPricePerKg: 36, farmerId: 'farmer_004', farm: 'Malik Family Farm', pickupDate: iso(2), pickupWindow: 'Morning · 7–10 AM', fulfillment: 'pickup', status: 'active', assisted: false, views: 67, inquiries: 4, createdAt: iso(-6) },
-    { id: 'listing_104', crop: 'Sweet Carrots', cropHi: 'मीठी गाजर', category: 'Vegetables', imageSrc: '/assets/produce/carrot.webp', visual: 'root', quantityKg: 260, remainingKg: 260, allocatedKg: 0, unit: 'kg', grade: 'Grade A+', harvestDate: iso(-1), availableFrom: iso(0), farmingMethod: 'Organic', notes: 'Topped and washed.', pricePerKg: 36, mandiPricePerKg: 29, retailPricePerKg: 45, farmerId: 'farmer_005', farm: 'Doaba Harvests', pickupDate: iso(2), pickupWindow: 'Morning · 7–10 AM', fulfillment: 'pickup', status: 'active', assisted: false, views: 58, inquiries: 3, createdAt: iso(-3) },
-    { id: 'listing_105', crop: 'Green Capsicum', cropHi: 'हरी शिमला मिर्च', category: 'Vegetables', imageSrc: '/assets/produce/capsicum.webp', visual: 'green', quantityKg: 180, remainingKg: 180, allocatedKg: 0, unit: 'kg', grade: 'Grade A', harvestDate: iso(0), availableFrom: iso(0), farmingMethod: 'Natural farming', notes: 'Picked this morning.', pricePerKg: 52, mandiPricePerKg: 44, retailPricePerKg: 64, farmerId: 'farmer_006', farm: 'Ganga Plains Farm', pickupDate: iso(1), pickupWindow: 'Morning · 7–10 AM', fulfillment: 'pickup', status: 'active', assisted: false, views: 45, inquiries: 2, createdAt: iso(-1) },
-    { id: 'listing_106', crop: 'Crisp Cucumbers', cropHi: 'खीरा', category: 'Vegetables', imageSrc: '/assets/produce/cucumber.webp', visual: 'green', quantityKg: 380, remainingKg: 380, allocatedKg: 0, unit: 'kg', grade: 'Grade A', harvestDate: iso(0), availableFrom: iso(0), farmingMethod: 'Conventional', notes: 'Straight, uniform size.', pricePerKg: 28, mandiPricePerKg: 22, retailPricePerKg: 35, farmerId: 'farmer_007', farm: 'Rana Vegetable Farm', pickupDate: iso(1), pickupWindow: 'Afternoon · 1–4 PM', fulfillment: 'pickup', status: 'active', assisted: false, views: 72, inquiries: 5, createdAt: iso(-2) },
+    { id: 'listing_101', crop: 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', category: 'Vegetables', imageSrc: '/assets/produce/tomato.webp', visual: 'tomato', quantityKg: 1000, remainingKg: 500, allocatedKg: 500, unit: 'kg', grade: 'Grade A+', harvestDate: iso(-1), availableFrom: iso(0), farmingMethod: 'Natural farming', notes: 'Machine-graded, retail sorted.', ...seedListingPrices('Fresh Tomatoes'), farmerId: 'farmer_002', farm: 'Sunehri Khet', pickupDate: iso(1), pickupWindow: 'Afternoon · 4–5 PM', fulfillment: 'pickup', status: 'active', assisted: false, views: 94, inquiries: 7, createdAt: iso(-4), lotCode: 'KL-TOM-7731', packagingType: 'CRATE', unitWeightKg: 25 },
+    { id: 'listing_102', crop: 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', category: 'Vegetables', imageSrc: '/assets/produce/tomato.webp', visual: 'tomato', quantityKg: 1300, remainingKg: 500, allocatedKg: 800, unit: 'kg', grade: 'Grade A+', harvestDate: iso(0), availableFrom: iso(0), farmingMethod: 'Conventional', notes: 'Large-lot supplier, crate packed.', ...seedListingPrices('Fresh Tomatoes'), farmerId: 'farmer_003', farm: 'Yadav Fresh Fields', pickupDate: iso(1), pickupWindow: 'Evening · 5–6 PM', fulfillment: 'pickup', status: 'active', assisted: false, views: 141, inquiries: 12, createdAt: iso(-3), lotCode: 'KL-TOM-5820', packagingType: 'CRATE', unitWeightKg: 25 },
+    { id: 'listing_103', crop: 'Red Onions', cropHi: 'लाल प्याज़', category: 'Staples', imageSrc: '/assets/produce/onion.webp', visual: 'onion', quantityKg: 540, remainingKg: 540, allocatedKg: 0, unit: 'kg', grade: 'Grade A', harvestDate: iso(-2), availableFrom: iso(0), farmingMethod: 'Conventional', notes: 'Cured and bagged.', ...seedListingPrices('Red Onions'), farmerId: 'farmer_004', farm: 'Malik Family Farm', pickupDate: iso(2), pickupWindow: 'Morning · 7–10 AM', fulfillment: 'pickup', status: 'active', assisted: false, views: 67, inquiries: 4, createdAt: iso(-6) },
+    { id: 'listing_104', crop: 'Sweet Carrots', cropHi: 'मीठी गाजर', category: 'Vegetables', imageSrc: '/assets/produce/carrot.webp', visual: 'root', quantityKg: 260, remainingKg: 260, allocatedKg: 0, unit: 'kg', grade: 'Grade A+', harvestDate: iso(-1), availableFrom: iso(0), farmingMethod: 'Organic', notes: 'Topped and washed.', ...seedListingPrices('Sweet Carrots'), farmerId: 'farmer_005', farm: 'Doaba Harvests', pickupDate: iso(2), pickupWindow: 'Morning · 7–10 AM', fulfillment: 'pickup', status: 'active', assisted: false, views: 58, inquiries: 3, createdAt: iso(-3) },
+    { id: 'listing_105', crop: 'Green Capsicum', cropHi: 'हरी शिमला मिर्च', category: 'Vegetables', imageSrc: '/assets/produce/capsicum.webp', visual: 'green', quantityKg: 180, remainingKg: 180, allocatedKg: 0, unit: 'kg', grade: 'Grade A', harvestDate: iso(0), availableFrom: iso(0), farmingMethod: 'Natural farming', notes: 'Picked this morning.', ...seedListingPrices('Green Capsicum'), farmerId: 'farmer_006', farm: 'Ganga Plains Farm', pickupDate: iso(1), pickupWindow: 'Morning · 7–10 AM', fulfillment: 'pickup', status: 'active', assisted: false, views: 45, inquiries: 2, createdAt: iso(-1) },
+    { id: 'listing_106', crop: 'Crisp Cucumbers', cropHi: 'खीरा', category: 'Vegetables', imageSrc: '/assets/produce/cucumber.webp', visual: 'green', quantityKg: 380, remainingKg: 380, allocatedKg: 0, unit: 'kg', grade: 'Grade A', harvestDate: iso(0), availableFrom: iso(0), farmingMethod: 'Conventional', notes: 'Straight, uniform size.', ...seedListingPrices('Crisp Cucumbers'), farmerId: 'farmer_007', farm: 'Rana Vegetable Farm', pickupDate: iso(1), pickupWindow: 'Afternoon · 1–4 PM', fulfillment: 'pickup', status: 'active', assisted: false, views: 72, inquiries: 5, createdAt: iso(-2) },
   ],
   orders: [
     // The demo farmer's 300 kg leg of the pooled FreshKart procurement order.
@@ -91,10 +93,10 @@ const seedState: PrototypeState = {
     { id: 'PK-2011', orderId: 'KL-ORD-1019', crop: 'New Potatoes', cropHi: 'नए आलू', quantityKg: 500, date: iso(-12), timeWindow: 'Morning · 7–10 AM', driver: 'Imran Khan', vehicle: 'DL 1L AC 9082 · Medium truck', farmAddress: 'Green Field Farm, Murthal, Sonipat', status: 'completed', pickupOtp: '162473' },
   ],
   earnings: [
-    { id: 'TX-901', orderId: 'KL-ORD-1019', crop: 'New Potatoes', cropHi: 'नए आलू', gross: 12500, deductions: 1250, net: 11250, mandiEquivalent: 10500, date: iso(-11), status: 'paid' },
-    { id: 'TX-914', orderId: 'KL-C-2201-1', crop: 'Baby Spinach', cropHi: 'बेबी पालक', gross: 336, deductions: 10, net: 326, mandiEquivalent: 280, date: iso(-1), status: 'pending' },
-    { id: 'TX-921', orderId: 'KL-ORD-1042', crop: 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', gross: 9300, deductions: 930, net: 8370, mandiEquivalent: 7200, date: iso(0), status: 'pending' },
-    { id: 'TX-926', orderId: 'KL-C-2204-1', crop: 'Baby Spinach', cropHi: 'बेबी पालक', gross: 252, deductions: 7, net: 245, mandiEquivalent: 210, date: iso(0), status: 'pending' },
+    { id: 'TX-901', orderId: 'KL-ORD-1019', crop: 'New Potatoes', cropHi: 'नए आलू', gross: 12500, deductions: 1250, net: 11250, mandiEquivalent: Math.round(500 * seedMandiPerKg('Potato')), date: iso(-11), status: 'paid' },
+    { id: 'TX-914', orderId: 'KL-C-2201-1', crop: 'Baby Spinach', cropHi: 'बेबी पालक', gross: 336, deductions: 10, net: 326, mandiEquivalent: Math.round(8 * seedMandiPerKg('Spinach')), date: iso(-1), status: 'pending' },
+    { id: 'TX-921', orderId: 'KL-ORD-1042', crop: 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', gross: 9300, deductions: 930, net: 8370, mandiEquivalent: Math.round(300 * seedMandiPerKg('Tomato')), date: iso(0), status: 'pending' },
+    { id: 'TX-926', orderId: 'KL-C-2204-1', crop: 'Baby Spinach', cropHi: 'बेबी पालक', gross: 252, deductions: 7, net: 245, mandiEquivalent: Math.round(6 * seedMandiPerKg('Spinach')), date: iso(0), status: 'pending' },
   ],
   notifications: [
     { id: 'note_1', role: 'farmer', title: 'New consumer order to accept', titleHi: 'नया ग्राहक ऑर्डर स्वीकार करें', body: 'Aarav Mehta ordered 6 kg Baby Spinach.', bodyHi: 'आरव मेहता ने 6 किलो बेबी पालक मंगवाई है।', timestamp: new Date().toISOString(), read: false, href: '/farmer/orders/KL-C-2204-1' },
@@ -203,10 +205,8 @@ const seedState: PrototypeState = {
       deliveryWindow: 'Tomorrow · 6–10 AM',
       imageSrc: '/assets/produce/tomato.webp',
       visual: 'tomato',
-      farmerFloorPerKg: 31,
-      mandiPricePerKg: 24,
-      buyerCeilingPerKg: 38,
-      buyerCurrentPerKg: 42,
+      benchmarkCrop: 'Tomato',
+      ...seedBoardPrices('Tomato'),
       platformFeePct: 0.02,
       routeDistanceKm: 92,
       vehicleId: 'VEH-05',
@@ -297,8 +297,37 @@ const normalize = (value: Partial<PrototypeState>): PrototypeState => {
   state.bulkOrders.forEach((order) => addDelivery(order.id, state.bulkProfile.businessName, 'Bulk Buyer', order.deliveryLocation, order.crop, order.crop, order.suppliedQuantityKg, order.deliveryWindow))
   return state
 }
+/**
+ * Every price the story shows is re-derived from the live AGMARKNET benchmark at read time,
+ * through the one pricing engine, so a listing, its Market Maker board, the consumer card and
+ * the bulk quote can never disagree. Only KisanLink's own values move; the mandi anchor is
+ * the government figure as published. Frozen records — a farmer's own typed ask, a market
+ * already created, past orders and payouts — keep the numbers they were transacted at.
+ */
+export function applyPricing(state: PrototypeState): PrototypeState {
+  for (const listing of state.listings) {
+    const pricing = mandiBenchmarkService.pricingFor(listing.crop)
+    if (!pricing) continue
+    const derived = listingPricesFrom(pricing.ladder)
+    listing.mandiPricePerKg = derived.mandiPricePerKg
+    listing.retailPricePerKg = derived.retailPricePerKg
+    listing.mandiSource = sourceMeta(pricing.benchmark)
+    if (!listing.priceLocked) listing.pricePerKg = derived.pricePerKg
+  }
+  for (const board of state.markets) {
+    if (board.status === 'created') continue
+    const headline = mandiBenchmarkService.pricingFor(board.benchmarkCrop ?? board.crop)
+    if (headline) Object.assign(board, boardPricesFrom(headline.ladder), { mandiSource: sourceMeta(headline.benchmark) })
+    for (const segment of board.crops ?? []) {
+      const pricing = mandiBenchmarkService.pricingFor(segment.benchmarkCrop ?? segment.crop)
+      if (pricing) Object.assign(segment, boardPricesFrom(pricing.ladder), { mandiSource: sourceMeta(pricing.benchmark) })
+    }
+  }
+  return state
+}
+
 const readLocal = (): PrototypeState => {
-  try { return normalize(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '') as Partial<PrototypeState>) } catch { const state = cloneSeed(); localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); return state }
+  try { return applyPricing(normalize(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '') as Partial<PrototypeState>)) } catch { const state = applyPricing(cloneSeed()); localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); return state }
 }
 /**
  * Persists shared state and announces it only when it actually changed. `readState()` also

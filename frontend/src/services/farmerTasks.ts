@@ -3,6 +3,7 @@ import { cropName } from '../i18n/farmer'
 import { daysUntil } from '../utils/dates'
 import { assessFreshness } from './cropFreshness'
 import { rankOrders } from './farmerAiService'
+import { perKgText } from './pricingEngine'
 
 /**
  * "आज क्या करना है" — the farmer home's task layer.
@@ -160,7 +161,7 @@ export function buildFarmerTasks(input: FarmerTaskInput, language: 'en' | 'hi'):
         amount: `₹${Math.round(deal.pricePerKg)}`,
       },
       hintKey: 'taskDealHint',
-      hintValues: { gain: `₹${Math.round(deal.gainPerKg)}` },
+      hintValues: { gain: `₹${perKgText(deal.gainPerKg)}` },
       to: '/farmer/deal',
       urgency: 40,
     })

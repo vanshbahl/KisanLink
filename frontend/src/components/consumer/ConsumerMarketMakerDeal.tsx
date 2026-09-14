@@ -7,7 +7,10 @@ import type { CropSegmentMath } from '../../services/marketMakerEngine'
 import { marketMakerService, type MarketView } from '../../services/marketMakerService'
 import { extractUserRegion, rankMarketMakerOpportunities } from '../../services/marketRankingService'
 import { phase2Service } from '../../services/phase2Service'
+import { mandiBenchmarkService } from '../../services/mandiBenchmarkService'
+import { MandiSourceNote } from '../MandiSourceNote'
 import type { ConsumerProfileData, FarmerListing } from '../../types'
+import { perKgText } from '../../services/pricingEngine'
 
 const money = (value: number) => `₹${Math.round(value).toLocaleString('en-IN')}`
 
@@ -65,6 +68,9 @@ export function ConsumerMarketMakerDeal({ variant = 'home' }: { variant?: 'home'
     : math.deliveredPerKg || board.buyerCeilingPerKg
   const savingsPerKg = Math.max(0, regularPrice - pooledPrice)
   const savingsPct = regularPrice > 0 ? Math.round((savingsPerKg / regularPrice) * 100) : 0
+  // A regular KisanLink order for the same crop, delivered on its own (engine's normal
+  // consumer price) — the pooled price must beat this too, not just the local shop.
+  const regularDelivered = mandiBenchmarkService.pricingFor(cropMath?.segment.benchmarkCrop ?? cropMath?.segment.crop ?? board.benchmarkCrop ?? board.crop)?.ladder.kisanlinkNormalConsumerPerKg
   const quantity = Math.max(1, Number(quantityKg) || 1)
   const totalSavings = Math.round(quantity * savingsPerKg)
   const remainingKg = Math.max(0, math.thresholdKg - math.committedKg)
@@ -152,6 +158,7 @@ export function ConsumerMarketMakerDeal({ variant = 'home' }: { variant?: 'home'
           <strong>{money(pooledPrice)}<small>/kg</small></strong>
           <s aria-label={`Local retail ${money(regularPrice)} per kilogram`}>{money(regularPrice)}/kg local retail</s>
           {savingsPerKg > 0 && <span>Save {money(savingsPerKg)}/kg, {savingsPct}%</span>}
+          {regularDelivered !== undefined && pooledPrice < regularDelivered && <small className="consumer-mm-regular">Regular KisanLink delivery {money(regularDelivered)}/kg</small>}
         </div>
 
         <div className="consumer-mm-progress-copy">
@@ -176,11 +183,12 @@ export function ConsumerMarketMakerDeal({ variant = 'home' }: { variant?: 'home'
         <details className="consumer-mm-why">
           <summary>Why is this cheaper?<ChevronDown size={16} /></summary>
           <div className="consumer-mm-comparison">
-            <p><span>Traditional</span><strong>Farmer {money(board.mandiPricePerKg)} <ArrowRight size={14} /> Consumer {money(regularPrice)}</strong></p>
+            <p><span>Traditional</span><strong>Farmer ₹{perKgText(cropMath?.mandiPricePerKg ?? board.mandiPricePerKg)} <ArrowRight size={14} /> Consumer {money(regularPrice)}</strong></p>
             <p><span>KisanLink</span><strong>Farmer {money(cropMath?.farmerFloorPerKg ?? board.farmerFloorPerKg)} <ArrowRight size={14} /> Consumer {money(pooledPrice)}</strong></p>
           </div>
           <p>Pooling fills the truck and removes intermediary margins.</p>
-          <p className="consumer-mm-farmer-gain"><Sprout size={15} />Farmers earn {money(Math.max(0, (cropMath?.farmerFloorPerKg ?? board.farmerFloorPerKg) - (cropMath?.mandiPricePerKg ?? board.mandiPricePerKg)))}/kg more than the local wholesale route.</p>
+          <p className="consumer-mm-farmer-gain"><Sprout size={15} />Farmers earn ₹{perKgText(Math.max(0, (cropMath?.farmerFloorPerKg ?? board.farmerFloorPerKg) - (cropMath?.mandiPricePerKg ?? board.mandiPricePerKg)))}/kg more than the local wholesale route.</p>
+          <MandiSourceNote source={cropMath?.segment.mandiSource ?? board.mandiSource} pricePerKg={cropMath?.mandiPricePerKg ?? board.mandiPricePerKg} />
         </details>
 
       </div>

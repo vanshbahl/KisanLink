@@ -10,6 +10,8 @@
 // for a real forecasting/LLM backend without touching the UI components that consume it.
 import type { EarningsTransaction, FarmerListing, FarmerOrder, Pickup } from '../types'
 import { apiClient } from './apiClient'
+import { mandiBenchmarkService } from './mandiBenchmarkService'
+import { derivePriceLadder, farmerAiContext, farmerPriceOptions, indicativeSeries, type FarmerAiContext, type MandiBenchmark, type PriceLadder } from './pricingEngine'
 
 export type FarmerCrop = 'Tomatoes' | 'Potatoes' | 'Onion' | 'Spinach' | 'Wheat' | 'Carrots'
 export type Level = 'Low' | 'Moderate' | 'High'
@@ -36,16 +38,50 @@ export interface CropIntel {
   actionKgMin: number
   actionKgMax: number
   pickupAvailableTomorrow: boolean
+  /** Government benchmark the price fields were derived from (source, market, date, stale). */
+  benchmark?: MandiBenchmark
+  ladder?: PriceLadder
+  /** The numbers any generated recommendation must quote. */
+  aiContext?: FarmerAiContext
 }
 
-const CROP_INTEL: Record<FarmerCrop, CropIntel> = {
-  Tomatoes: { crop: 'Tomatoes', cropHi: 'टमाटर', listingCrop: 'Fresh Tomatoes', listingCropHi: 'ताज़े टमाटर', mandi: 24, direct: 32, historical: [27, 28, 28, 30, 29, 31, 32], forecast: [33, 33, 32], demandIndex: 82, demandChangePct: 32, nearbyDemandKg: 1800, buyerCount: 46, volatility: 'Moderate', supplyPressure: 'Moderate', confidence: 88, recommendedMin: 31, recommendedMax: 33, actionKgMin: 300, actionKgMax: 500, pickupAvailableTomorrow: true },
-  Potatoes: { crop: 'Potatoes', cropHi: 'आलू', listingCrop: 'New Potatoes', listingCropHi: 'नए आलू', mandi: 21, direct: 25, historical: [20, 21, 21, 22, 22, 24, 25], forecast: [25, 26, 26], demandIndex: 58, demandChangePct: 9, nearbyDemandKg: 900, buyerCount: 21, volatility: 'Low', supplyPressure: 'High', confidence: 74, recommendedMin: 24, recommendedMax: 26, actionKgMin: 400, actionKgMax: 600, pickupAvailableTomorrow: true },
-  Onion: { crop: 'Onion', cropHi: 'प्याज़', listingCrop: 'Red Onion', listingCropHi: 'लाल प्याज़', mandi: 18, direct: 24, historical: [17, 18, 19, 19, 21, 23, 24], forecast: [25, 26, 25], demandIndex: 71, demandChangePct: 24, nearbyDemandKg: 1200, buyerCount: 33, volatility: 'High', supplyPressure: 'Moderate', confidence: 69, recommendedMin: 23, recommendedMax: 26, actionKgMin: 250, actionKgMax: 400, pickupAvailableTomorrow: false },
-  Spinach: { crop: 'Spinach', cropHi: 'पालक', listingCrop: 'Baby Spinach', listingCropHi: 'बेबी पालक', mandi: 35, direct: 42, historical: [33, 35, 36, 38, 39, 40, 42], forecast: [43, 43, 42], demandIndex: 64, demandChangePct: 14, nearbyDemandKg: 400, buyerCount: 28, volatility: 'Moderate', supplyPressure: 'Low', confidence: 79, recommendedMin: 40, recommendedMax: 44, actionKgMin: 80, actionKgMax: 140, pickupAvailableTomorrow: true },
-  Wheat: { crop: 'Wheat', cropHi: 'गेहूं', listingCrop: 'Sharbati Wheat', listingCropHi: 'शरबती गेहूं', mandi: 31, direct: 37, historical: [30, 31, 31, 32, 33, 34, 37], forecast: [37, 38, 38], demandIndex: 41, demandChangePct: 4, nearbyDemandKg: 3000, buyerCount: 12, volatility: 'Low', supplyPressure: 'High', confidence: 62, recommendedMin: 36, recommendedMax: 38, actionKgMin: 800, actionKgMax: 1200, pickupAvailableTomorrow: false },
-  Carrots: { crop: 'Carrots', cropHi: 'गाजर', listingCrop: 'Sweet Carrots', listingCropHi: 'मीठी गाजर', mandi: 29, direct: 36, historical: [27, 28, 30, 31, 33, 35, 36], forecast: [37, 37, 36], demandIndex: 55, demandChangePct: 11, nearbyDemandKg: 700, buyerCount: 19, volatility: 'Moderate', supplyPressure: 'Moderate', confidence: 70, recommendedMin: 35, recommendedMax: 38, actionKgMin: 200, actionKgMax: 350, pickupAvailableTomorrow: true },
+/**
+ * Non-price demo signals per crop (demand, buyers, logistics). Every PRICE field on a
+ * `CropIntel` comes from the centralized pricing engine over the live AGMARKNET benchmark —
+ * see `withLivePrices` — so this table can never contradict a listing or a Market Maker board.
+ */
+type CropMeta = Omit<CropIntel, 'mandi' | 'direct' | 'historical' | 'forecast' | 'recommendedMin' | 'recommendedMax'>
+const CROP_META: Record<FarmerCrop, CropMeta> = {
+  Tomatoes: { crop: 'Tomatoes', cropHi: 'टमाटर', listingCrop: 'Fresh Tomatoes', listingCropHi: 'ताज़े टमाटर', demandIndex: 82, demandChangePct: 32, nearbyDemandKg: 1800, buyerCount: 46, volatility: 'Moderate', supplyPressure: 'Moderate', confidence: 88, actionKgMin: 300, actionKgMax: 500, pickupAvailableTomorrow: true },
+  Potatoes: { crop: 'Potatoes', cropHi: 'आलू', listingCrop: 'New Potatoes', listingCropHi: 'नए आलू', demandIndex: 58, demandChangePct: 9, nearbyDemandKg: 900, buyerCount: 21, volatility: 'Low', supplyPressure: 'High', confidence: 74, actionKgMin: 400, actionKgMax: 600, pickupAvailableTomorrow: true },
+  Onion: { crop: 'Onion', cropHi: 'प्याज़', listingCrop: 'Red Onion', listingCropHi: 'लाल प्याज़', demandIndex: 71, demandChangePct: 24, nearbyDemandKg: 1200, buyerCount: 33, volatility: 'High', supplyPressure: 'Moderate', confidence: 69, actionKgMin: 250, actionKgMax: 400, pickupAvailableTomorrow: false },
+  Spinach: { crop: 'Spinach', cropHi: 'पालक', listingCrop: 'Baby Spinach', listingCropHi: 'बेबी पालक', demandIndex: 64, demandChangePct: 14, nearbyDemandKg: 400, buyerCount: 28, volatility: 'Moderate', supplyPressure: 'Low', confidence: 79, actionKgMin: 80, actionKgMax: 140, pickupAvailableTomorrow: true },
+  Wheat: { crop: 'Wheat', cropHi: 'गेहूं', listingCrop: 'Sharbati Wheat', listingCropHi: 'शरबती गेहूं', demandIndex: 41, demandChangePct: 4, nearbyDemandKg: 3000, buyerCount: 12, volatility: 'Low', supplyPressure: 'High', confidence: 62, actionKgMin: 800, actionKgMax: 1200, pickupAvailableTomorrow: false },
+  Carrots: { crop: 'Carrots', cropHi: 'गाजर', listingCrop: 'Sweet Carrots', listingCropHi: 'मीठी गाजर', demandIndex: 55, demandChangePct: 11, nearbyDemandKg: 700, buyerCount: 19, volatility: 'Moderate', supplyPressure: 'Moderate', confidence: 70, actionKgMin: 200, actionKgMax: 350, pickupAvailableTomorrow: true },
 }
+
+/** Price fields from the engine: mandi anchor, normal (min) and Market Maker (max) farmer prices. */
+function withLivePrices(meta: CropMeta): CropIntel {
+  const pricing = mandiBenchmarkService.pricingFor(meta.listingCrop) ?? mandiBenchmarkService.pricingFor(meta.crop)
+  if (!pricing) throw new Error(`No benchmark for ${meta.crop}`)
+  const { ladder, benchmark } = pricing
+  const series = indicativeSeries(ladder.mandiPerKg)
+  return {
+    ...meta,
+    mandi: ladder.mandiPerKg,
+    direct: ladder.marketMakerFarmerPerKg,
+    historical: series.historical,
+    forecast: series.forecast,
+    recommendedMin: ladder.kisanlinkNormalPerKg,
+    recommendedMax: ladder.marketMakerFarmerPerKg,
+    confidence: benchmark.source === 'agmarknet' && !benchmark.stale ? meta.confidence : Math.min(meta.confidence, 62),
+    benchmark,
+    ladder,
+    aiContext: farmerAiContext(ladder, benchmark),
+  }
+}
+
+const CROP_INTEL = new Proxy({} as Record<FarmerCrop, CropIntel>, { get: (_target, crop: FarmerCrop) => withLivePrices(CROP_META[crop]) })
 
 export const FARMER_CROPS: FarmerCrop[] = ['Tomatoes', 'Potatoes', 'Onion', 'Spinach', 'Wheat', 'Carrots']
 
@@ -53,12 +89,10 @@ export function getCropIntel(crop: FarmerCrop): CropIntel { return CROP_INTEL[cr
 export function listCropIntel(): CropIntel[] { return FARMER_CROPS.map((crop) => CROP_INTEL[crop]) }
 
 function cropFromListingName(listingCrop: string): FarmerCrop | null {
-  const match = FARMER_CROPS.find((crop) => CROP_INTEL[crop].listingCrop === listingCrop || listingCrop.toLowerCase().includes(CROP_INTEL[crop].crop.toLowerCase().slice(0, -1)))
+  const match = FARMER_CROPS.find((crop) => CROP_META[crop].listingCrop === listingCrop || listingCrop.toLowerCase().includes(CROP_META[crop].crop.toLowerCase().slice(0, -1)))
   return match ?? null
 }
 
-const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
-const round = (value: number) => Math.round(value)
 
 export type InsightFactorId = 'buyerDemand' | 'marketGap' | 'supplyGap' | 'pickupCapacity'
 export interface InsightFactor { id: InsightFactorId; labelKey: string; valueKey: string; values: Record<string, string | number> }
@@ -82,7 +116,7 @@ export function getFarmOpportunity(listings: FarmerListing[]): FarmerOpportunity
   const active = listings.filter((item) => item.status === 'active')
   const candidates = active.map((item) => ({ listing: item, crop: cropFromListingName(item.crop) })).filter((entry): entry is { listing: FarmerListing; crop: FarmerCrop } => entry.crop !== null)
   const best = candidates.length
-    ? candidates.reduce((top, entry) => (CROP_INTEL[entry.crop].demandIndex > CROP_INTEL[top.crop].demandIndex ? entry : top))
+    ? candidates.reduce((top, entry) => (CROP_META[entry.crop].demandIndex > CROP_META[top.crop].demandIndex ? entry : top))
     : { listing: null as FarmerListing | null, crop: 'Tomatoes' as FarmerCrop }
   const intel = CROP_INTEL[best.crop]
   const gainPerKg = intel.recommendedMin - intel.mandi
@@ -122,22 +156,16 @@ export interface PriceOption {
   saleChancePct: number
 }
 
-/** Feature 3 — Smart Price Advisor. Derives 3 anchor prices and a deterministic sale-chance estimate. */
+/**
+ * Feature 3 — Smart Price Advisor. The three anchors are the engine's normal, Market Maker and
+ * stretch prices for the crop's live benchmark; only the sale-chance estimate is heuristic.
+ */
 export function getPriceOptions(listing: Pick<FarmerListing, 'crop' | 'mandiPricePerKg' | 'grade'>): PriceOption[] {
   const crop = cropFromListingName(listing.crop)
-  const intel = crop ? CROP_INTEL[crop] : null
-  const mandi = listing.mandiPricePerKg || intel?.mandi || 24
-  const mid = intel ? round((intel.recommendedMin + intel.recommendedMax) / 2) : mandi + 8
-  const low = mandi + 5
-  const high = mid + (mid - low)
-  const demandIndex = intel?.demandIndex ?? 65
-  const gradeBonus = listing.grade === 'Grade A+' ? 4 : 0
-  const chanceFor = (price: number) => clamp(round(84 - (price - mid) * 6 + (demandIndex - 70) * 0.3 + gradeBonus), 30, 97)
-  return [
-    { id: 'fast', price: low, labelKey: 'fastSale', hintKey: 'lowerEarnings', saleChancePct: chanceFor(low) },
-    { id: 'balanced', price: mid, labelKey: 'bestBalance', hintKey: 'bestBalanceHint', saleChancePct: chanceFor(mid) },
-    { id: 'high', price: high, labelKey: 'higherEarnings', hintKey: 'lowerSaleProbability', saleChancePct: chanceFor(high) },
-  ]
+  const meta = crop ? CROP_META[crop] : null
+  const pricing = mandiBenchmarkService.pricingFor(listing.crop)
+  const ladder = pricing?.ladder ?? derivePriceLadder(listing.mandiPricePerKg > 0 ? listing.mandiPricePerKg : 24, listing.crop)
+  return farmerPriceOptions(ladder, listing.grade, meta?.demandIndex ?? 65)
 }
 
 /**
@@ -196,6 +224,7 @@ export async function fetchLiveCropIntel(crop: FarmerCrop): Promise<CropIntel> {
         actionKgMin: 300,
         actionKgMax: 500,
         pickupAvailableTomorrow: true,
+        ...(res.ladder ? { ladder: ladderFromBackend(res.ladder), aiContext: farmerAiContext(ladderFromBackend(res.ladder), res.benchmark ? { source: res.benchmark.source, arrivalDate: res.benchmark.arrival_date, market: res.benchmark.market } : null) } : {}),
       }
     }
   } catch (err) {
@@ -205,6 +234,15 @@ export async function fetchLiveCropIntel(crop: FarmerCrop): Promise<CropIntel> {
   }
   return getCropIntel(crop)
 }
+
+type BackendLadder = Record<string, number>
+const ladderFromBackend = (raw: BackendLadder): PriceLadder => ({
+  mandiPerKg: raw.mandi_per_kg, kisanlinkNormalPerKg: raw.kisanlink_normal_per_kg, marketMakerFarmerPerKg: raw.market_maker_farmer_per_kg,
+  marketMakerConsumerPerKg: raw.market_maker_consumer_per_kg, kisanlinkNormalConsumerPerKg: raw.kisanlink_normal_consumer_per_kg,
+  localReferencePerKg: raw.local_reference_per_kg, farmerPremiumPerKg: raw.farmer_premium_per_kg, farmerPremiumPct: raw.farmer_premium_pct,
+  normalOverMandiPerKg: raw.normal_over_mandi_per_kg, consumerSavingPerKg: raw.consumer_saving_per_kg, consumerSavingPct: raw.consumer_saving_pct,
+  pooledPlatformFeePerKg: raw.pooled_platform_fee_per_kg, pooledFreightAllowancePerKg: raw.pooled_freight_allowance_per_kg, unpooledLogisticsPerKg: raw.unpooled_logistics_per_kg,
+})
 
 export interface RankedOrder {
   order: FarmerOrder

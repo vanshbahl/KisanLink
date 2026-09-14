@@ -16,15 +16,21 @@ import { ToastProvider } from './contexts/ToastContext'
 import './index.css'
 import './pages/logistics/logistics.css'
 import './pages/bulk/bulk.css'
+import { mandiBenchmarkService } from './services/mandiBenchmarkService'
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <BrowserRouter>
-      <AuthProvider>
-        <LanguageProvider>
-          <ToastProvider><App /></ToastProvider>
-        </LanguageProvider>
-      </AuthProvider>
-    </BrowserRouter>
-  </StrictMode>,
-)
+// Live AGMARKNET benchmarks feed every price in the app, so they load before the first
+// screen; a slow or absent backend resolves within the timeout and the seeded fallback
+// (labelled as such) carries the demo until the background refresh lands.
+void mandiBenchmarkService.prime().finally(() => {
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <BrowserRouter>
+        <AuthProvider>
+          <LanguageProvider>
+            <ToastProvider><App /></ToastProvider>
+          </LanguageProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </StrictMode>,
+  )
+})

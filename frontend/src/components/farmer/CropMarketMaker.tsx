@@ -11,6 +11,8 @@ import { dealWhy } from '../../services/farmerInsight'
 import { isRescueActive, rescuePriceFor, startRescueSale } from '../../services/farmerRescue'
 import { prototypeService } from '../../services/prototypeService'
 import type { FarmerListing } from '../../types'
+import { MandiSourceNote } from '../MandiSourceNote'
+import { perKgText } from '../../services/pricingEngine'
 
 /**
  * Market Maker, for one crop.
@@ -126,10 +128,11 @@ function DealBody({ listing, deal, crop, onChanged, onAdopt }: {
         </div>
         <div>
           <span>{f('marketMandi')}</span>
-          <strong>₹{Math.round(deal.mandiPerKg)}<small>{f('perKg')}</small></strong>
+          <strong>₹{perKgText(deal.mandiPerKg)}<small>{f('perKg')}</small></strong>
+          <MandiSourceNote source={deal.mandiSource} compact />
         </div>
         {deal.gainPerKg > 0
-          ? <b className="f-mm-gain">{f('moreThanMandi', { amount: `₹${Math.round(deal.gainPerKg)}` })}</b>
+          ? <b className="f-mm-gain">{f('moreThanMandi', { amount: `₹${perKgText(deal.gainPerKg)}` })}</b>
           : <b className="f-mm-gain is-flat">{f('marketSameAsMandi')}</b>}
       </div>
 

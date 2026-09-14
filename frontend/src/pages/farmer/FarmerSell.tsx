@@ -11,6 +11,9 @@ import { fetchLivePriceOptions, type PriceOption } from '../../services/farmerAi
 import { cropIntelFor } from '../../services/farmerDeal'
 import { inspectionService, type LotContext } from '../../services/inspectionService'
 import { prototypeService } from '../../services/prototypeService'
+import { mandiBenchmarkService } from '../../services/mandiBenchmarkService'
+import { listingPricesFrom, sourceMeta } from '../../services/pricingEngine'
+import { MandiSourceNote } from '../../components/MandiSourceNote'
 import { localDay, daysUntil } from '../../utils/dates'
 import { takeVoiceDraft } from './voiceDraft'
 import type { FarmerListing, ListingStatus, PackagingType } from '../../types'
@@ -37,19 +40,25 @@ import type { FarmerListing, ListingStatus, PackagingType } from '../../types'
  *    number to call — is now on every step, and `?assisted=1` still tags the listing so the
  *    call-centre badge keeps appearing wherever it did before.
  */
-// `recommended` is deliberately the same number as `recommendedMin` on the matching row of
-// `CROP_INTEL` in `farmerAiService.ts` — the base, no-help ask a farmer would set on their
-// own. Market Maker (`farmerDeal.ts`) floors its own price at that same number, so this is
-// the one place the two tables must be kept in step; a Market Maker price is only ever at or
-// above what is offered here, never below it.
+// No price lives here. The default ask, the mandi anchor and the local-market reference for
+// every crop come from the centralized pricing engine over the live AGMARKNET benchmark
+// (`pricesFor`), so this wizard, the crop cards and the Market Maker always quote one ladder:
+// the suggested ask is the engine's normal price, and a Market Maker price is only ever above it.
 const CROPS = [
-  { en: 'Fresh Tomatoes', hi: 'टमाटर', image: '/assets/produce/tomato.webp', visual: 'tomato' as const, category: 'Vegetables' as const, mandi: 24, recommended: 31, retail: 38 },
-  { en: 'New Potatoes', hi: 'आलू', image: '/assets/produce/potato.webp', visual: 'potato' as const, category: 'Staples' as const, mandi: 21, recommended: 24, retail: 32 },
-  { en: 'Red Onion', hi: 'प्याज़', image: '/assets/produce/onion.webp', visual: 'onion' as const, category: 'Vegetables' as const, mandi: 18, recommended: 23, retail: 30 },
-  { en: 'Baby Spinach', hi: 'बेबी पालक', image: '/assets/produce/spinach.webp', visual: 'leafy' as const, category: 'Vegetables' as const, mandi: 35, recommended: 40, retail: 52 },
-  { en: 'Sharbati Wheat', hi: 'गेहूं', image: '/assets/produce/wheat.webp', visual: 'grain' as const, category: 'Grains' as const, mandi: 31, recommended: 36, retail: 44 },
-  { en: 'Sweet Carrots', hi: 'गाजर', image: '/assets/produce/carrot.webp', visual: 'root' as const, category: 'Vegetables' as const, mandi: 29, recommended: 35, retail: 45 },
+  { en: 'Fresh Tomatoes', hi: 'टमाटर', image: '/assets/produce/tomato.webp', visual: 'tomato' as const, category: 'Vegetables' as const },
+  { en: 'New Potatoes', hi: 'आलू', image: '/assets/produce/potato.webp', visual: 'potato' as const, category: 'Staples' as const },
+  { en: 'Red Onion', hi: 'प्याज़', image: '/assets/produce/onion.webp', visual: 'onion' as const, category: 'Vegetables' as const },
+  { en: 'Baby Spinach', hi: 'बेबी पालक', image: '/assets/produce/spinach.webp', visual: 'leafy' as const, category: 'Vegetables' as const },
+  { en: 'Sharbati Wheat', hi: 'गेहूं', image: '/assets/produce/wheat.webp', visual: 'grain' as const, category: 'Grains' as const },
+  { en: 'Sweet Carrots', hi: 'गाजर', image: '/assets/produce/carrot.webp', visual: 'root' as const, category: 'Vegetables' as const },
 ]
+
+/** Engine prices for a crop name; a crop KisanLink cannot benchmark keeps whatever the form holds. */
+function pricesFor(cropName: string) {
+  const pricing = mandiBenchmarkService.pricingFor(cropName)
+  if (!pricing) return null
+  return { ...listingPricesFrom(pricing.ladder), mandiSource: sourceMeta(pricing.benchmark) }
+}
 
 const QUANTITY_CHIPS = [50, 100, 250, 500, 1000]
 const PACKAGING: { value: PackagingType; key: 'crates' | 'sacks' | 'baskets' | 'loose' }[] = [
@@ -72,7 +81,7 @@ function blankListing(crop?: string): FarmerListing {
     imageSrc: match.image, visual: match.visual,
     quantityKg: 100, remainingKg: 100, allocatedKg: 0, unit: 'kg', grade: 'Grade A',
     harvestDate: localDay(0), availableFrom: localDay(0), farmingMethod: '', notes: '',
-    pricePerKg: match.recommended, mandiPricePerKg: match.mandi, retailPricePerKg: match.retail,
+    ...(pricesFor(match.en) ?? { pricePerKg: 1, mandiPricePerKg: 0, retailPricePerKg: 0 }),
     farmerId: 'farmer_001', farm: 'Green Field Farm',
     pickupDate: localDay(1), pickupWindow: 'Morning · 7–10 AM', fulfillment: 'pickup',
     status: 'draft', assisted: false, views: 0, inquiries: 0, createdAt: localDay(0),
@@ -115,9 +124,11 @@ export function FarmerSell() {
       category: match?.category ?? current.category,
       quantityKg: fields.quantityKg, remainingKg: fields.quantityKg,
       unit: fields.unit ?? current.unit,
-      pricePerKg: fields.pricePerKg || match?.recommended || current.pricePerKg,
-      mandiPricePerKg: match?.mandi ?? current.mandiPricePerKg,
-      retailPricePerKg: match?.retail ?? current.retailPricePerKg,
+      pricePerKg: fields.pricePerKg || pricesFor(match?.en ?? fields.crop)?.pricePerKg || current.pricePerKg,
+      priceLocked: Boolean(fields.pricePerKg),
+      mandiPricePerKg: pricesFor(match?.en ?? fields.crop)?.mandiPricePerKg ?? current.mandiPricePerKg,
+      retailPricePerKg: pricesFor(match?.en ?? fields.crop)?.retailPricePerKg ?? current.retailPricePerKg,
+      mandiSource: pricesFor(match?.en ?? fields.crop)?.mandiSource ?? current.mandiSource,
       harvestDate: fields.harvestDate || current.harvestDate,
       availableFrom: fields.availableFrom ?? fields.harvestDate ?? current.availableFrom,
       pickupDate: fields.pickupDate ?? current.pickupDate,
@@ -176,8 +187,9 @@ export function FarmerSell() {
     setForm((current) => ({
       ...current,
       crop: crop.en, cropHi: crop.hi, imageSrc: crop.image, visual: crop.visual,
-      category: crop.category, mandiPricePerKg: crop.mandi, retailPricePerKg: crop.retail,
-      pricePerKg: crop.recommended,
+      category: crop.category,
+      ...(pricesFor(crop.en) ?? {}),
+      priceLocked: false,
     }))
   }
 
@@ -269,7 +281,7 @@ export function FarmerSell() {
           {customCrop && (
             <label className="f-field">
               <span>{f('otherCropName')}</span>
-              <input autoFocus value={form.crop} onChange={(event) => { update('crop', event.target.value); update('cropHi', event.target.value) }} />
+              <input autoFocus value={form.crop} onChange={(event) => { const name = event.target.value; const prices = pricesFor(name); setForm((current) => ({ ...current, crop: name, cropHi: name, ...(prices ?? {}), priceLocked: prices ? false : current.priceLocked })) }} />
             </label>
           )}
         </section>
@@ -427,7 +439,7 @@ export function FarmerSell() {
             key={`${form.crop}-${form.harvestDate}`}
             listing={form}
             autoStart
-            onAdopt={(pricePerKg) => { update('pricePerKg', pricePerKg); showToast(f('marketApplied', { price: `₹${pricePerKg}` })) }}
+            onAdopt={(pricePerKg) => { setForm((current) => ({ ...current, pricePerKg, priceLocked: true })); showToast(f('marketApplied', { price: `₹${pricePerKg}` })) }}
           />
 
           {priceLoading ? (
@@ -439,7 +451,7 @@ export function FarmerSell() {
                   key={option.id}
                   type="button"
                   className={form.pricePerKg === option.price ? 'is-active' : ''}
-                  onClick={() => update('pricePerKg', option.price)}
+                  onClick={() => setForm((current) => ({ ...current, pricePerKg: option.price, priceLocked: true }))}
                 >
                   <strong>₹{option.price}</strong>
                   <small>{option.id === 'fast' ? f('priceFast') : option.id === 'balanced' ? f('priceSuggested') : f('priceHigher')}</small>
@@ -452,7 +464,7 @@ export function FarmerSell() {
             <span>{f('priceOwn')}</span>
             <div className="f-price-input">
               <b>₹</b>
-              <input type="number" inputMode="numeric" min="1" value={form.pricePerKg} onChange={(event) => update('pricePerKg', Number(event.target.value))} />
+              <input type="number" inputMode="numeric" min="1" value={form.pricePerKg} onChange={(event) => setForm((current) => ({ ...current, pricePerKg: Number(event.target.value), priceLocked: true }))} />
               <small>{f('perKg')}</small>
             </div>
           </label>
@@ -460,6 +472,7 @@ export function FarmerSell() {
           {intel && (
             <p className="f-note f-price-note">
               {f('mandiTodayHint', { crop: cropLabel })}: ₹{intel.mandi}{f('perKg')}. {f('dealDisclaimer')}
+              <MandiSourceNote source={form.mandiSource ?? intel.benchmark} />
             </p>
           )}
 

@@ -8,6 +8,7 @@ from app.models.crop import CropListing, CropType, ListingStatusEnum
 from app.models.logistics import Shipment, RouteWaypoint
 from app.models.intelligence import PriceObservation, ImpactMetric
 from app.schemas.intelligence import ImpactSummaryOut
+from app.services.pricing_engine import LOCAL_REFERENCE_MULTIPLE
 
 
 class ImpactService:
@@ -15,7 +16,7 @@ class ImpactService:
     KisanLink Phase 7 Part 3: Live SIH Impact Analytics Service.
     Aggregates ecosystem metrics directly from PostgreSQL records:
     - Farmer Net Gain %: Actual platform farmer payout per kg vs APMC mandi modal price.
-    - Buyer Savings %: Buyer price per kg paid vs reference retail benchmark (APMC + 35%).
+    - Buyer Savings %: Buyer price per kg paid vs the local-market reference (mandi x LOCAL_REFERENCE_MULTIPLE).
     - Distance Saved (km): Route optimization savings across consolidated shipments vs unclustered trips.
     - Wastage Prevented (kg): Total quantity of produce saved via urgent rescue listings & orders.
     """
@@ -69,7 +70,7 @@ class ImpactService:
             avg_mandi = res_mandi.scalar()
 
             if avg_mandi and float(avg_mandi) > 0:
-                retail_benchmark = float(avg_mandi) * 1.35
+                retail_benchmark = float(avg_mandi) * LOCAL_REFERENCE_MULTIPLE
                 raw_savings = ((retail_benchmark - avg_buyer_paid_per_kg) / retail_benchmark) * 100.0
                 buyer_savings = round(max(0.0, min(50.0, raw_savings)), 1)
 

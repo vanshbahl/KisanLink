@@ -1,6 +1,8 @@
 from datetime import date, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
+from app.services.pricing_engine import derive_price_ladder, farmer_price_options, indicative_series
+
 
 class PricingService:
 
@@ -10,7 +12,7 @@ class PricingService:
         Computes 7-day smoothed historical series and 3-day moving-average + linear trend forecast.
         """
         if not historical_prices:
-            historical_prices = [27.0, 28.0, 28.0, 30.0, 29.0, 31.0, 32.0]
+            historical_prices = indicative_series(24.0)["historical"]
 
         # Ensure 7 historical entries
         if len(historical_prices) < 7:
@@ -38,43 +40,12 @@ class PricingService:
         grade: str = "Grade A"
     ) -> List[Dict[str, Any]]:
         """
-        Generates 3 dynamic price anchors (fast, balanced, high) with estimated sale probability %.
+        Three price anchors (fast / balanced / high) with a sale-probability estimate.
+        Delegates to the centralized pricing engine so the advisor, the Market Maker and the
+        consumer surfaces never disagree about what a kilo is worth.
         """
-        mandi = max(1.0, round(float(mandi_benchmark), 1))
-        mid = round(mandi * 1.25, 1)  # ~25% direct sale premium over Mandi
-        low = round(mandi * 1.15, 1)  # ~15% premium (fast sale)
-        high = round(mandi * 1.35, 1) # ~35% premium (higher earnings)
-
-        grade_bonus = 4 if grade == "Grade A+" else 0
-
-        def calc_chance(price: float) -> int:
-            diff = price - mid
-            chance = 84 - int(diff * 6) + grade_bonus
-            return max(30, min(97, chance))
-
-        return [
-            {
-                "id": "fast",
-                "price": low,
-                "label_key": "fastSale",
-                "hint_key": "lowerEarnings",
-                "sale_chance_pct": calc_chance(low),
-            },
-            {
-                "id": "balanced",
-                "price": mid,
-                "label_key": "bestBalance",
-                "hint_key": "bestBalanceHint",
-                "sale_chance_pct": calc_chance(mid),
-            },
-            {
-                "id": "high",
-                "price": high,
-                "label_key": "higherEarnings",
-                "hint_key": "lowerSaleProbability",
-                "sale_chance_pct": calc_chance(high),
-            },
-        ]
+        ladder = derive_price_ladder(max(1.0, float(mandi_benchmark)), crop_name)
+        return farmer_price_options(ladder, grade)
 
 
 pricing_service = PricingService()

@@ -13,6 +13,8 @@ import type {
   Dispute,
   OperatorAuditLog,
 } from '../types'
+import { mandiBenchmarkService } from './mandiBenchmarkService'
+import { commodityKey, derivePriceLadder, sourceMeta, type PriceLadder, type PriceSourceMeta } from './pricingEngine'
 
 const API_BASE = '/api/v1'
 
@@ -22,6 +24,26 @@ const HINDI_CROP_NAMES: Record<string, string> = {
   cauliflower: 'फूलगोभी', capsicum: 'शिमला मिर्च', 'green capsicum': 'हरी शिमला मिर्च', carrot: 'गाजर', carrots: 'गाजर', 'sweet carrots': 'मीठी गाजर',
   cucumber: 'खीरा', cucumbers: 'खीरा', wheat: 'गेहूं', 'sharbati wheat': 'शरबती गेहूं', rice: 'चावल', 'basmati rice': 'बासमती चावल',
   apple: 'सेब', apples: 'सेब', mustard: 'सरसों', 'yellow mustard': 'पीली सरसों',
+}
+
+/**
+ * The backend serializes `mandi_price_per_kg` from its own AGMARKNET lookup; when a row
+ * predates that (or the commodity is unknown upstream) the local benchmark service answers,
+ * so both paths end on the same government anchor and the same derived ladder.
+ */
+function pricingForBackendRow(item: { crop_name?: string | null; mandi_price_per_kg?: number | string | null; expected_price_per_kg?: number | string }): { ladder: PriceLadder; source?: PriceSourceMeta } {
+  const name = String(item.crop_name ?? '')
+  const key = commodityKey(name)
+  const local = mandiBenchmarkService.pricingFor(name)
+  const live = Number(item.mandi_price_per_kg)
+  if (Number.isFinite(live) && live > 0) {
+    // Same benchmark the local service holds -> reuse its provenance; otherwise the server's figure stands alone.
+    const source = local && local.ladder.mandiPerKg === live ? sourceMeta(local.benchmark) : undefined
+    return { ladder: derivePriceLadder(live, key ?? name), source }
+  }
+  if (local) return { ladder: local.ladder, source: sourceMeta(local.benchmark) }
+  const ask = Number(item.expected_price_per_kg)
+  return { ladder: derivePriceLadder(Math.max(1, Number.isFinite(ask) && ask > 0 ? ask / 1.1 : 24), key ?? '') }
 }
 
 function cropNameHi(name: string, supplied?: unknown): string {
@@ -577,6 +599,7 @@ class ApiClient {
     const cropName = item.crop_name || 'Produce'
     const visual = this.resolveVisual(cropName)
     const imageSrc = `/assets/produce/${visual === 'leafy' ? 'spinach' : visual}.webp`
+    const pricing = pricingForBackendRow(item)
 
     return {
       id: item.id,
@@ -591,15 +614,16 @@ class ApiClient {
       unit: 'kg',
       farmerId: item.farmer_id || 'farmer_001',
       grade: item.quality_grade === 'GRADE_A' ? 'Grade A' : 'Grade A+',
-      // No retail column exists upstream. A local shop's markup over the mandi rate is the
-      // stable part of this chain, so the consumer comparison is derived rather than absent.
-      retailPricePerKg: Math.round(Number(item.mandi_price_per_kg ?? item.unit_price_rupees ?? 0) * 1.55) || Math.round(Number(item.unit_price_rupees ?? 0) * 1.2),
+      // No retail column exists upstream: the local-market reference is the pricing engine's
+      // value over the same mandi benchmark every other surface uses.
+      retailPricePerKg: pricing.ladder.localReferencePerKg,
       harvestDate: item.harvest_date ? String(item.harvest_date) : new Date().toISOString().slice(0, 10),
       availableFrom: 'Today',
       farmingMethod: item.variety || 'Hydroponic / Open Field',
       notes: item.variety || '',
       pricePerKg: Number(item.expected_price_per_kg),
-      mandiPricePerKg: item.mandi_price_per_kg ? Number(item.mandi_price_per_kg) : Math.round(Number(item.expected_price_per_kg) * 0.8),
+      mandiPricePerKg: pricing.ladder.mandiPerKg,
+      mandiSource: pricing.source,
       farm: item.farmer_name ? `${item.farmer_name}'s Farm` : 'Green Field Farm',
       pickupDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
       pickupWindow: 'Morning · 7–10 AM',

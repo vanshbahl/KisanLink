@@ -8,6 +8,7 @@ import type { FarmerListing } from '../../types'
 import { localDay } from '../../utils/dates'
 import { consumerPrice } from '../ConsumerPrice'
 import { ProductImage } from '../ProductImage'
+import { rescuePriceFor } from '../../services/farmerRescue'
 
 const FARM_ORIGINS: Record<string, { label: string; km: number }> = {
   'Green Field Farm': { label: 'Murthal, Sonipat', km: 42 },
@@ -28,7 +29,7 @@ export function ConsumerListingCard({ listing }: { listing: FarmerListing }) {
   useEffect(() => { void phase2Service.saved().then((data) => setSaved(data.listingIds.includes(listing.id))) }, [listing.id])
 
   const rescue = Boolean(listing.isUrgentRescue || listing.rescueStatus === 'RESCUE_ACTIVE')
-  const rescuePrice = listing.rescueDiscountPricePerKg ?? Math.round(listing.pricePerKg * 0.8)
+  const rescuePrice = listing.rescueDiscountPricePerKg ?? rescuePriceFor(listing)
   const price = consumerPrice({ pricePerKg: listing.pricePerKg, retailPricePerKg: listing.retailPricePerKg, rescuePricePerKg: rescue ? rescuePrice : undefined })
   const origin = farmOrigin(listing.farm)
   const freshToday = listing.harvestDate === localDay()

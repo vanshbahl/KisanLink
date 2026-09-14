@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { StatusBadge } from '../../components/StatusBadge'
 import { farmers } from '../../data/farmers'
 import { buildProcurementPlan } from '../../services/procurementEngine'
+import type { MarketView } from '../../services/marketMakerService'
 import { localDay } from '../../utils/dates'
 import type { BulkOrder, BulkOrderStatus, BulkRfq, Delivery, FarmerListing, RfqStatus, Vehicle } from '../../types'
 
@@ -79,6 +80,17 @@ export function poolEstimate(pool: { product: string; totalQuantityKg: number; m
     savingPct: Math.max(0, plan.savingPct),
     plan,
   }
+}
+
+/**
+ * What buyers pay today for what is actually committed on a board. A multi-crop pool mixes
+ * crops with different local references, so the headline crop's figure would misstate the
+ * saving; the engine's kg-weighted current total is the honest comparison.
+ */
+export function buyerCurrentPerKg(view: MarketView): number {
+  const { board, math } = view
+  if (math.multiCropMath && math.committedKg > 0) return Math.round((math.buyerCurrentTotal / math.committedKg) * 100) / 100
+  return board.buyerCurrentPerKg
 }
 
 /* ==========================================================================================

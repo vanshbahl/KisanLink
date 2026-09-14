@@ -31,6 +31,9 @@ export interface Farmer {
   yearsFarming: number
 }
 
+export type { PriceSourceMeta } from '../services/pricingEngine'
+import type { PriceSourceMeta } from '../services/pricingEngine'
+
 export interface ProduceListing {
   id: string
   product: string
@@ -101,14 +104,24 @@ export interface FarmerListing {
   /** Real backend CropListing UUID, when this listing round-tripped through the API — see
    * services/inspectionService.ts. Falls back to client-side simulation when absent. */
   cropListingId?: string
-  /** Wholesale reference. Farmer- and buyer-facing only — never shown to consumers. */
+  /**
+   * Live AGMARKNET mandi benchmark (₹/kg, modal price) for this crop. Farmer- and buyer-facing
+   * only — never shown to consumers. Re-derived from `mandiBenchmarkService` on every read.
+   */
   mandiPricePerKg: number
   /**
-   * What a household pays for the same produce at a local shop today. This is the only
-   * comparison a consumer sees: comparing a retail purchase against a mandi wholesale rate
-   * would be misleading, and made KisanLink look expensive.
+   * Local-market / retail reference: what a household pays for the same produce at a local
+   * shop today. This is the only comparison a consumer sees. Derived by the pricing engine
+   * from the mandi benchmark, never presented as government data.
    */
   retailPricePerKg: number
+  /** Provenance of `mandiPricePerKg` (source, market, date, min/max, stale). */
+  mandiSource?: PriceSourceMeta
+  /**
+   * Set when the farmer typed their own ask. Unlocked listings (seeds, suggested defaults)
+   * take `pricePerKg` from the pricing engine so every screen agrees.
+   */
+  priceLocked?: boolean
   farmerId: string
   farm: string
   pickupDate: string
@@ -451,10 +464,13 @@ export interface MarketCropSegment {
   grade: FarmerListing['grade']
   imageSrc: string
   visual?: ProduceListing['visual']
+  /** Commodity the pricing engine benchmarks this segment against (e.g. 'Spinach' for "Leafy Vegetables"). */
+  benchmarkCrop?: string
   farmerFloorPerKg: number
   mandiPricePerKg: number
   buyerCeilingPerKg: number
   buyerCurrentPerKg: number
+  mandiSource?: PriceSourceMeta
   platformFeePct: number
   storageType?: 'ambient' | 'cold_chain' | 'dry' | 'delicate'
   lots: MarketSupplyLot[]
@@ -479,14 +495,17 @@ export interface MarketMakerBoard {
   deliveryWindow: string
   imageSrc: string
   visual: ProduceListing['visual']
-  /** Minimum the farmer will accept per kg. Never pushed down by the market maker. */
+  /** Commodity the pricing engine benchmarks the headline prices against. */
+  benchmarkCrop?: string
+  /** Market Maker farmer price: the protected floor, above a normal KisanLink listing. Never pushed down. */
   farmerFloorPerKg: number
-  /** What the same produce fetches at the local mandi today. */
+  /** Live AGMARKNET mandi benchmark (₹/kg) for the crop. */
   mandiPricePerKg: number
-  /** Delivered price at or below which buyers switch away from their current supplier. */
+  /** Market Maker consumer/buyer price cap: delivered price at or below which buyers switch. */
   buyerCeilingPerKg: number
-  /** What buyers pay today through mandi -> wholesaler -> retailer. */
+  /** Local-market reference: what buyers pay today through mandi -> wholesaler -> retailer. */
   buyerCurrentPerKg: number
+  mandiSource?: PriceSourceMeta
   /** Platform fee as a share of the farm-gate price, billed to the buyer. */
   platformFeePct: number
   routeDistanceKm: number

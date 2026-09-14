@@ -6,6 +6,7 @@ import type { MarketMakerBoard, Role } from '../../types'
 import type { MarketMath } from '../../services/marketMakerEngine'
 import { marketMakerService } from '../../services/marketMakerService'
 import { MarketThresholdMeter } from './MarketThresholdMeter'
+import { MandiSourceNote } from '../MandiSourceNote'
 
 type Localize = (en: string, hi: string) => string
 
@@ -85,7 +86,7 @@ export function MarketPulseCard({ role }: { role: Role }) {
         <p>{copy.body}</p>
         {!blocked && <MarketThresholdMeter board={board} math={math} tone="dark" showLabels={false} />}
         <div className="mm-pulse-economics" aria-label={l('Market Maker price comparison', 'मार्केट मेकर कीमत तुलना')}>
-          <div><span>{l('Current mandi earning', 'अभी मंडी कमाई')}</span><strong>₹{board.mandiPricePerKg}<small>{l('/kg', '/किलो')}</small></strong></div>
+          <div><span>{l('Current mandi earning', 'अभी मंडी कमाई')}</span><strong>₹{board.mandiPricePerKg}<small>{l('/kg', '/किलो')}</small></strong><MandiSourceNote source={board.mandiSource} compact /></div>
           <div><span>{l('With Market Maker', 'मार्केट मेकर के साथ')}</span><strong>₹{math.farmerGatePerKg}<small>{l('/kg to farmer', '/किलो किसान को')}</small></strong></div>
           {role !== 'farmer' && <div><span>{l('Buyer pays', 'खरीदार देता है')}</span><strong>₹{(math.viable ? math.deliveredPerKg : math.deliveredAtThresholdPerKg).toFixed(2)}<small>{l('/kg', '/किलो')}</small></strong></div>}
           {role === 'farmer' && <div><span>{l('Your produce matched', 'आपकी मिली फसल')}</span><strong>{own?.allocatedKg ?? 0}<small> kg</small></strong></div>}

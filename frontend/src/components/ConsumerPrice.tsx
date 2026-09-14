@@ -7,6 +7,7 @@
  * KisanLink look expensive while actually being cheaper than the alternative the shopper
  * has. Mandi pricing stays where it belongs, on farmer and buyer screens.
  */
+import { localReferenceFromNormal } from '../services/pricingEngine'
 
 export interface ConsumerPriceInput {
   pricePerKg: number
@@ -24,10 +25,10 @@ export interface ConsumerPriceFigures {
   cheaper: boolean
 }
 
-/** Falls back to a conservative retail markup when a listing predates the retail field. */
+/** Falls back to the pricing engine's local-market reference when a listing predates the retail field. */
 export function consumerPrice({ pricePerKg, retailPricePerKg, rescuePricePerKg }: ConsumerPriceInput): ConsumerPriceFigures {
   const price = rescuePricePerKg ?? pricePerKg
-  const retail = retailPricePerKg > 0 ? retailPricePerKg : Math.round(pricePerKg * 1.2)
+  const retail = retailPricePerKg > 0 ? retailPricePerKg : localReferenceFromNormal(pricePerKg)
   const savingPerKg = Math.max(0, retail - price)
   return {
     price,

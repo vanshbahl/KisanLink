@@ -16,6 +16,7 @@ import { inspectionService } from '../../services/inspectionService'
 import { prototypeService } from '../../services/prototypeService'
 import { daysUntil } from '../../utils/dates'
 import type { CustodyStage, FarmerListing } from '../../types'
+import { MandiSourceNote } from '../../components/MandiSourceNote'
 
 /**
  * One crop.
@@ -84,6 +85,7 @@ export function FarmerCropDetail() {
             <div><dt>{f('promised')}</dt><dd>{item.allocatedKg} {f('kg')}</dd></div>
             <div><dt>{f('mandiRate')}</dt><dd>₹{item.mandiPricePerKg}{f('perKg')}</dd></div>
           </dl>
+          <MandiSourceNote source={item.mandiSource} />
           {item.status !== 'sold' && (
             <div className="f-crop-hero-fresh">
               <FreshnessRing listing={item} size="hero" />

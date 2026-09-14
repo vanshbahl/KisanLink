@@ -13,7 +13,7 @@ import { phase2Service } from '../../services/phase2Service'
 import { prototypeService } from '../../services/prototypeService'
 import type { LotTrail } from '../../types'
 import { buildAttention, dispatchAdvice, type AttentionKind } from './attention'
-import { AiNote, Badge, ErrorState, FillBar, SectionHead, isActiveOrder, kg, money, orderEta, orderLabel, orderTone, perKg, poolEstimate } from './shared'
+import { AiNote, Badge, ErrorState, FillBar, SectionHead, isActiveOrder, kg, money, orderEta, orderLabel, orderTone, perKg, poolEstimate, buyerCurrentPerKg } from './shared'
 
 const ATTENTION_ICON: Record<AttentionKind, typeof Sprout> = {
   receipt: ClipboardCheck, arriving: Truck, match_ready: Radar, accept_match: PackageCheck, price: Sprout, short: Boxes,
@@ -187,7 +187,7 @@ export function MarketOpportunityCard({ market, advice, compact = false }: { mar
   const structural = math.blockers.find((item) => item.kind !== 'demand')
   const threshold = Number.isFinite(math.thresholdKg) ? math.thresholdKg : math.committedKg
   const landed = math.viable || created ? math.deliveredPerKg : math.deliveredAtThresholdPerKg
-  const savingPerKg = Math.max(0, board.buyerCurrentPerKg - landed)
+  const savingPerKg = Math.max(0, buyerCurrentPerKg(market) - landed)
   const farms = math.allocations.filter((entry) => entry.allocatedKg > 0).length || board.lots.length
   return (
     <article className={`b-mm-card${created ? ' is-created' : math.viable ? ' is-viable' : structural ? ' is-blocked' : ''}`}>

@@ -25,6 +25,7 @@ import { marketMakerService } from '../services/marketMakerService'
 import { phase2Service } from '../services/phase2Service'
 import { prototypeService } from '../services/prototypeService'
 import type { Role, Vehicle } from '../types'
+import { MandiSourceNote } from '../components/MandiSourceNote'
 
 const money = (value: number) => `₹${Math.round(value).toLocaleString('en-IN')}`
 
@@ -201,7 +202,7 @@ export function MarketMakerPage() {
 
           <div className="mm-hero-stats">
             <article><span>{l('Delivered price', 'डिलीवरी कीमत')}</span><strong>{math.committedKg ? `₹${math.deliveredPerKg.toFixed(2)}` : '—'}</strong><small>{l(`limit ₹${board.buyerCeilingPerKg.toFixed(2)} · today ₹${board.buyerCurrentPerKg.toFixed(2)}`, `सीमा ₹${board.buyerCeilingPerKg.toFixed(2)} · आज ₹${board.buyerCurrentPerKg.toFixed(2)}`)}</small></article>
-            <article><span>{l('Farmer price protected', 'किसान की सुरक्षित कीमत')}</span><strong>₹{math.farmerGatePerKg.toFixed(2)}</strong><small>{l(`mandi pays ₹${board.mandiPricePerKg.toFixed(2)}`, `मंडी में ₹${board.mandiPricePerKg.toFixed(2)} मिलते हैं`)}</small></article>
+            <article><span>{l('Farmer price protected', 'किसान की सुरक्षित कीमत')}</span><strong>₹{math.farmerGatePerKg.toFixed(2)}</strong><small>{l(`mandi pays ₹${board.mandiPricePerKg.toFixed(2)}`, `मंडी में ₹${board.mandiPricePerKg.toFixed(2)} मिलते हैं`)}</small><MandiSourceNote source={board.mandiSource} compact /></article>
             <article><span>{l('Freight per kg', 'प्रति किलो ढुलाई')}</span><strong>{math.committedKg ? `₹${math.freightPerKg.toFixed(2)}` : '—'}</strong><small>₹{math.freightTotal.toLocaleString('en-IN')} ÷ {math.committedKg} kg</small></article>
             <article><span>{l('Vehicle load', 'वाहन में भार')}</span><strong>{math.utilisationPct}%</strong><small>{math.vehicle ? `${math.vehicle.registration} · ${math.capacityKg} kg` : l('none held', 'कोई वाहन नहीं')}</small></article>
           </div>

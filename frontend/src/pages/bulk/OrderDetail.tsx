@@ -113,7 +113,7 @@ function OrderDetail({ order, delivery, route, vehicle, pickups, stops }: { orde
 
       <Disclosure title="Commercial" summary={`${money(order.total)} landed · ${perKg(landedPerKg)}${saving > 0 ? ` · ${money(saving)} saved` : ''}`}>
         <CostStack produce={order.produceValue} logistics={order.logisticsFee} platform={order.platformFee} landedTotal={order.total} landedPerKg={landedPerKg} benchmarkPerKg={benchmarkPerKg} quantityKg={order.suppliedQuantityKg} />
-        <p className="b-note">Wholesale benchmark uses the mandi rate quoted by the same farms, plus the commission and wholesale margin between the mandi and your dock.</p>
+        <p className="b-note">Local-market benchmark is the retail reference the pricing engine derives from the live AGMARKNET mandi rate for these crops — the chain cost between the mandi and your dock, never the mandi rate itself.</p>
         <p className="b-safe"><ShieldCheck size={14} /> {order.invoiceStatus} · no real payment</p>
         <small className="b-meta">{order.id} · from {order.rfqId}</small>
       </Disclosure>

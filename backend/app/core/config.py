@@ -20,6 +20,16 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-3.5-flash-lite"
 
+    # AGMARKNET daily mandi prices via data.gov.in (server-side only; never sent to Vite).
+    DATA_GOV_API_KEY: str = ""
+    DATA_GOV_BASE_URL: str = "https://api.data.gov.in/resource"
+    # "Current Daily Price of Various Commodities from Various Markets (Mandi)"
+    DATA_GOV_MANDI_RESOURCE_ID: str = "9ef84268-d588-465a-a308-a864a43d0070"
+    AGMARKNET_TIMEOUT_SECONDS: float = 6.0
+    AGMARKNET_CACHE_TTL_SECONDS: int = 1800
+    AGMARKNET_DEFAULT_STATE: str = "Haryana"
+    AGMARKNET_DEFAULT_DISTRICT: str = "Sonipat"
+
     LOCAL_CV_MODEL_PATH: str = str(
         Path(__file__).resolve().parents[2] / "models" / "best_freshness_model.pth"
     )
