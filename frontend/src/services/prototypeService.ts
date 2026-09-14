@@ -1,4 +1,5 @@
 import type { BulkOrder, BulkProfileData, BulkRfq, ConsumerOrder, ConsumerProfileData, Delivery, DemoScenario, EarningsTransaction, FarmerListing, FarmerOrder, FarmerProfileData, ListingStatus, LogisticsPickup, LogisticsProfileData, LogisticsRoute, LotInspectionState, MarketMakerBoard, OrderStatus, Pickup, PrototypeNotification, Role, Vehicle } from '../types'
+import { canonicalFarmerProfile, FARMER_FALLBACK_NAME } from './farmerProfileValidation'
 import { apiClient } from './apiClient'
 import { localDay } from '../utils/dates'
 import { createRegionalMarketMakerBoards } from '../data/regionalMarketMaker'
@@ -62,7 +63,7 @@ const SEED_VERSION = 6
 const seedState: PrototypeState = {
   seedVersion: SEED_VERSION,
   listings: [
-    // --- Green Field Farm · Ramesh Kumar · the demo farmer's own produce ---
+    // --- Green Field Farm · Vansh · the demo farmer's own produce ---
     { id: 'listing_001', crop: 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', category: 'Vegetables', imageSrc: '/assets/produce/tomato.webp', visual: 'tomato', quantityKg: 900, remainingKg: 600, allocatedKg: 300, unit: 'kg', grade: 'Grade A+', harvestDate: iso(-1), availableFrom: iso(0), farmingMethod: 'Natural farming', notes: 'Firm, hand-sorted tomatoes.', ...seedListingPrices('Fresh Tomatoes'), farmerId: 'farmer_001', farm: 'Green Field Farm', pickupDate: iso(1), pickupWindow: 'Morning · 7–10 AM', fulfillment: 'pickup', status: 'active', assisted: false, views: 126, inquiries: 9, createdAt: iso(-5), lotCode: 'KL-TOM-1048', packagingType: 'CRATE', unitWeightKg: 25, overviewPhotos: ['/assets/produce/tomato.webp'] },
     { id: 'listing_011', crop: 'Baby Spinach', cropHi: 'बेबी पालक', category: 'Vegetables', imageSrc: '/assets/produce/spinach.webp', visual: 'leafy', quantityKg: 140, remainingKg: 126, allocatedKg: 14, unit: 'kg', grade: 'Grade A+', harvestDate: iso(0), availableFrom: iso(0), farmingMethod: 'Organic', notes: 'Washed and bundled.', ...seedListingPrices('Baby Spinach'), farmerId: 'farmer_001', farm: 'Green Field Farm', pickupDate: iso(2), pickupWindow: 'Morning · 7–10 AM', fulfillment: 'pickup', status: 'active', assisted: true, views: 83, inquiries: 5, createdAt: iso(-2) },
     { id: 'listing_draft_1', crop: 'Sharbati Wheat', cropHi: 'शरबती गेहूं', category: 'Grains', imageSrc: '/assets/produce/wheat.webp', visual: 'grain', quantityKg: 900, remainingKg: 900, allocatedKg: 0, unit: 'kg', grade: 'Grade A', harvestDate: iso(-8), availableFrom: iso(3), farmingMethod: 'Conventional', notes: '', ...seedListingPrices('Sharbati Wheat'), farmerId: 'farmer_001', farm: 'Green Field Farm', pickupDate: iso(4), pickupWindow: 'Afternoon · 1–4 PM', fulfillment: 'pickup', status: 'draft', assisted: false, views: 0, inquiries: 0, createdAt: iso(-1) },
@@ -106,7 +107,7 @@ const seedState: PrototypeState = {
     { id: 'note_5', role: 'bulk', title: 'Red Onion requirement is 60% matched', titleHi: 'प्याज़ की मांग 60% पूरी', body: 'RFQ-2418 needs 360 kg more before it can convert.', bodyHi: 'RFQ-2418 को 360 किलो और चाहिए।', timestamp: new Date(Date.now() - 9000000).toISOString(), read: false, href: '/bulk/requests/RFQ-2418' },
     { id: 'note_6', role: 'logistics', title: 'Pooled run in progress', titleHi: 'साझा रूट चल रहा है', body: 'RTE-POOL-01 · stop 2 of 3 · 800 kg at Yadav Fresh Fields.', bodyHi: 'RTE-POOL-01 · 3 में से स्टॉप 2।', timestamp: new Date().toISOString(), read: false, href: '/logistics/pickups/PK-POOL-C' },
   ],
-  profile: { name: 'Ramesh Kumar', phone: '9876543210', language: 'en', farmName: 'Green Field Farm', village: 'Murthal', district: 'Sonipat', state: 'Haryana', farmSizeAcres: 7.5, mainCrops: 'Tomato, spinach, wheat', pickupLocation: 'Gate 1, Green Field Farm, Murthal', payoutMethod: 'UPI', payoutMasked: 'ramesh•••@upi', farmerVerified: true, farmVerified: true, identityStatus: 'Verified' },
+  profile: { name: FARMER_FALLBACK_NAME, phone: '9876543210', language: 'en', farmName: 'Green Field Farm', village: 'Murthal', district: 'Sonipat', state: 'Haryana', farmSizeAcres: 7.5, mainCrops: 'Tomato, spinach, wheat', pickupLocation: 'Gate 1, Green Field Farm, Murthal', payoutMethod: 'UPI', payoutMasked: '', farmerVerified: false, farmVerified: false, identityStatus: 'Pending' },
   consumerOrders: [
     { id: 'KL-C-2204', items: [{ listingId: 'listing_011', crop: 'Baby Spinach', cropHi: 'बेबी पालक', farm: 'Green Field Farm', imageSrc: '/assets/produce/spinach.webp', quantityKg: 6, ratePerKg: 42 }], subtotal: 252, logisticsFee: 35, platformFee: 7, farmerShare: 245, total: 287, address: { id: 'addr_home', label: 'Home', recipient: 'Aarav Mehta', phone: '9811122233', line1: 'Sector 12, Dwarka', city: 'New Delhi', pincode: '110078', isDefault: true }, deliverySlot: 'Tomorrow · 8–11 AM', eta: iso(1), note: '', paymentMethod: 'UPI', paymentStatus: 'Mock paid', status: 'confirmed', orderedAt: new Date().toISOString(), timeline: [{ status: 'confirmed', label: 'Order confirmed', at: new Date().toISOString() }] },
     { id: 'KL-C-2201', items: [{ listingId: 'listing_011', crop: 'Baby Spinach', cropHi: 'बेबी पालक', farm: 'Green Field Farm', imageSrc: '/assets/produce/spinach.webp', quantityKg: 8, ratePerKg: 42 }], subtotal: 336, logisticsFee: 35, platformFee: 10, farmerShare: 326, total: 371, address: { id: 'addr_home', label: 'Home', recipient: 'Aarav Mehta', phone: '9811122233', line1: 'Sector 12, Dwarka', city: 'New Delhi', pincode: '110078', isDefault: true }, deliverySlot: 'Tomorrow · 8–11 AM', eta: iso(1), note: 'Leave with the guard if I am out.', paymentMethod: 'UPI', paymentStatus: 'Mock paid', status: 'pickup_scheduled', orderedAt: new Date(Date.now() - 86400000).toISOString(), timeline: [{ status: 'confirmed', label: 'Order confirmed', at: new Date(Date.now() - 86400000).toISOString() }, { status: 'farmer_preparing', label: 'Farmer accepted', at: new Date(Date.now() - 82800000).toISOString() }, { status: 'pickup_scheduled', label: 'Pickup scheduled', at: new Date(Date.now() - 79200000).toISOString() }] },
@@ -120,7 +121,7 @@ const seedState: PrototypeState = {
       matches: [
         { farmer: 'Harpreet Singh', farm: 'Sunehri Khet', listingId: 'listing_101', quantityKg: 500, ratePerKg: 29, lotCode: 'KL-TOM-7731' },
         { farmer: 'Rajesh Yadav', farm: 'Yadav Fresh Fields', listingId: 'listing_102', quantityKg: 800, ratePerKg: 30, lotCode: 'KL-TOM-5820' },
-        { farmer: 'Ramesh Kumar', farm: 'Green Field Farm', listingId: 'listing_001', quantityKg: 300, ratePerKg: 31, lotCode: 'KL-TOM-1048' },
+        { farmer: 'Vansh', farm: 'Green Field Farm', listingId: 'listing_001', quantityKg: 300, ratePerKg: 31, lotCode: 'KL-TOM-1048' },
       ],
     },
     {
@@ -137,7 +138,7 @@ const seedState: PrototypeState = {
       contributions: [
         { farmer: 'Harpreet Singh', farm: 'Sunehri Khet', listingId: 'listing_101', quantityKg: 500, ratePerKg: 29, lotCode: 'KL-TOM-7731' },
         { farmer: 'Rajesh Yadav', farm: 'Yadav Fresh Fields', listingId: 'listing_102', quantityKg: 800, ratePerKg: 30, lotCode: 'KL-TOM-5820' },
-        { farmer: 'Ramesh Kumar', farm: 'Green Field Farm', listingId: 'listing_001', quantityKg: 300, ratePerKg: 31, lotCode: 'KL-TOM-1048' },
+        { farmer: 'Vansh', farm: 'Green Field Farm', listingId: 'listing_001', quantityKg: 300, ratePerKg: 31, lotCode: 'KL-TOM-1048' },
       ],
       produceValue: 47800, logisticsFee: 4715, platformFee: 956, total: 53471, traditionalEstimate: 59520,
       deliveryLocation: 'Okhla Distribution Centre, New Delhi', deliveryWindow: `${iso(1)} · 6–10 AM`,
@@ -150,8 +151,8 @@ const seedState: PrototypeState = {
     // The pooled run, in the order the truck drives it: Karnal -> Panipat -> Murthal -> hub.
     { id: 'PK-POOL-B', farmer: 'Harpreet Singh', farm: 'Sunehri Khet', farmLocation: 'Karnal, Haryana', crop: 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', quantityKg: 500, pickupWindow: 'Today · 4–5 PM', orderRefs: ['KL-B-2412'], vehicleId: 'VEH-02', driver: 'Imran Khan', status: 'completed', notes: 'Stop 1 of 3 · 25 kg crates, 20 crates.', routeId: 'RTE-POOL-01', checklist: { arrived: true, quantityVerified: true, qualityChecked: true, loadSecured: true, pickupCompleted: true }, timeline: [{ label: 'Vehicle assigned', labelHi: 'वाहन तय हुआ', at: new Date(Date.now() - 14400000).toISOString() }, { label: 'Driver arrived', labelHi: 'ड्राइवर पहुंच गया', at: new Date(Date.now() - 9000000).toISOString() }, { label: 'Pickup completed', labelHi: 'पिकअप पूरा हुआ', at: new Date(Date.now() - 7200000).toISOString() }], lotCode: 'KL-TOM-7731', packagingType: 'CRATE', containerCount: 20, unitWeightKg: 25 },
     { id: 'PK-POOL-C', farmer: 'Rajesh Yadav', farm: 'Yadav Fresh Fields', farmLocation: 'Panipat, Haryana', crop: 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', quantityKg: 800, pickupWindow: 'Today · 5–6 PM', orderRefs: ['KL-B-2412'], vehicleId: 'VEH-02', driver: 'Imran Khan', status: 'en_route', notes: 'Stop 2 of 3 · 32 crates, verify count against manifest.', routeId: 'RTE-POOL-01', checklist: { arrived: false, quantityVerified: false, qualityChecked: false, loadSecured: false, pickupCompleted: false }, timeline: [{ label: 'Vehicle assigned', labelHi: 'वाहन तय हुआ', at: new Date(Date.now() - 14400000).toISOString() }, { label: 'Driver en route', labelHi: 'ड्राइवर रास्ते में', at: new Date(Date.now() - 3600000).toISOString() }], lotCode: 'KL-TOM-5820', packagingType: 'CRATE', containerCount: 32, unitWeightKg: 25 },
-    { id: 'PK-2051', farmer: 'Ramesh Kumar', farm: 'Green Field Farm', farmLocation: 'Murthal, Sonipat, Haryana', crop: 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', quantityKg: 300, pickupWindow: 'Today · 6–7 PM', orderRefs: ['KL-ORD-1042'], vehicleId: 'VEH-02', driver: 'Imran Khan', status: 'assigned', notes: 'Stop 3 of 3 · Grade A+ crates. Verify count before loading.', routeId: 'RTE-POOL-01', checklist: { arrived: false, quantityVerified: false, qualityChecked: false, loadSecured: false, pickupCompleted: false }, timeline: [{ label: 'Pickup created', labelHi: 'पिकअप बनाया गया', at: new Date(Date.now() - 18000000).toISOString() }, { label: 'Vehicle assigned', labelHi: 'वाहन तय हुआ', at: new Date(Date.now() - 14400000).toISOString() }], lotCode: 'KL-TOM-1048', packagingType: 'CRATE', containerCount: 12, unitWeightKg: 25 },
-    { id: 'PK-2048', farmer: 'Ramesh Kumar', farm: 'Green Field Farm', farmLocation: 'Murthal, Sonipat, Haryana', crop: 'Baby Spinach', cropHi: 'बेबी पालक', quantityKg: 8, pickupWindow: 'Tomorrow · 7–10 AM', orderRefs: ['KL-C-2201-1'], vehicleId: 'VEH-01', driver: 'Suresh Kumar', status: 'assigned', notes: 'Use ventilated crates.', routeId: 'RTE-101', checklist: { arrived: false, quantityVerified: false, qualityChecked: false, loadSecured: false, pickupCompleted: false }, timeline: [{ label: 'Pickup created', labelHi: 'पिकअप बनाया गया', at: new Date(Date.now() - 7200000).toISOString() }, { label: 'Vehicle assigned', labelHi: 'वाहन सौंपा गया', at: new Date(Date.now() - 3600000).toISOString() }], packagingType: 'LOOSE' },
+    { id: 'PK-2051', farmer: 'Vansh', farm: 'Green Field Farm', farmLocation: 'Murthal, Sonipat, Haryana', crop: 'Fresh Tomatoes', cropHi: 'ताज़े टमाटर', quantityKg: 300, pickupWindow: 'Today · 6–7 PM', orderRefs: ['KL-ORD-1042'], vehicleId: 'VEH-02', driver: 'Imran Khan', status: 'assigned', notes: 'Stop 3 of 3 · Grade A+ crates. Verify count before loading.', routeId: 'RTE-POOL-01', checklist: { arrived: false, quantityVerified: false, qualityChecked: false, loadSecured: false, pickupCompleted: false }, timeline: [{ label: 'Pickup created', labelHi: 'पिकअप बनाया गया', at: new Date(Date.now() - 18000000).toISOString() }, { label: 'Vehicle assigned', labelHi: 'वाहन तय हुआ', at: new Date(Date.now() - 14400000).toISOString() }], lotCode: 'KL-TOM-1048', packagingType: 'CRATE', containerCount: 12, unitWeightKg: 25 },
+    { id: 'PK-2048', farmer: 'Vansh', farm: 'Green Field Farm', farmLocation: 'Murthal, Sonipat, Haryana', crop: 'Baby Spinach', cropHi: 'बेबी पालक', quantityKg: 8, pickupWindow: 'Tomorrow · 7–10 AM', orderRefs: ['KL-C-2201-1'], vehicleId: 'VEH-01', driver: 'Suresh Kumar', status: 'assigned', notes: 'Use ventilated crates.', routeId: 'RTE-101', checklist: { arrived: false, quantityVerified: false, qualityChecked: false, loadSecured: false, pickupCompleted: false }, timeline: [{ label: 'Pickup created', labelHi: 'पिकअप बनाया गया', at: new Date(Date.now() - 7200000).toISOString() }, { label: 'Vehicle assigned', labelHi: 'वाहन सौंपा गया', at: new Date(Date.now() - 3600000).toISOString() }], packagingType: 'LOOSE' },
   ],
   deliveries: [
     { id: 'DLV-302', origin: 'KisanLink Sonipat Hub', destination: 'Okhla Distribution Centre, New Delhi', buyer: 'FreshKart Foods Pvt. Ltd.', buyerType: 'Bulk Buyer', shipment: 'Pooled tomato lot B-2412', produce: 'Fresh Tomatoes', produceHi: 'ताज़े टमाटर', quantityKg: 1600, eta: `${iso(1)} · 6–10 AM`, vehicleId: 'VEH-02', orderRefs: ['KL-B-2412'], status: 'scheduled', handlingNotes: 'Do not stack above four crates.', issues: [], timeline: [{ label: 'Delivery scheduled', labelHi: 'डिलीवरी तय हुई', at: new Date(Date.now() - 18000000).toISOString() }], lotCode: 'KL-TOM-1048' },
@@ -211,7 +212,7 @@ const seedState: PrototypeState = {
       routeDistanceKm: 92,
       vehicleId: 'VEH-05',
       lots: [
-        { id: 'lot_green_field', listingId: 'listing_001', farmer: 'Ramesh Kumar', farm: 'Green Field Farm', location: 'Murthal, Sonipat', offeredKg: 180, detourKm: 0, own: true },
+        { id: 'lot_green_field', listingId: 'listing_001', farmer: 'Vansh', farm: 'Green Field Farm', location: 'Murthal, Sonipat', offeredKg: 180, detourKm: 0, own: true },
         { id: 'lot_nandi', farmer: 'Sunita Devi', farm: 'Nandi Organic Plot', location: 'Bahalgarh, Sonipat', offeredKg: 84, detourKm: 5 },
         { id: 'lot_rana', farmer: 'Jaswant Rana', farm: 'Rana Vegetable Farm', location: 'Kharkhoda, Sonipat', offeredKg: 96, detourKm: 9 },
       ],
@@ -236,7 +237,7 @@ const seedState: PrototypeState = {
       farmerPhotos: ['/assets/produce/tomato.webp'],
       sampleAssignments: {},
       captures: [
-        { id: 'cap-seed-farmer-1048', lotCode: 'KL-TOM-1048', checkpoint: 'FARMER_GATE', imageUrl: '/assets/produce/tomato.webp', status: 'fresh', capturedAt: new Date(Date.now() - 18000000).toISOString(), capturedBy: 'Ramesh Kumar (Farmer)' },
+        { id: 'cap-seed-farmer-1048', lotCode: 'KL-TOM-1048', checkpoint: 'FARMER_GATE', imageUrl: '/assets/produce/tomato.webp', status: 'fresh', capturedAt: new Date(Date.now() - 18000000).toISOString(), capturedBy: 'Vansh (Farmer)' },
       ],
     },
     // KL-TOM-7731 - Harpreet's lot (PK-POOL-B), already picked up and inspected: a
@@ -290,6 +291,31 @@ const normalize = (value: Partial<PrototypeState>): PrototypeState => {
     vehicles: value.vehicles?.length
       ? [...value.vehicles, ...base.vehicles.filter((vehicle) => !value.vehicles!.some((item) => item.id === vehicle.id))]
       : base.vehicles,
+  }
+  state.profile = { ...base.profile, ...state.profile }
+  if (!state.profile.onboardingComplete) {
+    state.profile.name = FARMER_FALLBACK_NAME
+    state.profile.payoutMasked = ''
+    state.profile.farmerVerified = false
+    state.profile.farmVerified = false
+    state.profile.identityStatus = 'Pending'
+  }
+  // Discard the old demo payout placeholder, including in previously completed profiles.
+  if (state.profile.payoutMasked === 'ramesh•••@upi') state.profile.payoutMasked = ''
+  const location = [state.profile.village, state.profile.district, state.profile.state].filter(Boolean).join(', ')
+  for (const listing of state.listings) if (listing.farmerId === 'farmer_001') listing.farm = state.profile.farmName
+  const ownIds = new Set(state.listings.filter(item => item.farmerId === 'farmer_001').map(item => item.id))
+  for (const order of state.bulkOrders) for (const allocation of order.contributions ?? []) {
+    if (ownIds.has(allocation.listingId)) { allocation.farmer = state.profile.name; allocation.farm = state.profile.farmName }
+  }
+  for (const rfq of state.rfqs) for (const match of rfq.matches) {
+    if (ownIds.has(match.listingId)) { match.farmer = state.profile.name; match.farm = state.profile.farmName }
+  }
+  for (const pickup of state.logisticsPickups) {
+    if (state.pickups.some(item => item.id === pickup.id)) { pickup.farmer = state.profile.name; pickup.farm = state.profile.farmName; if (location) pickup.farmLocation = location }
+  }
+  for (const board of state.markets) for (const lot of [...board.lots, ...(board.crops ?? []).flatMap(crop => crop.lots)]) {
+    if (lot.listingId && ownIds.has(lot.listingId)) { lot.farmer = state.profile.name; lot.farm = state.profile.farmName; if (location) lot.location = location }
   }
   for (const pickup of state.pickups) if (!state.logisticsPickups.some((item) => item.id === pickup.id)) state.logisticsPickups.unshift({ id: pickup.id, farmer: state.profile.name, farm: state.profile.farmName, farmLocation: pickup.farmAddress, crop: pickup.crop, cropHi: pickup.cropHi, quantityKg: pickup.quantityKg, pickupWindow: `${pickup.date} · ${pickup.timeWindow}`, orderRefs: [pickup.orderId], status: pickup.status === 'driver_assigned' ? 'assigned' : pickup.status === 'arriving' ? 'en_route' : pickup.status === 'collected' ? 'loaded' : pickup.status === 'completed' ? 'completed' : 'unassigned', notes: '', checklist: { arrived: false, quantityVerified: false, qualityChecked: false, loadSecured: false, pickupCompleted: false }, timeline: [{ label: 'Pickup created', labelHi: 'पिकअप बनाया गया', at: new Date().toISOString() }] })
   const addDelivery = (orderRef: string, buyer: string, buyerType: 'Consumer' | 'Bulk Buyer', destination: string, produce: string, produceHi: string, quantityKg: number, eta: string) => { if (!state.deliveries.some((item) => item.orderRefs.includes(orderRef))) state.deliveries.unshift({ id: `DLV-${orderRef.replace(/\D/g, '').slice(-5) || 'NEW'}`, origin: 'KisanLink Sonipat Hub', destination, buyer, buyerType, shipment: `${produce} shipment`, produce, produceHi, quantityKg, eta, orderRefs: [orderRef], status: 'scheduled', handlingNotes: 'Handle produce with care.', issues: [], timeline: [{ label: 'Delivery scheduled', labelHi: 'डिलीवरी तय हुई', at: new Date().toISOString() }] }) }
@@ -453,10 +479,22 @@ export const prototypeService = {
   async getEarnings() {
     return (await readState()).earnings
   },
-  async getProfile() { return (await readState()).profile },
+  getProfileSnapshot() { return readLocal().profile },
+  setFarmerLoginPhone(phone: string) {
+    const state = readLocal()
+    state.profile.phone = phone
+    void persist(state)
+  },
+  async getProfile() { return this.getProfileSnapshot() },
+  resetFarmerOnboarding() {
+    const state = readLocal()
+    state.profile = { ...state.profile, name: FARMER_FALLBACK_NAME, onboardingComplete: false, village: '', locality: '', state: '', district: '', mainCrops: '', pickupLocation: '', farmSizeAcres: 0 }
+    writeLocal(normalize(state))
+    void api<PrototypeState>('/state', { method: 'PUT', body: JSON.stringify(state) }).catch(() => undefined)
+  },
   /** Synchronous on purpose: route guards decide where a fresh session lands during render. */
   farmerNeedsOnboarding() { return !readLocal().profile.onboardingComplete },
-  async saveProfile(profile: FarmerProfileData) { const state = await readState(); state.profile = profile; await persist(state); return profile },
+  async saveProfile(profile: FarmerProfileData) { const state = readLocal(); state.profile = canonicalFarmerProfile(profile); await persist(state); return state.profile },
   async getNotifications(role: Role) { return (await readState()).notifications.filter((item) => item.role === role) },
   async markNotificationsRead(role: Role) { const state = await readState(); state.notifications.forEach((item) => { if (item.role === role) item.read = true }); await persist(state) },
   async reset() { const state = cloneSeed(); writeLocal(state); void api<PrototypeState>('/reset', { method: 'POST' }).catch(() => undefined); return state },

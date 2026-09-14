@@ -5,7 +5,9 @@ import { LanguageSwitcher } from '../../components/LanguageSwitcher'
 import { Logo } from '../../components/Logo'
 import { OnboardingVoiceMode, type VoiceDraft, type VoiceFill } from '../../components/voice/OnboardingVoiceMode'
 import { useAuth } from '../../contexts/AuthContext'
-import { CROP_CATALOGUE } from '../../data/crops'
+import { canonicalFarmerProfile, retryProfileMessage } from '../../services/farmerProfileValidation'
+import { useToast } from '../../contexts/ToastContext'
+import { CROP_CATALOGUE, cropByName } from '../../data/crops'
 import { matchDistrict, matchState, placeLabel } from '../../data/indiaLocations'
 import { authService } from '../../services/authService'
 import { useFarmerText, type FarmerKey } from '../../i18n/farmer'
@@ -45,6 +47,7 @@ const blankDraft = (): VoiceDraft => {
 
 export function FarmerOnboarding() {
   const { f, language } = useFarmerText()
+  const { showToast } = useToast()
   const { user } = useAuth()
   const navigate = useNavigate()
   const [step, setStep] = useState<Step>(1)
@@ -64,11 +67,11 @@ export function FarmerOnboarding() {
   useEffect(() => { window.scrollTo({ top: 0 }) }, [step, confirming])
 
   const update = <K extends keyof VoiceDraft>(key: K, value: VoiceDraft[K]) =>
-    setDraft((current) => ({ ...current, [key]: value }))
+    setDraft((current) => ({ ...current, [key]: value, ...(key === 'farmSize' ? { farmSizeAcres: undefined } : {}) }))
 
   // Typing over a detected value ends its "detected" status, so voice will not re-confirm it.
   const editRegion = (key: 'district' | 'state', value: string) =>
-    setDraft((current) => ({ ...current, [key]: value, ...(key === 'state' ? { stateDetected: false } : { districtDetected: false }) }))
+    setDraft((current) => ({ ...current, [key]: value, ...(key === 'state' ? { stateDetected: false, district: '', districtDetected: false } : { districtDetected: false }) }))
 
   const applyVoice = (fill: VoiceFill) => {
     setDraft((current) => {
@@ -78,11 +81,11 @@ export function FarmerOnboarding() {
         ...current,
         ...(fill.name !== undefined ? { name: fill.name } : {}),
         ...(fill.state !== undefined ? { state: fill.state, stateDetected: false } : {}),
-        ...(stateChanged && current.districtDetected ? { district: '', districtDetected: false } : {}),
+        ...(stateChanged ? { district: '', districtDetected: false } : {}),
         ...(fill.district !== undefined ? { district: fill.district, districtDetected: false } : {}),
         ...(fill.village !== undefined ? { village: fill.village } : {}),
         ...(fill.locality !== undefined ? { locality: fill.locality } : {}),
-        ...(fill.farmSize !== undefined ? { farmSize: fill.farmSize } : {}),
+        ...(fill.farmSize !== undefined ? { farmSize: fill.farmSize, farmSizeAcres: fill.farmSizeAcres } : {}),
         ...(fill.crops !== undefined ? { crops: fill.crops } : {}),
         ...(fill.stateConfirmed ? { stateDetected: false } : {}),
         ...(fill.districtConfirmed ? { districtDetected: false } : {}),
@@ -95,8 +98,8 @@ export function FarmerOnboarding() {
     setDraft((current) => ({ ...current, crops: current.crops.includes(name) ? current.crops.filter((item) => item !== name) : [...current.crops, name] }))
 
   const addCustomCrop = () => {
-    const name = customCrop.trim()
-    if (!name) return
+    const name = cropByName(customCrop.trim())?.en
+    if (!name) { showToast(retryProfileMessage(language)); return }
     if (!draft.crops.includes(name)) update('crops', [...draft.crops, name])
     setCustomCrop('')
     setCropQuery('')
@@ -112,8 +115,15 @@ export function FarmerOnboarding() {
   const next = () => {
     if (step === 1) {
       if (!draft.name.trim()) { setNameError(true); return }
+      const state = draft.state.trim() ? matchState(draft.state) : null
+      const district = draft.district.trim() ? matchDistrict(state?.value ?? '', draft.district) : null
+      if ((draft.state.trim() && !state?.confident) || (draft.district.trim() && !district?.confident)) {
+        showToast(retryProfileMessage(language)); return
+      }
+      setDraft(current => ({ ...current, state: state?.value ?? '', district: district?.value ?? '' }))
       setStep(2)
     } else if (step === 2) {
+      if (!draft.farmSize) { showToast(retryProfileMessage(language)); return }
       setStep(3)
     } else {
       setReturnToReview(false)
@@ -134,13 +144,15 @@ export function FarmerOnboarding() {
     let value = editValue.trim()
     if (editing === 'state') {
       const hit = matchState(value)
-      if (hit) value = hit.value
-      setDraft((current) => ({ ...current, state: value, stateDetected: false, ...(value !== current.state && current.districtDetected ? { district: '', districtDetected: false } : {}) }))
+      if (!hit?.confident) { showToast(retryProfileMessage(language)); return }
+      value = hit.value
+      setDraft((current) => ({ ...current, state: value, stateDetected: false, ...(value !== current.state ? { district: '', districtDetected: false } : {}) }))
     } else if (editing === 'district') {
       const hit = matchDistrict(draft.state, value)
+      if (!hit?.confident) { showToast(retryProfileMessage(language)); return }
       setDraft((current) => ({ ...current, district: hit ? hit.value : value, districtDetected: false }))
     } else if (editing === 'farmSize') {
-      setDraft((current) => ({ ...current, farmSize: (value || '') as FarmSizeId | '' }))
+      setDraft((current) => ({ ...current, farmSize: (value || '') as FarmSizeId | '', farmSizeAcres: undefined }))
     } else {
       setDraft((current) => ({ ...current, [editing]: value }))
     }
@@ -158,9 +170,10 @@ export function FarmerOnboarding() {
     // Voice mode can skip the name; the profile cannot.
     if (!draft.name.trim()) { setConfirming(false); setStep(1); setNameError(true); return }
     setSaving(true)
+    try {
     const profile = await prototypeService.getProfile()
     const pickup = [draft.locality.trim(), draft.village.trim()].filter(Boolean).join(', ')
-    await prototypeService.saveProfile({
+    await prototypeService.saveProfile(canonicalFarmerProfile({
       ...profile,
       name: draft.name.trim(),
       phone: user?.phone ?? profile.phone,
@@ -169,14 +182,16 @@ export function FarmerOnboarding() {
       locality: draft.locality.trim(),
       district: draft.district.trim(),
       state: draft.state.trim(),
-      farmSizeAcres: draft.farmSize ? farmSizeAcresFor(draft.farmSize) : profile.farmSizeAcres,
-      mainCrops: draft.crops.length ? draft.crops.join(', ') : profile.mainCrops,
-      pickupLocation: pickup || profile.pickupLocation,
+      farmSizeAcres: draft.farmSizeAcres ?? (draft.farmSize ? farmSizeAcresFor(draft.farmSize) : 0),
+      mainCrops: draft.crops.join(', '),
+      pickupLocation: pickup,
       onboardingComplete: true,
-    })
+    }))
     authService.clearOtpLogin()
     setSaving(false)
     navigate('/farmer', { replace: true })
+    } catch { showToast(retryProfileMessage(language)) }
+    finally { setSaving(false) }
   }
 
   const cropLabel = (name: string) => {
@@ -185,11 +200,11 @@ export function FarmerOnboarding() {
   }
   const reviewRows: { field: OnboardingField; label: string; value: string }[] = [
     { field: 'name', label: f('fullName'), value: draft.name.trim() },
-    { field: 'state', label: f('state'), value: placeLabel(language, draft.state.trim()) },
-    { field: 'district', label: f('district'), value: placeLabel(language, draft.district.trim(), draft.state) },
+    { field: 'state', label: f('state'), value: placeLabel(language, matchState(draft.state)?.value ?? draft.state.trim()) },
+    { field: 'district', label: f('district'), value: placeLabel(language, matchDistrict(matchState(draft.state)?.value ?? '', draft.district)?.value ?? draft.district.trim(), matchState(draft.state)?.value) },
     { field: 'village', label: f('village'), value: draft.village.trim() },
     { field: 'locality', label: f('locality'), value: draft.locality.trim() },
-    { field: 'farmSize', label: f('land'), value: draft.farmSize ? f(SIZE_KEY[draft.farmSize]) : '' },
+    { field: 'farmSize', label: f('land'), value: draft.farmSizeAcres ? `${draft.farmSizeAcres} ${language === 'hi' ? 'एकड़' : 'acres'}` : draft.farmSize ? f(SIZE_KEY[draft.farmSize]) : '' },
     { field: 'crops', label: f('crops'), value: draft.crops.map(cropLabel).join(', ') },
   ]
   const stepLabels: FarmerKey[] = ['onboardStepYou', 'onboardStepLand', 'onboardStepCrops']

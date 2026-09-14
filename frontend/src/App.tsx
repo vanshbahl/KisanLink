@@ -39,6 +39,7 @@ function LanguageGate({ children }: { children: React.ReactNode }) {
 
 function ProtectedShell() {
   const { session } = useAuth()
+  if (session?.role === 'farmer' && authService.postLoginPath('farmer') === '/farmer/onboarding') return <Navigate to="/farmer/onboarding" replace />
   return session ? <AppShell /> : <Navigate to="/auth" replace />
 }
 

@@ -6,7 +6,7 @@ export const en = {
   fasal: 'My crops', paisa: 'My money',
   farmer: 'Farmer', consumer: 'Consumer', bulkBuyer: 'Bulk Buyer', logisticsOperator: 'Logistics Operator', verifiedRole: 'Verified {role}', current: 'Current',
   continue: 'Continue', back: 'Back', notifications: 'Notifications', selectLanguage: 'Select language', logoHome: 'KisanLink home', dismiss: 'Dismiss', loading: 'Loading content', locationLabel: 'Location', dwarkaLocation: 'Dwarka, New Delhi', tomorrowPickup: 'Tomorrow, 7:30 AM',
-  greeting: 'Namaste, Ramesh ji', location: 'Sonipat, Haryana', deliveringTo: 'Delivering to', clear: 'Clear', todayFarm: 'Today on your farm',
+  greeting: 'Namaste', location: 'Sonipat, Haryana', deliveringTo: 'Delivering to', clear: 'Clear', todayFarm: 'Today on your farm',
   earningsMonth: 'Earnings this month', activeListings: 'Active listings', newOrders: 'New orders', sellProduce: 'Sell Produce', quickActions: 'Your farm, at a glance', myProduce: 'My Produce', earnings: 'Earnings', demandInsights: 'Demand Insights',
   priceInsight: 'Today’s price insight', localMarket: 'Local market price', directPotential: 'Direct selling potential', additional: 'Potential additional earnings', upcomingPickup: 'Upcoming pickup',
   needHelp: 'Need help?', helpCopy: 'Talk to our support team in Hindi or English.', callSupport: 'Call Support', farmerReceivesMore: 'You keep more of every sale', viewDetails: 'View details', view: 'View',

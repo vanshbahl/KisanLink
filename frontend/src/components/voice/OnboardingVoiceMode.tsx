@@ -1,3 +1,4 @@
+import { listenForOnboardingAnswer } from '../../services/onboardingRecognition'
 import { Check, Loader2, Mic, Square, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -33,6 +34,7 @@ export interface VoiceDraft {
   district: string
   state: string
   farmSize: FarmSizeId | ''
+  farmSizeAcres?: number
   crops: string[]
   /** State came from the splash location read and has been neither edited nor confirmed. */
   stateDetected: boolean
@@ -47,6 +49,7 @@ export interface VoiceFill {
   district?: string
   state?: string
   farmSize?: FarmSizeId
+  farmSizeAcres?: number
   crops?: string[]
   /** The farmer confirmed the detected state / district by voice. */
   stateConfirmed?: boolean
@@ -115,6 +118,7 @@ export function OnboardingVoiceMode({ draft, startStep, only, onFill, onClose, o
   // Everything async checks this before touching state, so an exit or a skip mid-answer
   // cannot resurrect a stale question.
   const runRef = useRef(0)
+  const listenerRef = useRef<ReturnType<typeof listenForOnboardingAnswer> | null>(null)
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
   const draftRef = useRef(draft)
   draftRef.current = draft
@@ -144,6 +148,8 @@ export function OnboardingVoiceMode({ draft, startStep, only, onFill, onClose, o
   }, [f, language])
 
   const stopRecognition = useCallback(() => {
+    listenerRef.current?.cancel()
+    listenerRef.current = null
     const recognition = recognitionRef.current
     recognitionRef.current = null
     if (recognition) { try { recognition.abort() } catch { /* already stopped */ } }
@@ -204,55 +210,17 @@ export function OnboardingVoiceMode({ draft, startStep, only, onFill, onClose, o
       return
     }
     recognitionRef.current = recognition
-    recognition.continuous = false
-    recognition.interimResults = true
     recognition.lang = speechLang(language)
-    let heard = ''
-    let failed = false
-
-    recognition.onstart = () => { if (run === runRef.current) setPhase('listening') }
-    recognition.onresult = (event) => {
-      let final = ''
-      let interim = ''
-      for (let i = 0; i < event.results.length; i += 1) {
-        const result = event.results[i]
-        if (result.isFinal) final += `${result[0].transcript} `
-        else interim += result[0].transcript
-      }
-      heard = `${final}${interim}`.trim()
-      if (run === runRef.current) setTranscript(heard)
-    }
-    recognition.onerror = (event) => {
-      if (run !== runRef.current) return
-      failed = true
-      if (event.error === 'no-speech') {
-        setPhase('retry')
-        setMessage(f('voiceNothingHeard'))
-        return
-      }
-      const copy = speechErrorMessage(event.error, language)
-      if (!copy) return
-      setPhase('error')
-      setMessage(copy)
-    }
-    let handled = false
-    recognition.onend = () => {
-      if (run !== runRef.current || failed || handled) return
-      handled = true
-      const text = heard.trim()
-      if (!text) {
-        setPhase('retry')
-        setMessage(f('voiceNothingHeard'))
-        return
-      }
-      void answer(run, text)
-    }
-    try {
-      recognition.start()
-    } catch {
-      setPhase('error')
-      setMessage(speechErrorMessage('audio-capture', language) ?? f('voiceUnavailable'))
-    }
+    setPhase('listening')
+    listenerRef.current = listenForOnboardingAnswer(recognition, {
+      transcript: text => { if (run === runRef.current) setTranscript(text) },
+      answer: text => { if (run === runRef.current) void answer(run, text) },
+      error: code => {
+        if (run !== runRef.current) return
+        setPhase(code === 'no-speech' ? 'retry' : 'error')
+        setMessage(speechErrorMessage(code, language) ?? f('voiceNotUnderstood'))
+      },
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [f, language, current, index])
 
@@ -295,6 +263,7 @@ export function OnboardingVoiceMode({ draft, startStep, only, onFill, onClose, o
           return
         }
       }
+      onFill(key === 'state' ? { state: '', district: '' } : { district: '' })
       spokenAckRef.current = f('voiceAckOk')
       advance(run, [key])
       return
@@ -303,12 +272,14 @@ export function OnboardingVoiceMode({ draft, startStep, only, onFill, onClose, o
     const result = await parseOnboardingAnswer(id as OnboardingField, text, language, { state: live.state, district: live.district })
     if (run !== runRef.current) return
     if (result.unknown) {
-      succeed(f('voiceAckUnknown'), '')
+      // "Don't know" stores nothing: stay on the question, offer speak again / skip / type.
+      setPhase('retry')
+      setMessage(f('voiceAckUnknown'))
       return
     }
     if (!result.recognized) {
       setPhase('retry')
-      setMessage(f('voiceNotUnderstood'))
+      setMessage(id === 'farmSize' ? (language === 'hi' ? 'ज़मीन एकड़ या हेक्टेयर में दोबारा बताएं: 0 से अधिक, 500 एकड़ तक।' : 'Say the area in acres or hectares: above 0, up to 500 acres.') : f('voiceNotUnderstood'))
       return
     }
 
@@ -327,7 +298,7 @@ export function OnboardingVoiceMode({ draft, startStep, only, onFill, onClose, o
       onFill({ [id]: result.value })
       label = language === 'hi' ? (result.valueHi ?? result.value) : result.value
     } else if (id === 'farmSize' && result.farmSize) {
-      onFill({ farmSize: result.farmSize })
+      onFill({ farmSize: result.farmSize, farmSizeAcres: result.farmSizeAcres })
       label = f(SIZE_KEY[result.farmSize])
     } else if (id === 'crops' && result.crops?.length) {
       onFill({ crops: result.crops })
@@ -366,6 +337,7 @@ export function OnboardingVoiceMode({ draft, startStep, only, onFill, onClose, o
     startListening(runRef.current)
   }
 
+  /** Move on without storing anything for this question; the form keeps it editable. */
   const skip = () => {
     runRef.current += 1
     stopRecognition()
@@ -381,7 +353,7 @@ export function OnboardingVoiceMode({ draft, startStep, only, onFill, onClose, o
       runRef.current += 1
       startListening(runRef.current)
     } else if (phase === 'listening') {
-      try { recognitionRef.current?.stop() } catch { /* already stopped */ }
+      listenerRef.current?.finish()
     } else if (phase === 'retry' || phase === 'error') {
       retry()
     }

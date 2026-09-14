@@ -1,6 +1,7 @@
 import { CROP_CATALOGUE, cropByName, type CropOption } from '../data/crops'
 import { districtNamesOf, INDIA_STATE_NAMES, matchDistrict, matchState } from '../data/indiaLocations'
 import type { Language } from '../types'
+import { validFarmArea } from './farmerProfileValidation'
 import { apiClient } from './apiClient'
 
 /**
@@ -57,6 +58,7 @@ export interface ParsedAnswer {
   /** Devanagari value when the answer was spoken in Hindi; used for the spoken acknowledgement. */
   valueHi?: string
   farmSize?: FarmSizeId
+  farmSizeAcres?: number
   crops?: string[]
   /** The farmer said they do not know or want to skip; nothing is stored. */
   unknown?: boolean
@@ -77,7 +79,7 @@ const hasDevanagari = (text: string) => DEVANAGARI.test(text)
 
 const titleCase = (text: string) => text.replace(/\S+/g, (word) => (DEVANAGARI.test(word) ? word : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()))
 
-const tidy = (text: string) => text.replace(/[.,!?।"'“”‘’]+/g, ' ').replace(/\s+/g, ' ').trim()
+const tidy = (text: string) => text.replace(/[!?।"'“”‘’]+/g, ' ').replace(/\s+/g, ' ').trim()
 
 /** Removes the sentence around an answer: "मेरा नाम X है" -> "X", "my name is X" -> "X". */
 function stripWrapper(text: string, leading: RegExp[], trailing: RegExp[]): string {
@@ -126,6 +128,7 @@ function cleanPlace(text: string): string {
 
 // --- Numbers ---------------------------------------------------------------
 const NUMBER_WORDS: Record<string, number> = {
+  'zero': 0, 'शून्य': 0, 'जीरो': 0,
   'आधा': 0.5, 'aadha': 0.5, 'adha': 0.5, 'half': 0.5,
   'एक': 1, 'ek': 1, 'one': 1,
   'डेढ़': 1.5, 'डेढ': 1.5, 'dedh': 1.5, 'derh': 1.5,
@@ -152,15 +155,30 @@ const NUMBER_WORDS: Record<string, number> = {
 
 /** First number in the text, digits or words. "साढ़े तीन" and "साढ़े चार" read as x.5. */
 function firstNumber(text: string): number | null {
-  const lower = tidy(text).toLowerCase()
-  const digits = lower.match(/\d+(?:[.,]\d+)?/)
-  if (digits) return Number(digits[0].replace(',', '.'))
+  const lower = tidy(text).toLowerCase().replace(/(?<=\d),(?=\d{3}\b)/g, '')
+  const digits = lower.replace(/[०-९]/g, digit => String(digit.charCodeAt(0) - 0x966)).match(/[+-]?(?:\d+(?:[.,]\d+)?|\.\d+)/)
+  if (digits) {
+    const value = Number(digits[0].replace(',', '.'))
+    return /(?:hundred|सौ|sau)/.test(lower) ? value * 100 : value
+  }
   const tokens = lower.split(/\s+/)
   for (let index = 0; index < tokens.length; index += 1) {
     const two = `${tokens[index]} ${tokens[index + 1] ?? ''}`.trim()
     if (two in NUMBER_WORDS) return NUMBER_WORDS[two]
     const value = NUMBER_WORDS[tokens[index]]
     if (value === undefined) continue
+    const next = tokens[index + 1] ?? ''
+    if (/^(hundred|सौ|sau)$/.test(next)) {
+      const remainder = tokens.slice(index + 2).filter(token => token !== 'and')
+      if (remainder.some(token => token in NUMBER_WORDS)) return null // Ask for digits instead of guessing composites.
+      return value * 100
+    }
+    if (/^(point|decimal|दशमलव)$/.test(next)) {
+      const decimal = NUMBER_WORDS[tokens[index + 2]]
+      if (decimal === undefined || decimal < 0 || decimal > 9) return null
+      return value + decimal / 10
+    }
+    if (next in NUMBER_WORDS) return null // e.g. "two three acres" is ambiguous.
     const previous = tokens[index - 1] ?? ''
     if (/^(साढ़े|साढे|sadhe|saadhe)$/.test(previous)) return value + 0.5
     if (/^(पौने|paune)$/.test(previous)) return value - 0.25
@@ -173,19 +191,30 @@ function firstNumber(text: string): number | null {
 /** Coarse conversion to acres. Bigha varies by region; a quarter acre is the common working value. */
 function acresFrom(text: string, amount: number): number {
   const lower = text.toLowerCase()
-  if (/(बीघा|bigha|beegha)/.test(lower)) return amount * 0.25
+  if (/(बीघा|bigha|beegha)/.test(lower)) return NaN // Regional unit: ask for acres/hectares instead of guessing.
   if (/(हेक्टेयर|hectare|hektar)/.test(lower)) return amount * 2.47
   if (/(कनाल|kanal)/.test(lower)) return amount * 0.125
   return amount
 }
 
+export function parseFarmArea(text: string): number | null {
+  if (/(?:[-−]\s*\d|minus|negative|माइनस|ऋण|बीघा|bigha|beegha|square|sq\.?|गज|मीटर|foot|feet)/i.test(text)) return null
+  if (/(thousand|million|billion|lakh|crore|हजार|हज़ार|लाख|करोड़)/i.test(text)) return null
+  const numericText = text.replace(/[०-९]/g, digit => String(digit.charCodeAt(0) - 0x966))
+  if ((numericText.match(/\d+(?:[.,]\d+)?/g) ?? []).length > 1) return null
+  const amount = firstNumber(numericText)
+  if (amount === null) return null
+  const acres = acresFrom(text, amount)
+  return validFarmArea(acres) ? acres : null
+}
+
 export function parseFarmSizeText(text: string): FarmSizeId | null {
+  if (/(minus|negative|माइनस|ऋण|[-−]\s*\d|बीघा|bigha|beegha)/i.test(text)) return null
   const lower = tidy(text).toLowerCase()
   if (/(दस से (ज़्यादा|ज्यादा|ऊपर|अधिक)|das se (zyada|jyada|upar|adhik)|more than ten|over ten|ten plus|10\+|10 plus|10 se (zyada|jyada|upar))/.test(lower)) return '10plus'
   if (/(एक से कम|ek se kam|less than one|under one|under an acre|less than an acre|एक एकड़ से कम)/.test(lower)) return 'under1'
-  const amount = firstNumber(lower)
-  if (amount === null) return null
-  let acres = acresFrom(lower, amount)
+  let acres = parseFarmArea(lower)
+  if (acres === null) return null
   if (/(से कम|se kam|less than|under)/.test(lower) && acres > 0) acres = Math.max(0, acres - 0.01)
   if (/(से (ज़्यादा|ज्यादा|ऊपर|अधिक)|se (zyada|jyada|upar|adhik)|more than|over|above)/.test(lower)) acres += 0.01
   return farmSizeBucket(acres)
@@ -247,7 +276,13 @@ const gemini = async (field: OnboardingField | 'confirm', transcript: string, la
       expected: context.expected || undefined,
       candidates: candidatesFor(field, context),
     })
-    return result.ai_used ? result : null
+    if (!result || typeof result !== 'object' || result.ai_used !== true) return null
+    if ((result.value != null && typeof result.value !== 'string') ||
+        (result.value_hi != null && typeof result.value_hi !== 'string') ||
+        (result.crops != null && (!Array.isArray(result.crops) || result.crops.some(item => typeof item !== 'string'))) ||
+        (result.farm_size_acres != null && !validFarmArea(result.farm_size_acres)) ||
+        (result.unknown != null && typeof result.unknown !== 'boolean')) return null
+    return result
   } catch {
     return null
   }
@@ -259,16 +294,16 @@ const cleanedPlace = (text: string) => {
 }
 
 /** Pin a state to the canonical list; falls back to the cleaned text, marked not confident. */
-function resolveState(candidate: string, fallbackText: string): Pick<ParsedAnswer, 'value' | 'confident'> {
-  const hit = matchState(candidate) ?? matchState(fallbackText)
+function resolveState(_candidate: string, fallbackText: string): Pick<ParsedAnswer, 'value' | 'confident'> {
+  const hit = matchState(fallbackText)
   if (hit) return { value: hit.value, confident: hit.confident }
-  return { value: candidate || cleanedPlace(fallbackText), confident: false }
+  return { confident: false }
 }
 
-function resolveDistrict(state: string | undefined, candidate: string, fallbackText: string): Pick<ParsedAnswer, 'value' | 'confident'> {
-  const hit = state ? (matchDistrict(state, candidate) ?? matchDistrict(state, fallbackText)) : null
+function resolveDistrict(state: string | undefined, _candidate: string, fallbackText: string): Pick<ParsedAnswer, 'value' | 'confident'> {
+  const hit = state ? matchDistrict(state, fallbackText) : null
   if (hit) return { value: hit.value, confident: hit.confident }
-  return { value: candidate || cleanedPlace(fallbackText), confident: false }
+  return { confident: false }
 }
 
 /** A yes/no confirmation. Gemini reads it; the keyword table is the fallback. */
@@ -289,38 +324,45 @@ export async function parseOnboardingAnswer(field: OnboardingField, transcript: 
   if (!text) return { field, recognized: false, aiUsed: false }
   if (isUnknownAnswer(text)) return { field, recognized: true, unknown: true, aiUsed: false }
 
+  if (/(?:\b(?:is|and|or|maybe|shayad|perhaps)|शायद|और|या)\s*$/i.test(text)) return { field, recognized: false, aiUsed: false }
   const ai = await gemini(field, text, language, context)
+  if (ai?.confidence === 'low' || ai?.confidence === 'medium') return { field, recognized: false, aiUsed: true }
   if (ai?.unknown) return { field, recognized: true, unknown: true, aiUsed: true }
 
   switch (field) {
     case 'name': {
       const local = titleCase(stripWrapper(text, NAME_LEADING, HI_TRAILING))
-      if (ai?.value) return { field, recognized: true, value: titleCase(ai.value), valueHi: ai.value_hi ?? (hasDevanagari(local) ? local : undefined), aiUsed: true }
+      // Names keep the script the farmer supplied; AI must not translate identity.
+      if (!/^[\p{L}\p{M} .’'-]{2,80}$/u.test(local)) return { field, recognized: false, aiUsed: false }
       return { field, recognized: Boolean(local), value: local, valueHi: hasDevanagari(local) ? local : undefined, aiUsed: false }
     }
     case 'state': {
       const resolved = resolveState(ai?.value ?? '', text)
-      return { field, recognized: Boolean(resolved.value), ...resolved, valueHi: ai?.value_hi ?? undefined, aiUsed: Boolean(ai?.value) }
+      return { field, recognized: Boolean(resolved.value && resolved.confident), ...resolved, valueHi: ai?.value_hi ?? undefined, aiUsed: Boolean(ai?.value) }
     }
     case 'district': {
       const resolved = resolveDistrict(context.state, ai?.value ?? '', text)
-      return { field, recognized: Boolean(resolved.value), ...resolved, valueHi: ai?.value_hi ?? undefined, aiUsed: Boolean(ai?.value) }
+      return { field, recognized: Boolean(resolved.value && resolved.confident), ...resolved, valueHi: ai?.value_hi ?? undefined, aiUsed: Boolean(ai?.value) }
     }
     case 'village':
     case 'locality': {
-      if (ai?.value) return { field, recognized: true, value: titleCase(ai.value), valueHi: ai.value_hi ?? undefined, aiUsed: true }
+      if (ai?.value && /^[A-Za-z0-9 .,'’()-]{2,100}$/.test(ai.value)) return { field, recognized: true, value: titleCase(ai.value), valueHi: ai.value_hi ?? undefined, aiUsed: true }
       const local = cleanedPlace(text)
-      return { field, recognized: Boolean(local), value: local, valueHi: hasDevanagari(local) ? local : undefined, aiUsed: false }
+      return { field, recognized: Boolean(local) && !hasDevanagari(local), value: !hasDevanagari(local) ? local : undefined, aiUsed: false }
     }
     case 'farmSize': {
-      if (ai?.farm_size_acres && ai.farm_size_acres > 0) return { field, recognized: true, farmSize: farmSizeBucket(ai.farm_size_acres), aiUsed: true }
+      // An AI guess cannot override an invalid or unparseable quantity.
+      if (/(minus|negative|माइनस|ऋण|[-−]\s*\d|बीघा|bigha|beegha)/i.test(text)) return { field, recognized: false, aiUsed: false }
+      const range = /(less than|under|over|more than|से कम|se kam|से ज़्यादा|से ज्यादा|se zyada|plus|\+)/i.test(text)
+      const acres = range ? null : parseFarmArea(text)
+      if (acres !== null) return { field, recognized: true, farmSize: farmSizeBucket(acres), farmSizeAcres: acres, aiUsed: false }
       const local = parseFarmSizeText(text)
       if (local) return { field, recognized: true, farmSize: local, aiUsed: false }
       return { field, recognized: false, aiUsed: false }
     }
     case 'crops': {
-      const named = (ai?.crops ?? []).map((name) => cropByName(name)?.en ?? titleCase(name)).filter(Boolean)
-      if (named.length) return { field, recognized: true, crops: [...new Set(named)], aiUsed: true }
+      const named = (ai?.crops ?? []).map((name) => cropByName(name)?.en ?? '').filter(Boolean)
+      if (named.length && named.length === ai?.crops?.length) return { field, recognized: true, crops: [...new Set(named)], aiUsed: true }
       const local = matchCrops(text).map((crop) => crop.en)
       if (local.length) return { field, recognized: true, crops: local, aiUsed: false }
       return { field, recognized: false, aiUsed: false }

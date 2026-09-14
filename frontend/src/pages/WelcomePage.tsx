@@ -6,7 +6,7 @@ import { Logo } from '../components/Logo'
 import { useAuth } from '../contexts/AuthContext'
 import { useLanguage } from '../contexts/LanguageContext'
 import type { Role } from '../types'
-import { roleHome } from '../utils/routes'
+import { authService } from '../services/authService'
 import { roleKey, type TranslationKey } from '../i18n'
 
 export function WelcomePage() {
@@ -18,7 +18,7 @@ export function WelcomePage() {
   const enterDemo = async (role: Role) => {
     setLoadingRole(role)
     await loginDemo(role)
-    navigate(roleHome(role))
+    navigate(authService.postLoginPath(role))
   }
 
   return (
@@ -45,7 +45,7 @@ export function WelcomePage() {
         <div><span className="eyebrow">{t('guidedPreview')}</span><h2>{t('exploreYourWay')}</h2><p>{t('demoCopy')}</p></div>
         <div className="demo-role-grid">
           {([
-            ['farmer', Sprout, 'Ramesh Kumar', 'farmerDemoHint'],
+            ['farmer', Sprout, 'Vansh', 'farmerDemoHint'],
             ['consumer', ShoppingBasket, 'Aarav Mehta', 'consumerDemoHint'],
             ['bulk', Building2, 'FreshKart', 'bulkDemoHint'],
             ['logistics', Truck, 'Kavita Logistics', 'logisticsDemoHint'],

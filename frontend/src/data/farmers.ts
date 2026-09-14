@@ -1,3 +1,4 @@
+import { prototypeService } from '../services/prototypeService'
 import type { Farmer } from '../types'
 
 /**
@@ -5,7 +6,7 @@ import type { Farmer } from '../types'
  * farmer named here can always be plotted on the corridor map.
  */
 export const farmers: Farmer[] = [
-  { id: 'farmer_001', name: 'Ramesh Kumar', farmName: 'Green Field Farm', location: 'Murthal, Sonipat', verified: true, yearsFarming: 18 },
+  { id: 'farmer_001', get name() { return prototypeService.getProfileSnapshot().name }, get farmName() { return prototypeService.getProfileSnapshot().farmName }, get location() { const profile = prototypeService.getProfileSnapshot(); return [profile.village, profile.district, profile.state].filter(Boolean).join(', ') }, verified: true, yearsFarming: 18 },
   { id: 'farmer_002', name: 'Harpreet Singh', farmName: 'Sunehri Khet', location: 'Karnal, Haryana', verified: true, yearsFarming: 14 },
   { id: 'farmer_003', name: 'Rajesh Yadav', farmName: 'Yadav Fresh Fields', location: 'Panipat, Haryana', verified: true, yearsFarming: 21 },
   { id: 'farmer_004', name: 'Suresh Malik', farmName: 'Malik Family Farm', location: 'Rohtak, Haryana', verified: true, yearsFarming: 16 },

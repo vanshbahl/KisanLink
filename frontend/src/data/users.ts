@@ -1,9 +1,13 @@
+import { prototypeService } from '../services/prototypeService'
 import type { User } from '../types'
 
 export const demoUsers: Record<string, User> = {
   farmer_001: {
-    id: 'farmer_001', role: 'farmer', name: 'Ramesh Kumar', phone: '9876543210',
-    location: 'Sonipat, Haryana', avatarInitials: 'RK', farmName: 'Ramesh Farms',
+    id: 'farmer_001', role: 'farmer', get name() { return prototypeService.getProfileSnapshot().name },
+    get phone() { return prototypeService.getProfileSnapshot().phone },
+    get location() { const profile = prototypeService.getProfileSnapshot(); return [profile.district, profile.state].filter(Boolean).join(', ') },
+    get avatarInitials() { return prototypeService.getProfileSnapshot().name.trim().split(/\s+/).map(part => [...part][0] ?? '').slice(0, 2).join('') || 'V' },
+    get farmName() { return prototypeService.getProfileSnapshot().farmName },
   },
   consumer_001: {
     id: 'consumer_001', role: 'consumer', name: 'Aarav Mehta', phone: '9811122233',

@@ -30,7 +30,7 @@ export function createRegionalMarketMakerBoards(iso: (offsetDays?: number) => st
       vehicleId: 'VEH-02',
       regions: [{ id: 'reg_sonipat', name: 'Sonipat', district: 'Sonipat, Haryana' }],
       lots: [
-        { id: 'lot_sonipat_1', farmer: 'Ramesh Kumar & Harpreet Singh', farm: 'Sonipat Cluster Farms', location: 'Murthal & Gannaur, Sonipat', offeredKg: 1200, detourKm: 2, regionId: 'reg_sonipat', regionName: 'Sonipat', own: true },
+        { id: 'lot_sonipat_1', farmer: 'Vansh & Harpreet Singh', farm: 'Sonipat Cluster Farms', location: 'Murthal & Gannaur, Sonipat', offeredKg: 1200, detourKm: 2, regionId: 'reg_sonipat', regionName: 'Sonipat', own: true },
       ],
       commitments: [
         { id: 'mmc_sonipat_bulk1', source: 'bulk', party: 'FreshKart Foods', detail: 'Sonipat Procurement Pool', quantityKg: 300, committedAt: iso(-1) },
@@ -51,7 +51,7 @@ export function createRegionalMarketMakerBoards(iso: (offsetDays?: number) => st
           platformFeePct: 0.02,
           storageType: 'ambient',
           lots: [
-            { id: 'lot_s_tom_1', farmer: 'Ramesh Kumar', farm: 'Green Field Farm', location: 'Murthal, Sonipat', offeredKg: 700, detourKm: 0, regionId: 'reg_sonipat', regionName: 'Sonipat', own: true },
+            { id: 'lot_s_tom_1', farmer: 'Vansh', farm: 'Green Field Farm', location: 'Murthal, Sonipat', offeredKg: 700, detourKm: 0, regionId: 'reg_sonipat', regionName: 'Sonipat', own: true },
           ],
           commitments: [
             { id: 'mmc_s_tom_1', source: 'bulk', party: 'FreshKart Foods', detail: 'Tomatoes for Retail', quantityKg: 180, committedAt: iso(-1) },

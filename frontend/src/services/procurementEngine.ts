@@ -261,6 +261,7 @@ export function buildProcurementPlan(
 
 /** Listings carry the farm name; the grower's name lives in the farmer directory. */
 function farmerNameFor(listing: FarmerListing) {
+  if (listing.farmerId === 'farmer_001') return farmers.find(farmer => farmer.id === listing.farmerId)?.name ?? 'Vansh'
   return farmerLookup[listing.farm] ?? farmerLookup[listing.farmerId] ?? 'Verified farmer'
 }
 

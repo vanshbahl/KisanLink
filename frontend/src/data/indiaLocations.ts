@@ -240,7 +240,9 @@ export function matchPlace(text: string, options: readonly PlaceOption[]): Place
     const longest = contained
       .map((option) => ({ option, length: Math.max(...names(option).filter((alias) => norm.includes(alias)).map((alias) => alias.length)) }))
       .sort((a, b) => b.length - a.length)
-    if (longest[0].length > longest[1].length) return { value: longest[0].option.en, confident: true }
+    const winnerAliases = names(longest[0].option).filter(alias => norm.includes(alias))
+    if (longest[0].length > longest[1].length && contained.every(option => names(option).some(alias => winnerAliases.some(winner => winner.includes(alias))))) return { value: longest[0].option.en, confident: true }
+    return null
   }
 
   const scored = options

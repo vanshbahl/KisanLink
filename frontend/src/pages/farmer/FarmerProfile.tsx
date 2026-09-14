@@ -1,10 +1,13 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Building2, CheckCircle2, LogOut, Phone, ShoppingBasket, Truck } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { DashboardSkeleton } from '../../components/LoadingSkeleton'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
 import { useFarmerText } from '../../i18n/farmer'
+import { cropByName } from '../../data/crops'
+import { placeLabel } from '../../data/indiaLocations'
+import { retryProfileMessage } from '../../services/farmerProfileValidation'
 import { prototypeService } from '../../services/prototypeService'
 import { roleHome } from '../../utils/routes'
 import type { FarmerProfileData } from '../../types'
@@ -26,19 +29,30 @@ export function FarmerProfile() {
   const navigate = useNavigate()
   const [profile, setProfile] = useState<FarmerProfileData | null>(null)
   const [saving, setSaving] = useState(false)
+  const dirty = useRef(false)
 
-  useEffect(() => { void prototypeService.getProfile().then(setProfile) }, [])
+  useEffect(() => {
+    const sync = () => { if (!dirty.current) setProfile(prototypeService.getProfileSnapshot()) }
+    sync()
+    window.addEventListener('kisanlink-state', sync)
+    window.addEventListener('storage', sync)
+    return () => { window.removeEventListener('kisanlink-state', sync); window.removeEventListener('storage', sync) }
+  }, [])
   if (!profile) return <DashboardSkeleton />
 
   const update = <K extends keyof FarmerProfileData>(key: K, value: FarmerProfileData[K]) =>
-    setProfile((current) => (current ? { ...current, [key]: value } : current))
+    { dirty.current = true; setProfile((current) => (current ? { ...current, [key]: value, ...(key === 'state' ? { district: '' } : {}) } : current)) }
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
     setSaving(true)
-    await prototypeService.saveProfile({ ...profile, language })
-    setSaving(false)
-    showToast(f('profileSaved'))
+    try {
+      const saved = await prototypeService.saveProfile({ ...profile, language, onboardingComplete: true })
+      dirty.current = false
+      setProfile(saved)
+      showToast(f('profileSaved'))
+    } catch { showToast(retryProfileMessage(language)) }
+    finally { setSaving(false) }
   }
 
   const switchDemo = async (role: 'consumer' | 'bulk' | 'logistics') => {
@@ -78,13 +92,13 @@ export function FarmerProfile() {
             <label className="f-field"><span>{f('farmName')}</span><input value={profile.farmName} onChange={(event) => update('farmName', event.target.value)} /></label>
             <label className="f-field"><span>{f('village')}</span><input value={profile.village} onChange={(event) => update('village', event.target.value)} /></label>
             <label className="f-field"><span>{f('locality')}</span><input value={profile.locality ?? ''} onChange={(event) => update('locality', event.target.value)} /></label>
-            <label className="f-field"><span>{f('district')}</span><input value={profile.district} onChange={(event) => update('district', event.target.value)} /></label>
-            <label className="f-field"><span>{f('state')}</span><input value={profile.state} onChange={(event) => update('state', event.target.value)} /></label>
+            <label className="f-field"><span>{f('district')}</span><input value={placeLabel(language, profile.district, profile.state)} onChange={(event) => update('district', event.target.value)} /></label>
+            <label className="f-field"><span>{f('state')}</span><input value={placeLabel(language, profile.state)} onChange={(event) => update('state', event.target.value)} /></label>
             <label className="f-field">
               <span>{f('farmSize')}</span>
-              <input type="number" inputMode="decimal" min="0" max="500" step="0.5" value={profile.farmSizeAcres} onChange={(event) => update('farmSizeAcres', Number(event.target.value))} />
+              <input type="number" inputMode="decimal" min="0.01" max="500" step="any" value={profile.farmSizeAcres} onChange={(event) => update('farmSizeAcres', Number(event.target.value))} />
             </label>
-            <label className="f-field"><span>{f('mainCrops')}</span><input value={profile.mainCrops} onChange={(event) => update('mainCrops', event.target.value)} /></label>
+            <label className="f-field"><span>{f('mainCrops')}</span><input value={profile.mainCrops.split(',').map(name => language === 'hi' ? cropByName(name.trim())?.hi ?? name : name).join(', ')} onChange={(event) => update('mainCrops', event.target.value)} /></label>
             <label className="f-field f-field-wide">
               <span>{f('pickupAddressLabel')}</span>
               <textarea rows={2} value={profile.pickupLocation} onChange={(event) => update('pickupLocation', event.target.value)} />

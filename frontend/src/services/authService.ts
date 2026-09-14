@@ -28,6 +28,7 @@ export const authService = {
 
   getCurrentUser(): User | null {
     const session = this.getSession()
+    // The farmer entry in `demoUsers` reads live from the onboarding profile (see data/users.ts).
     return session ? demoUsers[session.userId] ?? null : null
   },
 
@@ -51,11 +52,12 @@ export const authService = {
     const pending = this.getPendingAuth()
     if (!pending) throw new Error('Your verification request expired. Please try again.')
 
-    const matchingUser = Object.values(demoUsers).find((user) => user.phone === pending.phone)
+    const matchingUser = Object.values(demoUsers).find((user) => user.phone === pending.phone && user.role === pending.role)
     const userId = matchingUser?.id ?? demoUserIdByRole[pending.role]
     const session: Session = { authenticated: true, role: demoUsers[userId].role, userId }
     localStorage.setItem(SESSION_KEY, JSON.stringify(session))
     sessionStorage.removeItem(PENDING_KEY)
+    if (session.role === 'farmer') prototypeService.setFarmerLoginPhone(pending.phone)
     return session
   },
 
@@ -68,6 +70,7 @@ export const authService = {
   },
 
   logout(): void {
+    if (this.getSession()?.role === 'farmer') prototypeService.resetFarmerOnboarding()
     localStorage.removeItem(SESSION_KEY)
     sessionStorage.removeItem(PENDING_KEY)
     sessionStorage.removeItem(OTP_LOGIN_KEY)
@@ -83,14 +86,13 @@ export const authService = {
   },
 
   /**
-   * Where a signed-in user lands. A farmer who verified an OTP and has no completed profile
-   * goes through onboarding first; demo logins and every other role go straight home. Both
-   * the OTP screen and the public-route guard use this, so they can never disagree.
+   * Where a signed-in user lands. A farmer with no completed profile (every farmer after a
+   * logout, since `logout` resets onboarding for repeat demos) goes through onboarding first;
+   * every other role goes straight home. The OTP screen, the welcome page and the route
+   * guards all use this, so they can never disagree.
    */
   postLoginPath(role: Role): string {
-    let viaOtp = false
-    try { viaOtp = sessionStorage.getItem(OTP_LOGIN_KEY) === '1' } catch { /* see markOtpLogin */ }
-    if (role === 'farmer' && viaOtp && prototypeService.farmerNeedsOnboarding()) return '/farmer/onboarding'
+    if (role === 'farmer' && prototypeService.farmerNeedsOnboarding()) return '/farmer/onboarding'
     return roleHome(role)
   },
 }

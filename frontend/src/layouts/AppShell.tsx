@@ -1,3 +1,4 @@
+import { placeLabel } from '../data/indiaLocations'
 import {
   BarChart3, Boxes, Heart, HelpCircle, Home,
   LayoutDashboard, MapPinned, PackageCheck, Plus, Radar, ShoppingBag, Sprout, Truck, UserRound, WalletCards,
@@ -117,15 +118,16 @@ const navByRole: Record<Role, RoleNav> = {
 
 export function AppShell() {
   const { session, user } = useAuth()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   if (!session || !user) return null
   const nav = navByRole[session.role]
+  const userLocation = session.role === 'farmer' ? user.location.split(',').map(value => placeLabel(language, value.trim())).join(', ') : user.location
 
   return (
     <div className={`app-shell shell-${session.role}`}>
       <aside className="desktop-sidebar">
         <Logo light />
-        <div className="sidebar-role"><span>{t(roleKey[session.role])}</span><strong>{user.name}</strong><small>{session.role === 'farmer' ? t('location') : user.location}</small></div>
+        <div className="sidebar-role"><span>{t(roleKey[session.role])}</span><strong>{user.name}</strong><small>{userLocation}</small></div>
         <nav aria-label={`${t(roleKey[session.role])} ${t('overview')}`}>
           {nav.desktop.map((item) => <NavItem key={item.to} item={item} />)}
         </nav>
@@ -150,7 +152,7 @@ export function AppShell() {
           </div>
         </header>
         <header className="desktop-topbar">
-          <div><span>{session.role === 'logistics' ? t('logisticsOperator') : t('deliveringTo')}</span><strong>{session.role === 'farmer' ? t('location') : user.location}</strong></div>
+          <div><span>{session.role === 'logistics' ? t('logisticsOperator') : t('deliveringTo')}</span><strong>{userLocation}</strong></div>
           <div>{session.role === 'farmer' && <LanguageSwitcher />}{session.role === 'consumer' && <NavLink to="/consumer/saved" className="topbar-saved"><Heart size={17} />Saved</NavLink>}{session.role !== 'consumer' && <GlobalModeIndicator />}<NotificationCenter /><NavLink to={`/${session.role}/profile`} className="topbar-profile"><span>{user.avatarInitials}</span><div><strong>{user.name}</strong><small>{t(roleKey[session.role])}</small></div></NavLink></div>
         </header>
         <main className="app-main"><Outlet /></main>

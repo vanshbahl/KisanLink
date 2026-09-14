@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { authService } from '../services/authService'
 import type { Role, Session, User } from '../types'
 
@@ -16,7 +16,15 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(() => authService.getSession())
 
-  const value = useMemo<AuthContextValue>(() => ({
+  const [, setProfileRevision] = useState(0)
+  useEffect(() => {
+    const sync = () => setProfileRevision(value => value + 1)
+    window.addEventListener('kisanlink-state', sync)
+    window.addEventListener('storage', sync)
+    return () => { window.removeEventListener('kisanlink-state', sync); window.removeEventListener('storage', sync) }
+  }, [])
+
+  const value: AuthContextValue = {
     session,
     user: session ? authService.getCurrentUser() : null,
     async loginDemo(role) {
@@ -38,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(next)
       return next
     },
-  }), [session])
+  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

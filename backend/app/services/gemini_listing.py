@@ -487,9 +487,8 @@ ONBOARDING_SCHEMA: dict[str, Any] = {
 _ONBOARDING_PROMPTS = {
     "name": (
         "The farmer was asked for their full name. Extract only the name.\n"
-        "- `value`: the name in Latin script, title case. Transliterate Hindi names "
-        "(for example 'रमेश यादव' becomes 'Ramesh Yadav').\n"
-        "- `value_hi`: the same name in Devanagari script.\n"
+        "- `value`: preserve the name and script supplied by the farmer; do not translate it.\n"
+        "- `value_hi`: null; names do not change with UI language.\n"
         "- Drop filler such as 'mera naam', 'मेरा नाम ... है', 'my name is', 'ji', 'sahab'."
     ),
     "state": (
@@ -523,11 +522,11 @@ _ONBOARDING_PROMPTS = {
     ),
     "farm_size": (
         "The farmer was asked how much land they farm. Return `farm_size_acres` as a number of acres.\n"
-        "- Convert units: 1 bigha = 0.25 acre, 1 hectare = 2.47 acres, 1 kanal = 0.125 acre.\n"
+        "- Convert 1 hectare = 2.47 acres and 1 kanal = 0.125 acre. Bigha varies by region: return null and low confidence.\n"
         "- Understand Hindi number words: dedh/डेढ़ = 1.5, dhai/ढाई = 2.5, saadhe teen/साढ़े तीन = 3.5, "
         "chaar/चार = 4, paanch/पांच = 5, das/दस = 10.\n"
         "- 'karib', 'lagbhag', 'about' mean approximately; keep the number as spoken.\n"
-        "- If a range is spoken ('do teen acre'), return the lower number.\n"
+        "- Reject ambiguous ranges, zero, negative or more than 500 acres: return null and low confidence.\n"
         "- Leave `value` and `value_hi` null."
     ),
     "crops": (
@@ -561,6 +560,32 @@ def _empty_onboarding(warning: str | None) -> dict[str, Any]:
         "ai_used": False,
         "warning": warning,
     }
+
+
+def validate_onboarding_output(parsed: Any, field: str, candidates: list[str]) -> dict[str, Any]:
+    """Reject malformed/model-invented values before building the parser response."""
+    if not isinstance(parsed, dict):
+        raise ValueError("Expected an onboarding object")
+    for key in ("value", "value_hi"):
+        if parsed.get(key) is not None and not isinstance(parsed[key], str):
+            raise ValueError(f"Invalid {key}")
+    if type(parsed.get("unknown")) is not bool or parsed.get("confidence") not in ("high", "medium", "low"):
+        raise ValueError("Invalid confidence or unknown flag")
+    if parsed.get("confirmed") is not None and type(parsed["confirmed"]) is not bool:
+        raise ValueError("Invalid confirmation")
+    crops = parsed.get("crops")
+    if not isinstance(crops, list) or any(not isinstance(crop, str) for crop in crops):
+        raise ValueError("Invalid crops")
+    area = parsed.get("farm_size_acres")
+    if area is not None and (type(area) not in (int, float) or not 0 < area <= 500):
+        raise ValueError("Invalid farm area")
+    if field in ("state", "district") and parsed.get("value") is not None and parsed["value"] not in candidates:
+        raise ValueError("Location is outside canonical candidates")
+    if field == "crops" and any(crop not in candidates for crop in crops):
+        raise ValueError("Unknown crop")
+    if field in ("village", "locality") and parsed.get("value") and not re.fullmatch(r"[A-Za-z0-9 .,'’()-]{2,100}", parsed["value"]):
+        raise ValueError("Place must use canonical Latin script")
+    return parsed
 
 
 def extract_onboarding_field(
@@ -624,6 +649,7 @@ def extract_onboarding_field(
             ),
         )
         parsed = json.loads(response.text or "{}")
+        parsed = validate_onboarding_output(parsed, field, candidates)
         confidence = parsed.get("confidence")
         result = {
             "value": (parsed.get("value") or "").strip() or None,

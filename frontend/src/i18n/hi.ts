@@ -6,7 +6,7 @@ export const hi: Record<keyof typeof en, string> = {
   fasal: 'मेरी फसल', paisa: 'मेरा पैसा',
   farmer: 'किसान', consumer: 'ग्राहक', bulkBuyer: 'थोक खरीदार', logisticsOperator: 'लॉजिस्टिक्स ऑपरेटर', verifiedRole: 'सत्यापित {role}', current: 'अभी चुना है',
   continue: 'आगे बढ़ें', back: 'वापस', notifications: 'सूचनाएं', selectLanguage: 'भाषा चुनें', logoHome: 'KisanLink मुख्य पृष्ठ', dismiss: 'बंद करें', loading: 'सामग्री लोड हो रही है', locationLabel: 'स्थान', dwarkaLocation: 'द्वारका, नई दिल्ली', tomorrowPickup: 'कल, सुबह 7:30 बजे',
-  greeting: 'नमस्ते, रमेश जी', location: 'सोनीपत, हरियाणा', deliveringTo: 'डिलीवरी स्थान', clear: 'साफ़ मौसम', todayFarm: 'आज आपके खेत पर',
+  greeting: 'नमस्ते', location: 'सोनीपत, हरियाणा', deliveringTo: 'डिलीवरी स्थान', clear: 'साफ़ मौसम', todayFarm: 'आज आपके खेत पर',
   earningsMonth: 'इस महीने की कमाई', activeListings: 'सक्रिय फसलें', newOrders: 'नए ऑर्डर', sellProduce: 'अपनी फसल बेचें', quickActions: 'आपके खेत की जानकारी', myProduce: 'मेरी फसल', earnings: 'कमाई', demandInsights: 'मांग की जानकारी',
   priceInsight: 'आज की कीमत', localMarket: 'स्थानीय मंडी भाव', directPotential: 'सीधी बिक्री की कीमत', additional: 'संभावित अतिरिक्त कमाई', upcomingPickup: 'अगली पिकअप',
   needHelp: 'मदद चाहिए?', helpCopy: 'हमारी सहायता टीम से हिन्दी या अंग्रेज़ी में बात करें।', callSupport: 'सहायता के लिए कॉल करें', farmerReceivesMore: 'हर बिक्री में आपको अधिक मिलता है', viewDetails: 'पूरी जानकारी', view: 'देखें',
