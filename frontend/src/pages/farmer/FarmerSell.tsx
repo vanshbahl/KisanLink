@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Check, ChevronDown, Mic, Minus, Phone, Plus, Sprout, Truck } from 'lucide-react'
+import { ArrowLeft, Check, ChevronDown, Mic, Minus, Phone, Plus, Sparkles, Sprout, Truck } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { EvidenceCapture, EvidenceCaptureError, type EvidencePreview } from '../../components/inspection/EvidenceCapture'
-import { CropMarketMaker } from '../../components/farmer/CropMarketMaker'
+import { BehtarSaudaCard } from '../../components/farmer/BehtarSauda'
 import { FreshnessRing } from '../../components/farmer/FreshnessRing'
 import { VoiceInputModal } from '../../components/voice/VoiceInputModal'
 import { useToast } from '../../contexts/ToastContext'
 import { useFarmerText, money, relativeDay } from '../../i18n/farmer'
 import { fetchLivePriceOptions, type PriceOption } from '../../services/farmerAiService'
-import { cropIntelFor } from '../../services/farmerDeal'
+import { cropIntelFor, type SellOpportunity } from '../../services/farmerDeal'
 import { inspectionService, type LotContext } from '../../services/inspectionService'
 import { prototypeService } from '../../services/prototypeService'
 import { mandiBenchmarkService } from '../../services/mandiBenchmarkService'
@@ -44,6 +44,10 @@ import type { FarmerListing, ListingStatus, PackagingType } from '../../types'
 // every crop come from the centralized pricing engine over the live AGMARKNET benchmark
 // (`pricesFor`), so this wizard, the crop cards and the Market Maker always quote one ladder:
 // the suggested ask is the engine's normal price, and a Market Maker price is only ever above it.
+//
+// The Market Maker itself is *not* part of these three steps. It appears beside the form as
+// "बेहतर सौदा" (`BehtarSaudaCard`): an optional offer the farmer can open and join, which then
+// writes its price into the form. Declining it, or never touching it, leaves a normal listing.
 const CROPS = [
   { en: 'Fresh Tomatoes', hi: 'टमाटर', image: '/assets/produce/tomato.webp', visual: 'tomato' as const, category: 'Vegetables' as const },
   { en: 'New Potatoes', hi: 'आलू', image: '/assets/produce/potato.webp', visual: 'potato' as const, category: 'Staples' as const },
@@ -106,6 +110,8 @@ export function FarmerSell() {
   const [photoError, setPhotoError] = useState<string | null>(null)
   const [priceOptions, setPriceOptions] = useState<PriceOption[] | null>(null)
   const [priceLoading, setPriceLoading] = useState(false)
+  /** The Behtar Sauda the farmer joined, if any. Its price sits in the form; nothing is saved yet. */
+  const [joinedDeal, setJoinedDeal] = useState<SellOpportunity | null>(null)
 
   const update = <K extends keyof FarmerListing>(key: K, value: FarmerListing[K]) =>
     setForm((current) => ({ ...current, [key]: value }))
@@ -184,6 +190,7 @@ export function FarmerSell() {
   const chooseCrop = (crop: typeof CROPS[number]) => {
     setCustomCrop(false)
     setPriceOptions(null)
+    setJoinedDeal(null)
     setForm((current) => ({
       ...current,
       crop: crop.en, cropHi: crop.hi, imageSrc: crop.image, visual: crop.visual,
@@ -194,6 +201,30 @@ export function FarmerSell() {
   }
 
   const valid = form.crop.trim() && form.quantityKg > 0 && form.pricePerKg > 0 && form.harvestDate && form.availableFrom
+  /**
+   * Enough is known for the boards to answer: a crop the farmer has confirmed (step 1 is
+   * behind them), a quantity and the farm it sits on. The form carries defaults for all three,
+   * so the step gate is what stops the card from quoting a deal for a crop nobody picked yet.
+   */
+  const saudaReady = step >= 2 && Boolean(form.crop.trim() && form.quantityKg > 0 && form.farm)
+
+  // Joining writes the deal price into the form and tags the listing with the board, so the
+  // buyer side sees it as part of that corridor. Leaving restores the engine's normal price.
+  const joinDeal = (opportunity: SellOpportunity) => {
+    setJoinedDeal(opportunity)
+    setForm((current) => ({
+      ...current,
+      pricePerKg: opportunity.dealPerKg, priceLocked: true,
+      marketMakerId: opportunity.deal.boardId ?? current.marketMakerId,
+    }))
+    showToast(f('saudaJoinedToast', { price: `₹${opportunity.dealPerKg}` }))
+  }
+  const leaveDeal = () => {
+    const normal = joinedDeal?.normalPerKg ?? pricesFor(form.crop)?.pricePerKg ?? form.pricePerKg
+    setJoinedDeal(null)
+    setForm((current) => ({ ...current, pricePerKg: normal, priceLocked: false, marketMakerId: undefined }))
+    showToast(f('saudaLeftToast'))
+  }
 
   const save = async (status: ListingStatus) => {
     if (!valid) { showToast(f('fillRequired')); return }
@@ -250,6 +281,19 @@ export function FarmerSell() {
         </ol>
       </header>
 
+      {/* Behtar Sauda: beside the form on desktop, a strip above it on a phone. It is a
+          separate offer, not a step, so it is outside the step sections and never overlays
+          a control. */}
+      <BehtarSaudaCard
+        className="f-sell-sauda"
+        listing={form}
+        enabled={saudaReady}
+        joined={Boolean(joinedDeal)}
+        onJoin={joinDeal}
+        onLeave={leaveDeal}
+      />
+
+      <div className="f-sell-main">
       {step === 1 && (
         <section className="f-step">
           <h1>{f('whatSelling')}</h1>
@@ -433,38 +477,43 @@ export function FarmerSell() {
             </label>
           </div>
 
-          {/* Market Maker runs on its own here — this is the moment the farmer is deciding a
-              price. "इस दाम पर बेचें" writes the price into the form; nothing is saved yet. */}
-          <CropMarketMaker
-            key={`${form.crop}-${form.harvestDate}`}
-            listing={form}
-            autoStart
-            onAdopt={(pricePerKg) => { setForm((current) => ({ ...current, pricePerKg, priceLocked: true })); showToast(f('marketApplied', { price: `₹${pricePerKg}` })) }}
-          />
-
-          {priceLoading ? (
-            <p className="f-price-loading" role="status"><span className="spinner" />{f('findingPrice')}</p>
-          ) : priceOptions ? (
-            <div className="f-price-options" role="group" aria-label={f('priceAndPickup')}>
-              {priceOptions.map((option) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  className={form.pricePerKg === option.price ? 'is-active' : ''}
-                  onClick={() => setForm((current) => ({ ...current, pricePerKg: option.price, priceLocked: true }))}
-                >
-                  <strong>₹{option.price}</strong>
-                  <small>{option.id === 'fast' ? f('priceFast') : option.id === 'balanced' ? f('priceSuggested') : f('priceHigher')}</small>
-                </button>
-              ))}
+          {/* Kisan Intelligence's price suggestion: three anchors from the pricing engine, one
+              line of reasoning, tap to use. This is the only pricing help inside the normal
+              flow; the Market Maker lives in the Behtar Sauda card beside the form. */}
+          <div className="f-price-ai">
+            <div className="f-price-ai-head">
+              <span className="f-price-ai-icon" aria-hidden="true"><Sparkles size={15} /></span>
+              <small>{f('aiEyebrow')}</small>
             </div>
-          ) : null}
+            {priceLoading ? (
+              <p className="f-price-loading" role="status"><span className="spinner" />{f('findingPrice')}</p>
+            ) : priceOptions ? (
+              <>
+                <div className="f-price-options" role="group" aria-label={f('aiEyebrow')}>
+                  {priceOptions.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      className={form.pricePerKg === option.price && !joinedDeal ? 'is-active' : ''}
+                      onClick={() => { setJoinedDeal(null); setForm((current) => ({ ...current, pricePerKg: option.price, priceLocked: true, marketMakerId: undefined })) }}
+                    >
+                      <strong>₹{option.price}</strong>
+                      <small>{option.id === 'fast' ? f('priceFast') : option.id === 'balanced' ? f('priceSuggested') : f('priceHigher')}</small>
+                    </button>
+                  ))}
+                </div>
+                <p className="f-note f-price-ai-reason">
+                  {intel ? f('priceAiReason', { mandi: intel.mandi, crop: cropLabel }) : f('priceAiReasonPlain')}
+                </p>
+              </>
+            ) : null}
+          </div>
 
           <label className="f-field">
             <span>{f('priceOwn')}</span>
             <div className="f-price-input">
               <b>₹</b>
-              <input type="number" inputMode="numeric" min="1" value={form.pricePerKg} onChange={(event) => setForm((current) => ({ ...current, pricePerKg: Number(event.target.value), priceLocked: true }))} />
+              <input type="number" inputMode="numeric" min="1" value={form.pricePerKg} onChange={(event) => { setJoinedDeal(null); setForm((current) => ({ ...current, pricePerKg: Number(event.target.value), priceLocked: true, marketMakerId: undefined })) }} />
               <small>{f('perKg')}</small>
             </div>
           </label>
@@ -530,6 +579,7 @@ export function FarmerSell() {
         <Phone size={19} />
         <span>{f('callHelp')}<small>{f('helpNumber')}</small></span>
       </a>
+      </div>
 
       <VoiceInputModal
         isOpen={voiceOpen}

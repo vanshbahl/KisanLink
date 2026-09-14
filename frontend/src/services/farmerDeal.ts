@@ -1,5 +1,6 @@
 import { assessFreshness, type Freshness } from './cropFreshness'
 import { getCropIntel, listCropIntel, type CropIntel, type FarmerCrop } from './farmerAiService'
+import type { MarketAllocation } from './marketMakerEngine'
 import { marketMakerService, type MarketView } from './marketMakerService'
 import { prototypeService } from './prototypeService'
 import { derivePriceLadder, type PriceSourceMeta } from './pricingEngine'
@@ -241,6 +242,8 @@ export interface CropDeal {
   state: DealState
   /** kg of this listing already matched into a corridor. */
   matchedKg: number
+  /** kg other farmers nearby have already put into the same corridor. 0 when no board exists. */
+  pooledKg: number
   source: CropDealSource
   boardId?: string
   ownLotId?: string
@@ -285,6 +288,11 @@ function trendOf(intel: CropIntel | null): PriceTrend | null {
   return ahead > today ? 'rising' : ahead < today ? 'falling' : 'steady'
 }
 
+/** Supply other farmers have already pooled into a corridor, excluding this farmer's own lot. */
+function pooledKgOf(allocations: MarketAllocation[]): number {
+  return Math.round(allocations.filter((entry) => !entry.lot.own).reduce((sum, entry) => sum + entry.allocatedKg, 0))
+}
+
 function dealFromBoard(listing: FarmerListing, view: MarketView, intel: CropIntel | null): CropDeal {
   const { board, math } = view
   const own = math.allocations.find((entry) => entry.lot.own && (entry.lot.listingId === listing.id || !entry.lot.listingId))
@@ -300,6 +308,7 @@ function dealFromBoard(listing: FarmerListing, view: MarketView, intel: CropInte
     hasVehicle: Boolean(math.vehicle),
     state: stateOf(view),
     matchedKg: own?.allocatedKg ?? 0,
+    pooledKg: pooledKgOf(math.allocations),
     source: 'board',
     boardId: board.id,
     ownLotId: own?.lot.id,
@@ -326,6 +335,7 @@ function dealFromSegment(listing: FarmerListing, view: MarketView, intel: CropIn
     hasVehicle: Boolean(view.math.vehicle),
     state: view.board.status === 'created' ? 'sold' : blocked ? 'noVehicle' : segment.viable ? 'ready' : 'forming',
     matchedKg: own?.allocatedKg ?? 0,
+    pooledKg: pooledKgOf(segment.allocations),
     source: 'board',
     boardId: view.board.id,
     ownLotId: own?.lot.id,
@@ -358,6 +368,7 @@ function dealFromIntel(listing: FarmerListing, intel: CropIntel): CropDeal {
     hasVehicle: intel.pickupAvailableTomorrow,
     state: intel.pickupAvailableTomorrow ? 'ready' : 'forming',
     matchedKg: 0,
+    pooledKg: 0,
     source: 'intel',
     trend: trendOf(intel),
     intel,
@@ -390,4 +401,54 @@ export async function getCropDeal(listing: FarmerListing): Promise<CropDeal | nu
 export async function getCropDeals(listings: FarmerListing[]): Promise<Record<string, CropDeal | null>> {
   const views = await marketMakerService.boards()
   return Object.fromEntries(listings.map((listing) => [listing.id, cropDealFrom(listing, views)]))
+}
+
+/* ---------------------------------------------------------------------------
+ * "बेहतर सौदा" while listing
+ * ---------------------------------------------------------------------------
+ * The sell flow shows the Market Maker as an *optional* opportunity beside the form, never as
+ * the way a price gets chosen. This reads a `CropDeal` against the price a plain listing
+ * would fetch and answers only: is there a deal, is it ready, and what is it worth.
+ */
+export type SellOpportunityStatus =
+  /** Nothing real applies to this crop, or the deal is no better than a normal listing. */
+  | 'none'
+  /** Buyers or a vehicle are still being gathered; the price may still improve. */
+  | 'forming'
+  /** Buyers committed and a vehicle is available; the price can be taken now. */
+  | 'ready'
+
+export interface SellOpportunity {
+  status: SellOpportunityStatus
+  deal: CropDeal
+  /** What a normal listing fetches: the engine's normal price for this crop. */
+  normalPerKg: number
+  /** What the deal pays this farmer. */
+  dealPerKg: number
+  gainPerKg: number
+  /** gainPerKg × quantity, so the farmer sees the rupees, not only the rate. */
+  extraTotal: number
+}
+
+/** The price a plain listing gets: the engine's normal price, or the crop-intel floor. */
+export function normalPriceFor(listing: Pick<FarmerListing, 'crop' | 'mandiPricePerKg'>, deal: CropDeal | null): number {
+  const intel = deal?.intel ?? intelFor(listing.crop)
+  return Math.round(priceFloorFor(listing.mandiPricePerKg || deal?.mandiPerKg || 1, intel))
+}
+
+export function sellOpportunityFrom(listing: FarmerListing, deal: CropDeal | null): SellOpportunity | null {
+  if (!deal) return null
+  const normalPerKg = normalPriceFor(listing, deal)
+  const dealPerKg = Math.round(deal.pricePerKg)
+  const gainPerKg = Math.max(0, dealPerKg - normalPerKg)
+  const ready = (deal.state === 'ready' || deal.state === 'sold') && deal.hasVehicle
+  const status: SellOpportunityStatus = ready && gainPerKg > 0 ? 'ready'
+    : ready ? 'none'
+      : (deal.buyerCount > 0 || deal.pooledKg > 0) ? 'forming'
+        : 'none'
+  return { status, deal, normalPerKg, dealPerKg, gainPerKg, extraTotal: gainPerKg * listing.quantityKg }
+}
+
+export async function getSellOpportunity(listing: FarmerListing): Promise<SellOpportunity | null> {
+  return sellOpportunityFrom(listing, await getCropDeal(listing))
 }

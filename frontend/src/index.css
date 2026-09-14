@@ -2587,6 +2587,73 @@ body.mm-reveal-open { overflow: hidden; }
 .f-price-input small { color: var(--muted); font-weight: 700; }
 .f-price-note { margin-top: -6px; }
 
+/* --- Kisan Intelligence price suggestion (the only pricing help in the normal flow) --- */
+.f-price-ai { display: grid; gap: 10px; padding: 14px 16px 12px; border-radius: var(--f-radius); background: linear-gradient(180deg, #fffdf7, #fbf6ea); border: 1px solid #ecdfbf; }
+.f-price-ai-head { display: flex; align-items: center; gap: 8px; }
+.f-price-ai-icon { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, var(--green), var(--harvest)); }
+.f-price-ai-head small { font-size: 11px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: #8a6a1f; }
+.f-price-ai .f-price-options button { background: #fff; }
+.f-price-ai-reason { margin: 0; color: #6b5d3f; }
+
+/* --- Behtar Sauda: the Market Maker as an optional offer beside the form ---------------
+   Deliberately not the AI surface. Kisan Intelligence is warm cream and sparkles; this is a
+   deep green card with a handshake, so the two never read as the same thing. Nothing here
+   overlays a control: on a phone it is a strip above the steps, on desktop a sticky column. */
+.f-sauda { display: grid; gap: 12px; padding: 16px; border-radius: var(--f-radius); color: #e9f2ec; background: linear-gradient(150deg, var(--green-dark), #1f5c3f 60%, #2a6d4a); border: 1px solid rgba(255,255,255,.08); box-shadow: 0 10px 26px rgba(23, 75, 52, .18); }
+.f-sauda-head { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; align-items: center; }
+.f-sauda-mark { width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; background: var(--harvest); color: #3d2a05; }
+.f-sauda-title { display: grid; gap: 1px; min-width: 0; }
+.f-sauda-title strong { font-size: 16px; color: #fff; letter-spacing: -.01em; }
+.f-sauda-title small { font-size: 11px; font-weight: 700; letter-spacing: .04em; color: #a9cbb6; }
+.f-sauda-quiet { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 15px; line-height: 1.5; color: #cfe2d6; }
+.f-sauda-quiet .spinner { border-color: rgba(255,255,255,.25); border-top-color: #fff; flex: 0 0 auto; }
+.f-sauda-body { display: grid; gap: 10px; }
+.f-sauda-lead { margin: 0; font-size: 17px; font-weight: 800; line-height: 1.35; color: #fff; }
+.f-sauda-for { font-size: 14px; color: #b9d5c4; margin-top: -6px; }
+.f-sauda .f-note { color: #b9d5c4; }
+.f-sauda-why { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.f-sauda-why li { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: #f3f8f4; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.14); padding: 5px 10px; border-radius: 999px; }
+.f-sauda-why li svg { color: var(--harvest); flex: 0 0 auto; }
+.f-sauda-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.f-sauda-compare > div { display: grid; gap: 2px; align-content: start; padding: 11px 12px; border-radius: 14px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.1); }
+.f-sauda-compare > div > span { font-size: 13px; font-weight: 700; color: #b9d5c4; }
+.f-sauda-compare > div > strong { font-size: 24px; line-height: 1.05; letter-spacing: -.03em; font-variant-numeric: tabular-nums; color: #fff; }
+.f-sauda-compare > div > strong small { font-size: 13px; font-weight: 700; color: #b9d5c4; margin-left: 2px; }
+.f-sauda-compare > div.is-deal { background: rgba(235, 175, 60, .16); border-color: rgba(235, 175, 60, .45); }
+.f-sauda-compare > div.is-deal > strong { color: #ffd77a; }
+.f-sauda-compare > div.is-deal > b { justify-self: start; margin-top: 4px; font-size: 12px; font-weight: 800; padding: 3px 8px; border-radius: 999px; background: var(--harvest); color: #3d2a05; }
+.f-sauda-extra { margin: 0; font-size: 15px; font-weight: 700; color: #ffd77a; }
+.f-sauda-foot { display: grid; gap: 10px; }
+.f-sauda-cta { width: 100%; }
+.f-sauda .btn-primary { background: #fff; color: var(--green-dark); box-shadow: none; gap: 6px; }
+.f-sauda .btn-primary:hover { background: #eaf3ed; }
+.f-sauda .btn-ghost { color: #e9f2ec; border-color: rgba(255,255,255,.3); }
+.f-sauda .btn-ghost:hover { background: rgba(255,255,255,.08); }
+.f-sauda-more { display: inline-flex; align-items: center; gap: 2px; justify-self: start; min-height: 40px; padding: 0; background: none; border: 0; color: #ffd77a; font-weight: 800; font-size: 15px; cursor: pointer; }
+.f-sauda-joined { display: flex; align-items: center; gap: 8px; }
+.f-sauda-joined svg { color: var(--harvest); flex: 0 0 auto; }
+.f-sauda.is-waiting, .f-sauda.is-none { background: linear-gradient(150deg, #f3f7f4, #eaf1ec); color: var(--text); border-color: var(--border); box-shadow: none; }
+.f-sauda.is-waiting .f-sauda-title strong, .f-sauda.is-none .f-sauda-title strong, .f-sauda.is-none .f-sauda-lead { color: var(--green-dark); }
+.f-sauda.is-waiting .f-sauda-title small, .f-sauda.is-none .f-sauda-title small, .f-sauda.is-none .f-note { color: var(--muted); }
+.f-sauda.is-waiting .f-sauda-quiet { color: #3f5b4c; }
+.f-sauda.is-waiting .f-sauda-mark, .f-sauda.is-none .f-sauda-mark { background: var(--green-soft); color: var(--green); }
+.f-sauda.is-none .f-sauda-lead { font-size: 16px; }
+
+/* The opened deal, in the shared bottom sheet. */
+.f-sauda-eyebrow { margin: 0; font-size: 11px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+.f-sauda-sheet-lead { display: grid; gap: 2px; margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -.02em; line-height: 1.25; }
+.f-sauda-sheet-lead small { font-size: 14px; font-weight: 700; color: var(--muted); }
+.f-sauda-sheet-compare { grid-template-columns: 1fr 1fr; }
+.f-sauda-sheet-compare .f-deal-compare-gain { grid-column: 1 / -1; justify-self: start; }
+.f-sheet-body .f-sauda-extra { color: var(--green-dark); }
+.f-sauda-sheet-actions { display: grid; gap: 8px; }
+.f-sauda-sheet-actions .btn { gap: 8px; }
+
+/* Sell page layout: a single column everywhere; from tablet up the Behtar Sauda card moves
+   into its own sticky column so the form keeps its width and nothing is covered. */
+.f-sell { grid-template-columns: minmax(0, 1fr); }
+.f-sell-main { display: grid; gap: 22px; min-width: 0; }
+
 .f-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .f-choice button { display: grid; gap: 5px; justify-items: center; align-content: center; min-height: 120px; padding: 16px 12px; border-radius: 17px; border: 1.5px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; text-align: center; }
 .f-choice button:hover { border-color: #aab8af; }
@@ -2771,6 +2838,21 @@ body.mm-reveal-open { overflow: hidden; }
   .f-qty { grid-template-columns: 56px minmax(0, 1fr) 56px; gap: 8px; }
   .f-qty > button { width: 56px; height: 56px; }
   .f-tabs button { font-size: 14px; padding: 0 6px; }
+  .f-sell-main { gap: 18px; }
+  /* A phone reads the card as a strip above the steps, so it stays short: tighter type,
+     smaller price boxes, and the money line and the button share one row. */
+  .f-sauda { padding: 14px; gap: 10px; }
+  .f-sauda-body { gap: 8px; }
+  .f-sauda-lead { font-size: 16px; }
+  .f-sauda-why li { font-size: 12px; padding: 4px 9px; }
+  .f-sauda-compare > div { padding: 8px 10px; }
+  .f-sauda-compare > div > strong { font-size: 20px; }
+  .f-sauda-compare > div.is-deal > b { margin-top: 2px; }
+  .f-sauda-foot { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+  .f-sauda-extra { font-size: 14px; }
+  .f-sauda-cta { width: auto; min-height: 44px; font-size: 15px; padding: 0 14px; }
+  .f-sauda-sheet-compare { grid-template-columns: 1fr 1fr; }
+  .f-sauda-sheet-compare > div > strong { font-size: 24px; }
 }
 
 /* Hindi strings run noticeably longer. Give the nav two lines rather than clipping. */
@@ -2788,6 +2870,10 @@ html[lang="hi"] .f-tabs button { font-size: 14px; }
   .f-crop-detail .f-crop-hero { grid-template-columns: 320px minmax(0, 1fr); align-items: start; }
   .f-crop-detail .f-crop-hero .produce-hero { min-height: 260px; }
   .f-orders .f-order-list, .f-fasal .f-crop-list { grid-template-columns: 1fr; }
+  .f-sell { max-width: 1120px; grid-template-columns: minmax(0, 1fr) 320px; grid-template-areas: "head sauda" "main sauda"; column-gap: 28px; align-items: start; }
+  .f-sell-head { grid-area: head; }
+  .f-sell-main { grid-area: main; gap: 26px; }
+  .f-sell-sauda { grid-area: sauda; position: sticky; top: 94px; }
   .f-sheet-backdrop { align-items: center; }
   .f-sheet { border-radius: 24px; max-height: 82vh; }
   .f-sheet-foot { padding-bottom: 16px; }

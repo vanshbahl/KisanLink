@@ -48,7 +48,7 @@ const blankDraft = (): VoiceDraft => {
 export function FarmerOnboarding() {
   const { f, language } = useFarmerText()
   const { showToast } = useToast()
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [step, setStep] = useState<Step>(1)
   const [draft, setDraft] = useState<VoiceDraft>(blankDraft)
@@ -160,10 +160,14 @@ export function FarmerOnboarding() {
     setEditing(null)
   }
 
+  // From the first step, "back" leaves onboarding for the welcome page. The welcome page is
+  // public-only, so the session ends here (which also resets onboarding, as every farmer
+  // logout does) rather than bouncing straight back into this form.
   const back = () => {
     if (confirming) setConfirming(false)
     else if (returnToReview) { setReturnToReview(false); setConfirming(true) }
     else if (step > 1) setStep((step - 1) as Step)
+    else { logout(); window.location.replace('/') } // same as the profile page's log out
   }
 
   const finish = async () => {
@@ -219,9 +223,7 @@ export function FarmerOnboarding() {
 
       <section className="f-page f-onboard-body">
         <div className="f-onboard-head">
-          {(step > 1 || confirming) ? (
-            <button type="button" className="back-link" onClick={back}><ArrowLeft size={18} />{f('back')}</button>
-          ) : <span className="eyebrow">{f('onboardTitle')}</span>}
+          <button type="button" className="back-link" onClick={back}><ArrowLeft size={18} />{f('back')}</button>
           <ol className="f-steps" aria-label={f('onboardTitle')}>
             {stepLabels.map((key, index) => (
               <li key={key} className={shownStep === index + 1 ? 'is-active' : shownStep > index + 1 ? 'is-done' : ''}>
