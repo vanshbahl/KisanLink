@@ -135,7 +135,7 @@ function factorsFor(view: MarketView, intel: CropIntel | null, cropLabelKey: { e
  * next to it on screen. Without an intel row to anchor to, the centralized pricing engine's
  * normal price for that mandi benchmark stands in — the same rule every other surface uses.
  */
-function priceFloorFor(mandiPerKg: number, intel: CropIntel | null): number {
+export function priceFloorFor(mandiPerKg: number, intel: CropIntel | null): number {
   return intel ? intel.recommendedMin : derivePriceLadder(Math.max(1, mandiPerKg)).kisanlinkNormalPerKg
 }
 
@@ -276,7 +276,7 @@ export function cropKeys(name: string): string[] {
   return keys.length ? keys : [lower.trim()]
 }
 
-const sameCrop = (a: string, b: string) => {
+export const sameCrop = (a: string, b: string) => {
   const keysA = cropKeys(a)
   return cropKeys(b).some((key) => keysA.includes(key))
 }
@@ -289,7 +289,7 @@ function trendOf(intel: CropIntel | null): PriceTrend | null {
 }
 
 /** Supply other farmers have already pooled into a corridor, excluding this farmer's own lot. */
-function pooledKgOf(allocations: MarketAllocation[]): number {
+export function pooledKgOf(allocations: MarketAllocation[]): number {
   return Math.round(allocations.filter((entry) => !entry.lot.own).reduce((sum, entry) => sum + entry.allocatedKg, 0))
 }
 
@@ -404,51 +404,13 @@ export async function getCropDeals(listings: FarmerListing[]): Promise<Record<st
 }
 
 /* ---------------------------------------------------------------------------
- * "बेहतर सौदा" while listing
+ * The price a plain listing gets
  * ---------------------------------------------------------------------------
- * The sell flow shows the Market Maker as an *optional* opportunity beside the form, never as
- * the way a price gets chosen. This reads a `CropDeal` against the price a plain listing
- * would fetch and answers only: is there a deal, is it ready, and what is it worth.
+ * Every "better deal" surface compares against this number: the engine's normal price for
+ * the crop, or the crop-intel floor. `farmerOpportunities.ts` reads it for the Behtar Sauda
+ * list; nothing in the sell flow itself calls the Market Maker any more.
  */
-export type SellOpportunityStatus =
-  /** Nothing real applies to this crop, or the deal is no better than a normal listing. */
-  | 'none'
-  /** Buyers or a vehicle are still being gathered; the price may still improve. */
-  | 'forming'
-  /** Buyers committed and a vehicle is available; the price can be taken now. */
-  | 'ready'
-
-export interface SellOpportunity {
-  status: SellOpportunityStatus
-  deal: CropDeal
-  /** What a normal listing fetches: the engine's normal price for this crop. */
-  normalPerKg: number
-  /** What the deal pays this farmer. */
-  dealPerKg: number
-  gainPerKg: number
-  /** gainPerKg × quantity, so the farmer sees the rupees, not only the rate. */
-  extraTotal: number
-}
-
-/** The price a plain listing gets: the engine's normal price, or the crop-intel floor. */
 export function normalPriceFor(listing: Pick<FarmerListing, 'crop' | 'mandiPricePerKg'>, deal: CropDeal | null): number {
   const intel = deal?.intel ?? intelFor(listing.crop)
   return Math.round(priceFloorFor(listing.mandiPricePerKg || deal?.mandiPerKg || 1, intel))
-}
-
-export function sellOpportunityFrom(listing: FarmerListing, deal: CropDeal | null): SellOpportunity | null {
-  if (!deal) return null
-  const normalPerKg = normalPriceFor(listing, deal)
-  const dealPerKg = Math.round(deal.pricePerKg)
-  const gainPerKg = Math.max(0, dealPerKg - normalPerKg)
-  const ready = (deal.state === 'ready' || deal.state === 'sold') && deal.hasVehicle
-  const status: SellOpportunityStatus = ready && gainPerKg > 0 ? 'ready'
-    : ready ? 'none'
-      : (deal.buyerCount > 0 || deal.pooledKg > 0) ? 'forming'
-        : 'none'
-  return { status, deal, normalPerKg, dealPerKg, gainPerKg, extraTotal: gainPerKg * listing.quantityKg }
-}
-
-export async function getSellOpportunity(listing: FarmerListing): Promise<SellOpportunity | null> {
-  return sellOpportunityFrom(listing, await getCropDeal(listing))
 }

@@ -16,6 +16,7 @@ import { FarmerOnboarding } from './pages/farmer/FarmerOnboarding'
 import { FarmerOrders } from './pages/farmer/FarmerOrders'
 import { FarmerPaisa } from './pages/farmer/FarmerPaisa'
 import { FarmerProfile } from './pages/farmer/FarmerProfile'
+import { FarmerSauda } from './pages/farmer/FarmerSauda'
 import { FarmerSell } from './pages/farmer/FarmerSell'
 import { ListingDetailPage } from './pages/ListingDetailPage'
 import { MarketMakerPage } from './pages/MarketMakerPage'
@@ -81,6 +82,7 @@ export default function App() {
           <Route path="orders/:id" element={<RoleGuard role="farmer"><FarmerOrderDetail /></RoleGuard>} />
           <Route path="paisa" element={<RoleGuard role="farmer"><FarmerPaisa /></RoleGuard>} />
           <Route path="deal" element={<RoleGuard role="farmer"><FarmerDeal /></RoleGuard>} />
+          <Route path="sauda" element={<RoleGuard role="farmer"><FarmerSauda /></RoleGuard>} />
           <Route path="profile" element={<RoleGuard role="farmer"><FarmerProfile /></RoleGuard>} />
 
           {/*

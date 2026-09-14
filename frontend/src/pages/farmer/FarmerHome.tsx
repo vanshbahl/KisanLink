@@ -1,5 +1,6 @@
 import { ChevronRight, PackageCheck, Phone, Sprout } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { BehtarSaudaTeaser } from '../../components/farmer/BehtarSauda'
 import { HomeAiTrigger } from '../../components/farmer/FarmerAi'
 import { FreshnessRing } from '../../components/farmer/FreshnessRing'
 import { Money } from '../../components/farmer/Money'
@@ -134,6 +135,9 @@ export function FarmerHome() {
       <Link className="btn btn-primary btn-large btn-full f-big-action" to="/farmer/sell">
         <Sprout size={22} />{crops.length ? f('sellCrop') : f('addFirstCrop')}
       </Link>
+
+      {/* One quiet pointer to the opportunities screen; renders nothing when no deal is open. */}
+      <BehtarSaudaTeaser listings={data.listings} />
 
       <div className="f-home-status">
         <Link className="f-home-cell" to="/farmer/paisa">

@@ -1,176 +1,128 @@
-import { useEffect, useState } from 'react'
-import { Check, ChevronRight, Handshake, IndianRupee, Sprout, Truck, Users, Warehouse } from 'lucide-react'
+import { Check, ChevronRight, Handshake, IndianRupee, MapPin, Sprout, Truck, Users, Warehouse } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { Sheet } from './Sheet'
 import { MandiSourceNote } from '../MandiSourceNote'
-import { money, useFarmerText } from '../../i18n/farmer'
-import { getSellOpportunity, type SellOpportunity } from '../../services/farmerDeal'
+import { ProductImage } from '../ProductImage'
+import { money, timeWindow, useFarmerText, type FarmerKey } from '../../i18n/farmer'
+import { useAsyncData } from '../../hooks/useAsyncData'
+import { getOpportunitySummary, type Opportunity, type OpportunityStatus } from '../../services/farmerOpportunities'
 import type { FarmerListing } from '../../types'
 
 /**
- * "बेहतर सौदा" beside the sell form.
+ * "बेहतर सौदा" — the pieces of the opportunities marketplace that other screens reuse.
  *
- * The Market Maker used to run inside the price step, which made a coordinated corridor deal
- * look like the default way to price a listing. It is not. A normal listing is priced by
- * Kisan Intelligence and sells to any buyer; a Behtar Sauda is an *optional* offer that only
- * exists when buyers, pooled supply and a vehicle line up. This card keeps that distinction:
- * it sits beside the form (a column on desktop, a strip above the steps on a phone), never
- * covers a control, and reads from the same `getCropDeal` the crop pages already use.
+ *   BehtarSaudaTeaser  a small card that says how many deals are open and links to the list.
+ *                      Sits low on Sell Produce and on Home; never a step, never a panel.
+ *   OpportunityCard    one row of the /farmer/sauda list, in the order a farmer reads it:
+ *                      crop, kg needed, ₹/kg, what they earn, uplift, where the truck goes.
+ *   OpportunitySheet   the deal opened: the Market Maker's reasoning in farmer words, and
+ *                      the one decision (join, or close).
  *
- * States, in order of how much the farmer has told us:
- *   waiting  -> no crop or quantity yet
- *   looking  -> reading the boards
- *   none     -> nothing better than a normal listing
- *   forming  -> buyers or a vehicle still gathering
- *   ready    -> a better price the farmer can take now
- *   joined   -> the farmer took it; the form carries the deal price
+ * Nothing here decides a listing price. Normal selling is priced by Kisan Intelligence; a
+ * Behtar Sauda is an optional offer that exists only when buyers, pooled supply and a
+ * vehicle line up.
  */
-const LOOKUP_DEBOUNCE_MS = 350
+export const OPPORTUNITIES_PATH = '/farmer/sauda'
 
-export function BehtarSaudaCard({ listing, enabled, joined, onJoin, onLeave, className = '' }: {
-  listing: FarmerListing
-  /** Crop and quantity are known; nothing is looked up before that. */
-  enabled: boolean
-  joined: boolean
-  onJoin: (opportunity: SellOpportunity) => void
-  onLeave: () => void
+const STATUS_KEY: Record<OpportunityStatus, FarmerKey> = {
+  ready: 'saudaStatusReady',
+  forming: 'saudaStatusForming',
+  highDemand: 'saudaStatusDemand',
+}
+
+/** "Tomorrow · 6–10 AM" is stored in English for every role; the farmer screen reads it in their language. */
+function deliveryText(language: 'en' | 'hi', window: string): string {
+  const text = timeWindow(language, window)
+  return language === 'hi' ? text.replace(/Tomorrow/i, 'कल').replace(/Today/i, 'आज') : text
+}
+
+/**
+ * The compact entry point. Loads its own summary so a host screen adds one line, and
+ * renders nothing at all when no deal is open, so it never takes space to say "nothing".
+ */
+export function BehtarSaudaTeaser({ listings, className = '' }: {
+  /** The host's already-loaded listings, to save a second read. */
+  listings?: FarmerListing[]
   className?: string
 }) {
-  const { f, pick } = useFarmerText()
-  const [opportunity, setOpportunity] = useState<SellOpportunity | null>(null)
-  const [looking, setLooking] = useState(false)
-  const [open, setOpen] = useState(false)
-
-  const crop = pick(listing.crop, listing.cropHi)
-  // Only the inputs the boards actually care about re-run the lookup; typing a note does not.
-  const lookupKey = enabled ? `${listing.crop}|${listing.quantityKg}|${listing.harvestDate}|${listing.farm}` : ''
-
-  useEffect(() => {
-    if (!lookupKey) { setOpportunity(null); setLooking(false); return }
-    let active = true
-    setLooking(true)
-    const timer = window.setTimeout(() => {
-      void getSellOpportunity(listing)
-        .then((next) => { if (active) setOpportunity(next) })
-        .catch(() => { if (active) setOpportunity(null) })
-        .finally(() => { if (active) setLooking(false) })
-    }, LOOKUP_DEBOUNCE_MS)
-    return () => { active = false; window.clearTimeout(timer) }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lookupKey])
-
-  const status = !enabled ? 'waiting' : looking ? 'looking' : joined ? 'joined' : (opportunity?.status ?? 'none')
+  const { f } = useFarmerText()
+  const { data } = useAsyncData(() => getOpportunitySummary(listings), [listings?.length], { live: true })
+  if (!data || data.count === 0) return null
 
   return (
-    <aside className={`f-sauda is-${status} ${className}`.trim()} aria-live="polite" aria-label={f('saudaTitle')}>
-      <header className="f-sauda-head">
-        <span className="f-sauda-mark" aria-hidden="true"><Handshake size={17} /></span>
-        <span className="f-sauda-title">
-          <strong>{f('saudaTitle')}</strong>
-          <small>{f('saudaPoweredBy')}</small>
+    <Link to={OPPORTUNITIES_PATH} className={`f-sauda-teaser ${className}`.trim()} aria-label={f('saudaTitle')}>
+      <span className="f-sauda-teaser-mark" aria-hidden="true"><Handshake size={18} /></span>
+      <span className="f-sauda-teaser-copy">
+        <strong>{data.count === 1 ? f('saudaTeaserOne') : f('saudaTeaserCount', { count: data.count })}</strong>
+        <span className="f-sauda-teaser-line">
+          {data.bestGainPerKg > 0 && <b>{f('saudaTeaserGain', { amount: data.bestGainPerKg })}</b>}
+          {data.readyCount > 0 && <em>{f('saudaTeaserReady', { count: data.readyCount })}</em>}
         </span>
-      </header>
-
-      {status === 'waiting' && <p className="f-sauda-quiet">{f('saudaWaiting')}</p>}
-
-      {status === 'looking' && (
-        <p className="f-sauda-quiet" role="status"><span className="spinner" />{f('saudaLooking', { crop })}</p>
-      )}
-
-      {status === 'none' && (
-        <div className="f-sauda-body">
-          <p className="f-sauda-lead">{f('saudaNone', { crop })}</p>
-          <small className="f-note">{f('saudaNoneHint')}</small>
-        </div>
-      )}
-
-      {status === 'forming' && opportunity && (
-        <div className="f-sauda-body">
-          <p className="f-sauda-lead">{f('saudaForming', { crop })}</p>
-          <WhyChips opportunity={opportunity} />
-          <small className="f-note">{f('saudaFormingHint')}</small>
-          <button type="button" className="f-sauda-more" onClick={() => setOpen(true)}>
-            {f('saudaView')}<ChevronRight size={16} aria-hidden="true" />
-          </button>
-        </div>
-      )}
-
-      {status === 'ready' && opportunity && (
-        <div className="f-sauda-body">
-          <p className="f-sauda-lead">{f('saudaReady', { crop })}</p>
-          <small className="f-sauda-for">{f('saudaFor', { qty: listing.quantityKg, crop })}</small>
-          <WhyChips opportunity={opportunity} />
-          <div className="f-sauda-compare">
-            <div>
-              <span>{f('saudaNormalPrice')}</span>
-              <strong>₹{opportunity.normalPerKg}<small>{f('perKg')}</small></strong>
-            </div>
-            <div className="is-deal">
-              <span>{f('saudaDealPrice')}</span>
-              <strong>₹{opportunity.dealPerKg}<small>{f('perKg')}</small></strong>
-              <b>{f('saudaGain', { amount: opportunity.gainPerKg })}</b>
-            </div>
-          </div>
-          <div className="f-sauda-foot">
-            {opportunity.extraTotal > 0 && (
-              <p className="f-sauda-extra">{f('saudaExtra', { qty: listing.quantityKg, amount: money(opportunity.extraTotal) })}</p>
-            )}
-            <button type="button" className="btn btn-primary btn-large f-sauda-cta" onClick={() => setOpen(true)}>
-              {f('saudaView')}<ChevronRight size={18} aria-hidden="true" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {status === 'joined' && (
-        <div className="f-sauda-body">
-          <p className="f-sauda-lead f-sauda-joined"><Check size={18} aria-hidden="true" />{f('saudaJoined')}</p>
-          <small className="f-note">{f('saudaJoinedHint', { price: `₹${listing.pricePerKg}` })}</small>
-          <button type="button" className="btn btn-ghost btn-full" onClick={onLeave}>{f('saudaSellNormally')}</button>
-        </div>
-      )}
-
-      {opportunity && (
-        <SaudaSheet
-          open={open}
-          onClose={() => setOpen(false)}
-          listing={listing}
-          crop={crop}
-          opportunity={opportunity}
-          onJoin={() => { setOpen(false); onJoin(opportunity) }}
-        />
-      )}
-    </aside>
+        <small>{f('saudaTeaserHint')}</small>
+        <span className="f-sauda-teaser-cta">{f('saudaTeaserCta')}<ChevronRight size={16} aria-hidden="true" /></span>
+      </span>
+    </Link>
   )
 }
 
-/** The one-line reasons a deal exists, in the order a farmer would check them. */
-function WhyChips({ opportunity }: { opportunity: SellOpportunity }) {
-  const { f } = useFarmerText()
-  const { deal } = opportunity
+/** One opportunity, as a list row. `onOpen` opens the sheet; the card itself is not a link. */
+export function OpportunityCard({ opportunity, onOpen }: { opportunity: Opportunity; onOpen: () => void }) {
+  const { f, language, pick } = useFarmerText()
+  const crop = pick(opportunity.cropEn, opportunity.cropHi)
+  const grows = opportunity.signals.some((signal) => signal.id === 'growing' || signal.id === 'ownLot')
+  const nearby = opportunity.signals.some((signal) => signal.id === 'nearby')
+
   return (
-    <ul className="f-sauda-why">
-      {deal.hasVehicle && <li><Truck size={14} aria-hidden="true" />{f('saudaWhyTruck')}</li>}
-      {deal.buyerCount > 0 && <li><Users size={14} aria-hidden="true" />{f('saudaWhyBuyers', { count: deal.buyerCount })}</li>}
-      {deal.pooledKg > 0 && <li><Warehouse size={14} aria-hidden="true" />{f('saudaWhyPooled', { qty: deal.pooledKg })}</li>}
-    </ul>
+    <article className={`f-opp is-${opportunity.status}`}>
+      <header className="f-opp-head">
+        <ProductImage imageSrc={opportunity.imageSrc} visual={opportunity.visual} alt="" size="mini" />
+        <span className="f-opp-title">
+          <strong>{crop}</strong>
+          <small>{f('saudaNeeded', { qty: opportunity.neededKg.toLocaleString('en-IN') })}</small>
+        </span>
+        <span className="f-opp-status">{f(STATUS_KEY[opportunity.status])}</span>
+      </header>
+
+      <div className="f-opp-money">
+        <strong>₹{opportunity.offeredPerKg}<small>{f('perKg')}</small></strong>
+        <span className="f-opp-earn">
+          <b>{f('saudaEarn', { amount: money(opportunity.earnTotal) })}</b>
+          <small>{opportunity.baseIsOwn ? f('saudaBasedOnOwn', { qty: opportunity.baseKg }) : f('saudaBasedOnAll', { qty: opportunity.baseKg })}</small>
+        </span>
+      </div>
+
+      {opportunity.extraTotal > 0
+        ? <p className="f-opp-uplift">{f('saudaVsNormal', { amount: money(opportunity.extraTotal) })}</p>
+        : <p className="f-opp-uplift is-flat">{f('saudaSameAsNormal')}</p>}
+
+      <ul className="f-opp-meta">
+        <li><Truck size={14} aria-hidden="true" />{opportunity.hasVehicle ? f('saudaTruckReadyShort') : f('saudaTruckNearby')}</li>
+        <li><MapPin size={14} aria-hidden="true" />{language === 'hi' ? opportunity.corridorHi : opportunity.corridor}</li>
+        {grows && <li className="is-why"><Sprout size={14} aria-hidden="true" />{f('saudaYouGrow')}</li>}
+        {nearby && <li className="is-why"><MapPin size={14} aria-hidden="true" />{f('saudaNearYou')}</li>}
+      </ul>
+
+      <button type="button" className="btn btn-primary f-opp-cta" onClick={onOpen}>
+        {f('saudaView')}<ChevronRight size={18} aria-hidden="true" />
+      </button>
+    </article>
   )
 }
 
 /**
- * The deal, opened. Same bottom sheet as every other farmer disclosure; the four rows are
- * the reasoning the Market Maker actually ran on, in farmer words, and the two buttons are
- * the only decision: take the deal, or sell normally.
+ * The deal, opened. The four rows are the reasoning the Market Maker actually ran on, in
+ * farmer words. The footer is the only decision: join (or list the crop to join), or close.
  */
-function SaudaSheet({ open, onClose, listing, crop, opportunity, onJoin }: {
+export function OpportunitySheet({ opportunity, open, onClose, onJoin, busy = false }: {
+  opportunity: Opportunity
   open: boolean
   onClose: () => void
-  listing: FarmerListing
-  crop: string
-  opportunity: SellOpportunity
   onJoin: () => void
+  busy?: boolean
 }) {
-  const { f } = useFarmerText()
-  const { deal, normalPerKg, dealPerKg, gainPerKg, extraTotal, status } = opportunity
+  const { f, language, pick } = useFarmerText()
+  const crop = pick(opportunity.cropEn, opportunity.cropHi)
+  const { normalPerKg, offeredPerKg, gainPerKg, extraTotal, baseKg, status } = opportunity
   const canJoin = status === 'ready'
 
   return (
@@ -181,20 +133,21 @@ function SaudaSheet({ open, onClose, listing, crop, opportunity, onJoin }: {
       footer={(
         <div className="f-sauda-sheet-actions">
           {canJoin && (
-            <button type="button" className="btn btn-primary btn-large btn-full" onClick={onJoin}>
-              <Handshake size={19} aria-hidden="true" />{f('saudaJoin')}
+            <button type="button" className="btn btn-primary btn-large btn-full" disabled={busy} onClick={onJoin}>
+              <Handshake size={19} aria-hidden="true" />
+              {opportunity.listingId ? f('saudaJoin') : f('saudaListToJoin', { crop })}
             </button>
           )}
           <button type="button" className={`btn ${canJoin ? 'btn-ghost' : 'btn-primary'} btn-large btn-full`} onClick={onClose}>
-            {f('saudaSellNormally')}
+            {canJoin ? f('saudaSellNormally') : f('close')}
           </button>
         </div>
       )}
     >
       <p className="f-sauda-eyebrow">{f('saudaPoweredBy')}</p>
       <p className="f-sauda-sheet-lead">
-        {status === 'ready' ? f('saudaReady', { crop }) : f('saudaForming', { crop })}
-        <small>{f('saudaFor', { qty: listing.quantityKg, crop })}</small>
+        {canJoin ? f('saudaReady', { crop }) : f('saudaForming', { crop })}
+        <small>{f('saudaFor', { qty: baseKg, crop })}</small>
       </p>
 
       <div className="f-deal-compare f-sauda-sheet-compare">
@@ -204,46 +157,47 @@ function SaudaSheet({ open, onClose, listing, crop, opportunity, onJoin }: {
         </div>
         <div className="is-better">
           <span>{f('saudaDealPrice')}</span>
-          <strong>₹{dealPerKg}<small>{f('perKg')}</small></strong>
+          <strong>₹{offeredPerKg}<small>{f('perKg')}</small></strong>
         </div>
         {gainPerKg > 0 && <b className="f-deal-compare-gain">{f('saudaGain', { amount: gainPerKg })}</b>}
       </div>
-      {extraTotal > 0 && <p className="f-sauda-extra">{f('saudaExtra', { qty: listing.quantityKg, amount: money(extraTotal) })}</p>}
+      {extraTotal > 0 && <p className="f-sauda-extra">{f('saudaExtra', { qty: baseKg, amount: money(extraTotal) })}</p>}
 
       <h3 className="f-section-heading">{f('saudaWhyHeading')}</h3>
       <ul className="f-factor-list">
         <li>
+          <span className="f-factor-icon"><Users size={19} /></span>
+          <span className="f-factor-copy">
+            <strong>{f('saudaDemand')}</strong>
+            <small>{opportunity.buyerCount > 0 ? f('saudaDemandHint', { count: opportunity.buyerCount }) : f('saudaDemandNone')}</small>
+          </span>
+          <b>{opportunity.neededKg.toLocaleString('en-IN')} {f('kg')}</b>
+        </li>
+        <li>
           <span className="f-factor-icon"><Warehouse size={19} /></span>
           <span className="f-factor-copy">
             <strong>{f('saudaPooledSupply')}</strong>
-            <small>{deal.pooledKg > 0 ? f('saudaPooledSupplyHint', { qty: deal.pooledKg }) : f('saudaPooledSupplyNone')}</small>
+            <small>{opportunity.pooledKg > 0 ? f('saudaPooledSupplyHint', { qty: opportunity.pooledKg }) : f('saudaPooledSupplyNone')}</small>
           </span>
-          {deal.pooledKg > 0 && <b>{deal.pooledKg} {f('kg')}</b>}
+          {opportunity.pooledKg > 0 && <b>{opportunity.pooledKg} {f('kg')}</b>}
         </li>
         <li>
           <span className="f-factor-icon"><Truck size={19} /></span>
           <span className="f-factor-copy">
             <strong>{f('saudaTruck')}</strong>
-            <small>{deal.hasVehicle ? f('saudaTruckReady') : f('saudaTruckForming')}</small>
+            <small>{opportunity.hasVehicle ? f('saudaTruckReady') : f('saudaTruckForming')}</small>
+            <small>{f('saudaGoesTo', { place: opportunity.destination })} · {f('saudaDelivery', { window: deliveryText(language, opportunity.deliveryWindow) })}</small>
           </span>
-          {deal.hasVehicle && <b><Check size={19} aria-label={f('saudaTruckReady')} /></b>}
-        </li>
-        <li>
-          <span className="f-factor-icon"><Users size={19} /></span>
-          <span className="f-factor-copy">
-            <strong>{f('saudaDemand')}</strong>
-            <small>{deal.buyerCount > 0 ? f('saudaDemandHint', { count: deal.buyerCount }) : f('saudaDemandNone')}</small>
-          </span>
-          {deal.buyerCount > 0 && <b>{deal.buyerCount}</b>}
+          {opportunity.hasVehicle && <b><Check size={19} aria-label={f('saudaTruckReady')} /></b>}
         </li>
         <li>
           <span className="f-factor-icon"><IndianRupee size={19} /></span>
           <span className="f-factor-copy">
             <strong>{f('saudaOffered')}</strong>
-            <small>{f('saudaOfferedHint', { deal: `₹${dealPerKg}`, normal: `₹${normalPerKg}` })}</small>
-            <MandiSourceNote source={deal.mandiSource} compact />
+            <small>{f('saudaOfferedHint', { deal: `₹${offeredPerKg}`, normal: `₹${normalPerKg}` })}</small>
+            <MandiSourceNote source={opportunity.mandiSource} compact />
           </span>
-          <b>₹{dealPerKg}</b>
+          <b>₹{offeredPerKg}</b>
         </li>
       </ul>
 
